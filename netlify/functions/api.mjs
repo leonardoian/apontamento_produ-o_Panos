@@ -262,7 +262,7 @@ export const handler = async (event) => {
         JOIN referencias r ON r.cod = p.ref_cod
         LEFT JOIN lancamentos l ON l.ref_cod = p.ref_cod AND TO_CHAR(l.data,'YYYY-MM') = ${mes}
         WHERE p.mes_ano = ${mes} AND p.ativo = true
-        GROUP BY p.id, p.ref_cod, r.descricao, p.meta_turno, p.num_turnos
+        GROUP BY p.id, p.ref_cod, r.cod, r.descricao, p.meta_turno, p.num_turnos
         ORDER BY r.cod`;
 
       const turnos = await sql`
