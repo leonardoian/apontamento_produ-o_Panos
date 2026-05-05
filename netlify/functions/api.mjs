@@ -86,8 +86,13 @@ export const handler = async (event) => {
   }
 
   // Remove prefixo da função para obter o path
+  // Extrai path limpo independente de como o Netlify encaminhou
   const raw = event.path || "";
-  const path = raw.replace(/^\/.netlify\/functions\/api\/?/, "").replace(/^\//, "");
+  const path = raw
+    .replace(/^\/\.netlify\/functions\/api/, "")
+    .replace(/^\/api/, "")
+    .replace(/^\//, "")
+    .split("?")[0];
   const method = event.httpMethod;
   let body = {};
   try { if (event.body) body = JSON.parse(event.body); } catch {}
