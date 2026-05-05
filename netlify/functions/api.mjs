@@ -81,18 +81,21 @@ export const handler = async (event) => {
 
   const sql = getSql();
 
+  console.log("METHOD:", event.httpMethod, "| PATH:", event.path, "| DB:", !!process.env.DATABASE_URL);
+
   try { await initDB(sql); } catch (e) {
+    console.log("initDB ERRO:", e.message);
     return err("Erro banco: " + e.message, 500);
   }
 
-  // Remove prefixo da função para obter o path
-  // Extrai path limpo independente de como o Netlify encaminhou
   const raw = event.path || "";
   const path = raw
     .replace(/^\/\.netlify\/functions\/api/, "")
     .replace(/^\/api/, "")
     .replace(/^\//, "")
     .split("?")[0];
+  
+  console.log("PATH PARSED:", path);
   const method = event.httpMethod;
   let body = {};
   try { if (event.body) body = JSON.parse(event.body); } catch {}
