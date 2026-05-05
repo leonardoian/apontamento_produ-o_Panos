@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Superpro — Sistema de Produção</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0d0f14;--surface:#161920;--card:#1e222d;--border:#2a2f3d;
+  --accent:#f59e0b;--blue:#3b82f6;--green:#10b981;--red:#ef4444;--orange:#f97316;
+  --text:#e2e8f0;--muted:#64748b;
+  --fh:'Barlow Condensed',sans-serif;--fb:'Barlow',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:16px}
+body{background:var(--bg);color:var(--text);font-family:var(--fb);min-height:100vh}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+/* ── LOGIN ── */
+#login{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:999;
+  background-image:repeating-linear-gradient(0deg,transparent,transparent 39px,var(--border) 40px),
+                   repeating-linear-gradient(90deg,transparent,transparent 39px,var(--border) 40px)}
+.lbox{background:var(--surface);border:1px solid var(--border);border-top:3px solid var(--accent);padding:44px 40px;width:380px}
+.ltag{font:700 11px/1 var(--fh);letter-spacing:4px;color:var(--accent);text-transform:uppercase;margin-bottom:6px}
+.ltitle{font:900 36px/1 var(--fh);margin-bottom:30px}.ltitle span{color:var(--accent)}
+.fg{margin-bottom:14px}
+.fg label{display:block;font:700 10px/1 var(--fh);letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:5px}
+.fg input{width:100%;background:var(--card);border:1px solid var(--border);color:var(--text);padding:11px 13px;font:14px var(--fb);outline:none;transition:border-color .2s}
+.fg input:focus{border-color:var(--accent)}
+.btn-login{width:100%;background:var(--accent);color:#000;border:none;padding:13px;font:700 18px var(--fh);letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:opacity .2s;margin-top:6px}
+.btn-login:hover{opacity:.85}
+.lerr{color:var(--red);font-size:12px;margin-top:8px;text-align:center;display:none}
+.lhint{font-size:11px;color:var(--muted);margin-top:10px;text-align:center}
+
+/* ── LAYOUT ── */
+#app{display:none}
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:220px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:100}
+.slogo{padding:20px;border-bottom:1px solid var(--border)}
+.slogo .tag{font:700 9px/1 var(--fh);letter-spacing:3px;color:var(--accent);text-transform:uppercase}
+.slogo .name{font:900 20px/1.1 var(--fh);margin-top:3px}.slogo .name span{color:var(--accent)}
+.snav{padding:12px}
+.snl{font:700 9px/1 var(--fh);letter-spacing:3px;color:var(--muted);text-transform:uppercase;padding:8px 8px 4px}
+.ni{display:flex;align-items:center;gap:10px;padding:9px 10px;cursor:pointer;border-radius:4px;font:500 13px var(--fb);color:var(--muted);transition:all .15s;margin-bottom:1px;border:1px solid transparent}
+.ni:hover{color:var(--text);background:var(--card)}
+.ni.active{color:var(--accent);background:rgba(245,158,11,.08);border-color:rgba(245,158,11,.2)}
+.ni .ic{font-size:15px;width:20px;text-align:center}
+.sfoot{margin-top:auto;padding:14px 18px;border-top:1px solid var(--border)}
+.sfoot .un{font:600 13px var(--fb)}.sfoot .ur{font-size:11px;color:var(--muted)}
+.btn-out{margin-top:8px;width:100%;background:transparent;border:1px solid var(--border);color:var(--muted);padding:7px;font:12px var(--fb);cursor:pointer;transition:all .15s}
+.btn-out:hover{border-color:var(--red);color:var(--red)}
+.main{margin-left:220px;min-height:100vh}
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 28px;height:52px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
+.tpt{font:700 21px/1 var(--fh);letter-spacing:1px}
+.tpr{display:flex;align-items:center;gap:10px}
+.badge{font:700 10px/1 var(--fh);letter-spacing:1px;padding:3px 9px;border-radius:2px;text-transform:uppercase}
+.ba{background:rgba(245,158,11,.15);color:var(--accent);border:1px solid rgba(245,158,11,.3)}
+.bu{background:rgba(59,130,246,.15);color:var(--blue);border:1px solid rgba(59,130,246,.3)}
+.content{padding:24px 28px}
+.ps{display:none}.ps.active{display:block;animation:fu .2s ease}
+@keyframes fu{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── KPIs ── */
+.kg{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.kc{background:var(--card);border:1px solid var(--border);padding:18px 20px;position:relative;overflow:hidden}
+.kc::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.kc.y::before{background:var(--accent)}.kc.b::before{background:var(--blue)}.kc.g::before{background:var(--green)}.kc.r::before{background:var(--red)}
+.kl{font:700 10px/1 var(--fh);letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:7px}
+.kv{font:900 34px/1 var(--fh)}.ks{font-size:11px;color:var(--muted);margin-top:5px}
+.kc.y .kv{color:var(--accent)}.kc.b .kv{color:var(--blue)}.kc.g .kv{color:var(--green)}.kc.r .kv{color:var(--red)}
+
+/* ── TABELAS ── */
+.tw{background:var(--card);border:1px solid var(--border);overflow:hidden;margin-bottom:18px}
+.th{padding:12px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.tt{font:700 15px/1 var(--fh);letter-spacing:1px}
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead tr{background:var(--surface)}
+th{padding:8px 12px;text-align:left;font:700 10px/1 var(--fh);letter-spacing:2px;color:var(--muted);text-transform:uppercase;border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tbody tr:hover{background:rgba(255,255,255,.02)}
+.bt{display:inline-block;padding:2px 7px;font:700 10px/1.4 var(--fh);border-radius:2px}
+.t1{background:rgba(245,158,11,.15);color:var(--accent)}.t2{background:rgba(59,130,246,.15);color:var(--blue)}
+.ok{color:var(--green);font-weight:600}.warn{color:var(--orange);font-weight:600}.bad{color:var(--red);font-weight:600}
+.pw{height:4px;background:var(--border);border-radius:1px;overflow:hidden;margin-top:3px}
+.pf{height:100%;border-radius:1px}.pg{background:var(--green)}.py{background:var(--accent)}.pr{background:var(--red)}
+
+/* ── FORMULÁRIOS ── */
+.fc{background:var(--card);border:1px solid var(--border);padding:20px 24px;margin-bottom:18px}
+.fct{font:700 17px/1 var(--fh);letter-spacing:1px;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border)}
+.fgrid{display:grid;gap:13px}
+.fgrid.c2{grid-template-columns:1fr 1fr}.fgrid.c3{grid-template-columns:1fr 1fr 1fr}.fgrid.c4{grid-template-columns:1fr 1fr 1fr 1fr}
+.fi{display:flex;flex-direction:column;gap:5px}
+.fi label{font:700 10px/1 var(--fh);letter-spacing:2px;color:var(--muted);text-transform:uppercase}
+.fi input,.fi select,.fi textarea{background:var(--surface);border:1px solid var(--border);color:var(--text);padding:9px 12px;font:13px var(--fb);outline:none;transition:border-color .2s}
+.fi input:focus,.fi select:focus,.fi textarea:focus{border-color:var(--accent)}
+.fi input[readonly]{opacity:.5;cursor:not-allowed}
+.fi textarea{resize:vertical;min-height:60px}
+.fi .fnote{font-size:11px;color:var(--orange);margin-top:3px;display:none}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:9px 18px;font:700 14px/1 var(--fh);letter-spacing:1px;cursor:pointer;transition:all .15s;border:none;text-transform:uppercase}
+.bp{background:var(--accent);color:#000}.bp:hover{opacity:.85}
+.bg{background:var(--green);color:#000}.bg:hover{opacity:.85}
+.bs{background:transparent;color:var(--text);border:1px solid var(--border)}.bs:hover{border-color:var(--accent);color:var(--accent)}
+.bd{background:transparent;color:var(--red);border:1px solid var(--border)}.bd:hover{border-color:var(--red);background:rgba(239,68,68,.08)}
+.bsm{padding:5px 10px;font-size:11px}
+.brow{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
+.alert{padding:10px 14px;border-left:3px solid;margin-bottom:14px;font-size:13px}
+.as{border-color:var(--green);background:rgba(16,185,129,.08);color:var(--green)}
+.ae{border-color:var(--red);background:rgba(239,68,68,.08);color:var(--red)}
+.ai{border-color:var(--blue);background:rgba(59,130,246,.08);color:var(--blue)}
+.loading{display:inline-block;width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty{text-align:center;padding:36px;color:var(--muted)}
+.empty .ei{font-size:36px;margin-bottom:10px}
+.sr{display:flex;gap:16px;margin-bottom:18px}
+.sr .tw{flex:1}
+.filtbar{background:var(--card);border:1px solid var(--border);padding:12px 18px;margin-bottom:14px;display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap}
+@media(max-width:1200px){.kg{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login">
+  <div class="lbox">
+    <div class="ltag">▸ Superpro Industrial</div>
+    <div class="ltitle">SISTEMA DE<br><span>PRODUÇÃO</span></div>
+    <div class="fg"><label>Usuário</label><input type="text" id="l-user" placeholder="seu login" autocomplete="off"></div>
+    <div class="fg"><label>Senha</label><input type="password" id="l-pass" placeholder="••••••••"></div>
+    <button class="btn-login" onclick="doLogin()">ENTRAR →</button>
+    <div class="lerr" id="l-err">Usuário ou senha incorretos.</div>
+    <div class="lhint">Padrão: admin / admin123</div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <nav class="sidebar">
+    <div class="slogo">
+      <div class="tag">▸ Superpro</div>
+      <div class="name">PROD.<br><span>PANOS</span></div>
+    </div>
+    <div class="snav">
+      <div class="snl">Principal</div>
+      <div class="ni active" onclick="goTo('dashboard')"><span class="ic">◈</span>Dashboard</div>
+      <div class="ni" onclick="goTo('programa')"><span class="ic">☰</span>Programa do Mês</div>
+      <div class="ni" onclick="goTo('lancamento')"><span class="ic">⊕</span>Lançar Produção</div>
+      <div class="ni" onclick="goTo('historico')"><span class="ic">⊞</span>Histórico</div>
+      <div class="snl" id="snl-admin" style="display:none">Admin</div>
+      <div class="ni" id="ni-refs" onclick="goTo('referencias')" style="display:none"><span class="ic">◉</span>Referências</div>
+      <div class="ni" id="ni-users" onclick="goTo('usuarios')" style="display:none"><span class="ic">◎</span>Usuários</div>
+    </div>
+    <div class="sfoot">
+      <div class="un" id="sb-nome">—</div>
+      <div class="ur" id="sb-role">—</div>
+      <button class="btn-out" onclick="doLogout()">Sair</button>
+    </div>
+  </nav>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="tpt" id="tp-title">Dashboard</div>
+      <div class="tpr">
+        <span id="tp-badge" class="badge"></span>
+        <span style="font-size:11px;color:var(--muted)" id="tp-date"></span>
+      </div>
+    </div>
+    <div class="content">
+
+      <!-- DASHBOARD -->
+      <div class="ps active" id="sec-dashboard">
+        <div class="filtbar" style="margin-bottom:18px">
+          <div class="fi"><label>Mês</label>
+            <select id="dash-mes" onchange="renderDashboard()" style="min-width:160px">
+              <option value="">Mês atual</option>
+            </select>
+          </div>
+          <button class="btn bs bsm" onclick="renderDashboard()">↻ Atualizar</button>
+        </div>
+        <div class="kg" id="kpi-grid"></div>
+        <div class="sr">
+          <div class="tw" style="flex:1.7">
+            <div class="th"><div class="tt">META × REALIZADO</div><span id="dash-mes-lbl" style="font-size:11px;color:var(--muted)"></span></div>
+            <div style="overflow-x:auto"><table><thead><tr>
+              <th>Cód.</th><th>Descrição</th><th>Turnos</th><th>Meta Total</th><th>Realizado</th><th>Saldo</th><th>%</th>
+            </tr></thead><tbody id="dash-ref-body"></tbody></table></div>
+          </div>
+          <div style="width:270px;display:flex;flex-direction:column;gap:14px">
+            <div class="tw"><div class="th"><div class="tt">POR TURNO</div></div>
+              <table><thead><tr><th>Turno</th><th>Realiz.</th><th>Efic.</th></tr></thead>
+              <tbody id="dash-turno"></tbody></table>
+            </div>
+            <div class="tw"><div class="th"><div class="tt">ÚLTIMOS</div></div>
+              <table><thead><tr><th>Ref</th><th>T</th><th>Pçs</th><th>Data</th></tr></thead>
+              <tbody id="dash-recent"></tbody></table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PROGRAMA -->
+      <div class="ps" id="sec-programa">
+        <div class="filtbar">
+          <div class="fi"><label>Mês</label>
+            <select id="prog-mes" onchange="renderPrograma()" style="min-width:160px">
+              <option value="">Selecione...</option>
+            </select>
+          </div>
+          <button class="btn bs bsm" onclick="renderPrograma()">↻ Atualizar</button>
+          <button class="btn bp bsm" id="btn-add-prog" style="display:none" onclick="openModalProg()">+ Adicionar Referência</button>
+        </div>
+        <div class="tw">
+          <div class="th"><div class="tt">PROGRAMA DO MÊS</div><span id="prog-count" style="font-size:12px;color:var(--muted)"></span></div>
+          <div style="overflow-x:auto"><table><thead><tr>
+            <th>Cód.</th><th>Descrição</th><th>Meta/Turno</th><th>Nº Turnos</th><th>Meta Total</th>
+            <th style="color:var(--accent)">Real. T1</th><th style="color:var(--blue)">Real. T2</th>
+            <th>Total Real.</th><th>%</th><th id="th-prog-ac" style="display:none">Ações</th>
+          </tr></thead><tbody id="prog-body"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- LANÇAMENTO -->
+      <div class="ps" id="sec-lancamento">
+        <div id="alrt-lanc"></div>
+        <div class="fc">
+          <div class="fct">LANÇAR PRODUÇÃO</div>
+          <div class="fgrid c3">
+            <div class="fi"><label>Data</label><input type="date" id="ldata" onchange="atualizaRefSel()"></div>
+            <div class="fi"><label>Turno</label>
+              <select id="lturno" onchange="preencheRef()">
+                <option value="">Selecione...</option>
+                <option value="T1">T1 — Turno 1</option>
+                <option value="T2">T2 — Turno 2</option>
+              </select>
+            </div>
+            <div class="fi"><label>Operador</label><input type="text" id="lop" placeholder="Nome do operador"></div>
+          </div>
+          <div class="fgrid c4" style="margin-top:12px">
+            <div class="fi"><label>Referência</label>
+              <select id="lref" onchange="preencheRef()"><option value="">Selecione...</option></select>
+              <div class="fnote" id="lref-note"></div>
+            </div>
+            <div class="fi"><label>Descrição</label><input type="text" id="ldesc" readonly></div>
+            <div class="fi"><label>Meta (pçs)</label><input type="number" id="lmeta" readonly></div>
+            <div class="fi"><label>Hora Início</label><input type="time" id="lhi"></div>
+          </div>
+          <div class="fgrid c4" style="margin-top:12px">
+            <div class="fi"><label>Realizado (pçs)</label><input type="number" id="lreal" placeholder="0" min="0" oninput="calcEfic()"></div>
+            <div class="fi"><label>Refugo (pçs)</label><input type="number" id="lrefugo" placeholder="0" min="0"></div>
+            <div class="fi"><label>Hora Fim</label><input type="time" id="lhf"></div>
+            <div class="fi"><label>Eficiência</label><input type="text" id="lefic" readonly placeholder="—"></div>
+          </div>
+          <div class="fgrid" style="margin-top:12px">
+            <div class="fi"><label>Ocorrência / Obs</label>
+              <textarea id="lobs" placeholder="Descreva paradas, ocorrências..."></textarea></div>
+          </div>
+          <div class="brow">
+            <button class="btn bp" onclick="salvarLanc()">✔ SALVAR LANÇAMENTO</button>
+            <button class="btn bs" onclick="limparForm()">✕ LIMPAR</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- HISTÓRICO -->
+      <div class="ps" id="sec-historico">
+        <div class="filtbar">
+          <div class="fi"><label>Mês</label><input type="month" id="hist-mes" onchange="renderHist()" style="min-width:150px"></div>
+          <div class="fi"><label>Turno</label>
+            <select id="hist-turno" onchange="renderHist()"><option value="">Todos</option><option>T1</option><option>T2</option></select>
+          </div>
+          <div class="fi"><label>Referência</label>
+            <select id="hist-ref" onchange="renderHist()" style="min-width:170px"><option value="">Todas</option></select>
+          </div>
+          <button class="btn bs bsm" onclick="renderHist()">↻ Atualizar</button>
+        </div>
+        <div class="tw">
+          <div class="th"><div class="tt">HISTÓRICO DE PRODUÇÃO</div><span id="hist-count" style="font-size:12px;color:var(--muted)"></span></div>
+          <div style="overflow-x:auto"><table><thead><tr>
+            <th>Data</th><th>Turno</th><th>Ref.</th><th>Descrição</th><th>Operador</th>
+            <th>Realizado</th><th>Meta</th><th>Refugo</th><th>Efic.</th><th>Início</th><th>Fim</th><th>Obs</th>
+            <th id="hist-del-col" style="display:none">Del.</th>
+          </tr></thead><tbody id="hist-body"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- REFERÊNCIAS (admin) -->
+      <div class="ps" id="sec-referencias">
+        <div class="fc">
+          <div class="fct">CADASTRAR REFERÊNCIA</div>
+          <div class="fgrid c2">
+            <div class="fi"><label>Código</label><input type="text" id="r-cod" placeholder="Ex: SP2745LR"></div>
+            <div class="fi"><label>Descrição</label><input type="text" id="r-desc" placeholder="Nome do produto"></div>
+          </div>
+          <div class="brow"><button class="btn bp bsm" onclick="salvarRef()">+ ADICIONAR</button></div>
+        </div>
+        <div class="tw">
+          <div class="th"><div class="tt">REFERÊNCIAS CADASTRADAS</div>
+            <button class="btn bs bsm" onclick="loadRefs()">↻ Atualizar</button>
+          </div>
+          <div style="overflow-x:auto"><table><thead><tr>
+            <th>#</th><th>Código</th><th>Descrição</th><th>Ação</th>
+          </tr></thead><tbody id="refs-body"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- USUÁRIOS (admin) -->
+      <div class="ps" id="sec-usuarios">
+        <div class="fc">
+          <div class="fct">ADICIONAR USUÁRIO</div>
+          <div class="fgrid c4">
+            <div class="fi"><label>Login</label><input type="text" id="u-login" placeholder="usuario"></div>
+            <div class="fi"><label>Senha</label><input type="password" id="u-senha" placeholder="senha"></div>
+            <div class="fi"><label>Nome Completo</label><input type="text" id="u-nome" placeholder="Nome"></div>
+            <div class="fi"><label>Perfil</label>
+              <select id="u-perfil"><option value="operador">Operador</option><option value="admin">Administrador</option></select>
+            </div>
+          </div>
+          <div class="brow"><button class="btn bp bsm" onclick="salvarUser()">+ ADICIONAR</button></div>
+        </div>
+        <div class="tw">
+          <div class="th"><div class="tt">USUÁRIOS</div></div>
+          <table><thead><tr><th>#</th><th>Login</th><th>Nome</th><th>Perfil</th><th>Ação</th></tr></thead>
+          <tbody id="users-body"></tbody></table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PROGRAMA -->
+<div id="modal-prog" style="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:none;align-items:center;justify-content:center">
+  <div style="background:var(--surface);border:1px solid var(--border);border-top:3px solid var(--accent);width:480px;max-width:95vw;padding:26px">
+    <div style="font:700 20px/1 var(--fh);margin-bottom:18px" id="modal-prog-title">ADICIONAR AO PROGRAMA</div>
+    <div class="fgrid c2">
+      <div class="fi"><label>Mês/Ano</label><input type="month" id="mp-mes"></div>
+      <div class="fi"><label>Referência</label>
+        <select id="mp-ref"><option value="">Selecione...</option></select></div>
+      <div class="fi"><label>Meta por Turno (pçs)</label><input type="number" id="mp-meta" min="0" placeholder="0"></div>
+      <div class="fi"><label>Nº de Turnos (1 ou 2)</label>
+        <select id="mp-nt"><option value="2">2 Turnos</option><option value="1">1 Turno</option></select></div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:20px">
+      <button class="btn bs bsm" onclick="closeModal()">Cancelar</button>
+      <button class="btn bp bsm" onclick="salvarProg()">SALVAR</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════
+const API = '/.netlify/functions/api';
+let TOKEN = localStorage.getItem('sp_token');
+let USER  = null;
+let _refs = [];   // cache de referências
+let _meses = [];  // cache de meses do programa
+let _progCache = {}; // cache programa por mês
+
+// ═══════════════════════════════════════
+// HTTP
+// ═══════════════════════════════════════
+async function api(method, path, body) {
+  const opts = {
+    method,
+    headers: { 'Content-Type': 'application/json', ...(TOKEN ? { Authorization: 'Bearer ' + TOKEN } : {}) },
+  };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(API + '/' + path, opts);
+  const data = await r.json();
+  if (!r.ok) throw new Error(data.error || 'Erro ' + r.status);
+  return data;
+}
+const GET    = path        => api('GET',    path);
+const POST   = (path, b)  => api('POST',   path, b);
+const PUT    = (path, b)  => api('PUT',    path, b);
+const DELETE = (path, b)  => api('DELETE', path, b);
+
+// ═══════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════
+const fmt   = n => (+n||0).toLocaleString('pt-BR');
+const pct   = (a,b) => b>0?((a/b)*100).toFixed(1)+'%':'—';
+const eClass= v => v>=1?'ok':v>=.8?'warn':'bad';
+const mesL  = m => { if(!m)return''; const[y,mo]=m.split('-'); return ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][+mo-1]+'/'+y; };
+const today = () => new Date().toISOString().slice(0,10);
+const curMes= () => new Date().toISOString().slice(0,7);
+
+function showAlert(id, type, msg, ms=4000) {
+  const el = document.getElementById(id);
+  el.innerHTML = `<div class="alert ${type}">${msg}</div>`;
+  if (ms) setTimeout(() => el.innerHTML='', ms);
+}
+
+// ═══════════════════════════════════════
+// LOGIN
+// ═══════════════════════════════════════
+async function doLogin() {
+  const login = document.getElementById('l-user').value.trim();
+  const senha = document.getElementById('l-pass').value;
+  try {
+    const data = await POST('login', { login, senha });
+    TOKEN = data.token;
+    USER  = data.usuario;
+    localStorage.setItem('sp_token', TOKEN);
+    showApp();
+  } catch(e) {
+    document.getElementById('l-err').style.display = 'block';
+  }
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && document.getElementById('login').style.display !== 'none') doLogin();
+});
+
+function doLogout() {
+  TOKEN = null; USER = null;
+  localStorage.removeItem('sp_token');
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login').style.display = 'flex';
+  ['l-user','l-pass'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('l-err').style.display = 'none';
+}
+
+async function showApp() {
+  document.getElementById('login').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('sb-nome').textContent = USER.nome;
+  document.getElementById('sb-role').textContent = USER.perfil === 'admin' ? '▸ Administrador' : '▸ Operador';
+  const b = document.getElementById('tp-badge');
+  b.textContent = USER.perfil === 'admin' ? 'Admin' : 'Operador';
+  b.className = 'badge ' + (USER.perfil === 'admin' ? 'ba' : 'bu');
+  document.getElementById('tp-date').textContent = new Date().toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'short'});
+
+  if (USER.perfil === 'admin') {
+    ['snl-admin','ni-refs','ni-users'].forEach(id => document.getElementById(id).style.display = '');
+    document.getElementById('hist-del-col').style.display = '';
+    document.getElementById('btn-add-prog').style.display = '';
+    document.getElementById('th-prog-ac').style.display = '';
+  }
+
+  // Carrega dados base
+  await Promise.all([loadMeses(), loadRefs()]);
+  populateSelects();
+  goTo('dashboard');
+}
+
+// ═══════════════════════════════════════
+// DADOS BASE
+// ═══════════════════════════════════════
+async function loadMeses() {
+  try {
+    _meses = await GET('meses');
+    const cur = curMes();
+    ['dash-mes','prog-mes'].forEach(id => {
+      const sel = document.getElementById(id);
+      if (!sel) return;
+      const old = sel.value;
+      const defOpt = id === 'dash-mes' ? '<option value="">Mês atual</option>' : '<option value="">Selecione...</option>';
+      sel.innerHTML = defOpt + _meses.map(m => `<option value="${m}"${m===cur?' selected':''}>${mesL(m)} (${m})</option>`).join('');
+      if (old && _meses.includes(old)) sel.value = old;
+    });
+  } catch(e) { console.warn('Erro ao carregar meses:', e); }
+}
+
+async function loadRefs() {
+  try {
+    _refs = await GET('referencias');
+    // Popula select de referências no histórico
+    const sel = document.getElementById('hist-ref');
+    sel.innerHTML = '<option value="">Todas</option>' + _refs.map(r => `<option value="${r.cod}">${r.cod}</option>`).join('');
+  } catch(e) { console.warn('Erro ao carregar refs:', e); }
+}
+
+function populateSelects() {
+  atualizaRefSel();
+}
+
+// ═══════════════════════════════════════
+// NAVEGAÇÃO
+// ═══════════════════════════════════════
+const TITLES = { dashboard:'Dashboard', programa:'Programa do Mês', lancamento:'Lançar Produção', historico:'Histórico', referencias:'Referências', usuarios:'Usuários' };
+function goTo(p) {
+  document.querySelectorAll('.ps').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.ni').forEach(n => n.classList.remove('active'));
+  document.getElementById('sec-' + p)?.classList.add('active');
+  document.querySelectorAll('.ni').forEach(n => { if (n.getAttribute('onclick')?.includes("'" + p + "'")) n.classList.add('active'); });
+  document.getElementById('tp-title').textContent = TITLES[p] || p;
+  if (p === 'dashboard')  renderDashboard();
+  if (p === 'programa')   renderPrograma();
+  if (p === 'lancamento') { document.getElementById('ldata').value = today(); atualizaRefSel(); }
+  if (p === 'historico')  { document.getElementById('hist-mes').value = curMes(); renderHist(); }
+  if (p === 'referencias') renderRefs();
+  if (p === 'usuarios')   renderUsers();
+}
+
+// ═══════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════
+async function renderDashboard() {
+  const mes = document.getElementById('dash-mes').value || curMes();
+  document.getElementById('kpi-grid').innerHTML = `<div class="kc y"><div class="kl">Carregando</div><div class="kv"><span class="loading"></span></div></div>`;
+  try {
+    const d = await GET('dashboard?mes=' + mes);
+    const t = d.totais;
+    document.getElementById('dash-mes-lbl').textContent = mesL(mes);
+
+    document.getElementById('kpi-grid').innerHTML = `
+      <div class="kc y"><div class="kl">Total Realizado</div><div class="kv">${fmt(t.total_realizado)}</div><div class="ks">peças — ${mesL(mes)}</div></div>
+      <div class="kc b"><div class="kl">Meta do Mês</div><div class="kv">${fmt(d.prog.reduce((s,r)=>s+ +r.meta_total,0))}</div><div class="ks">peças programadas</div></div>
+      <div class="kc g"><div class="kl">Eficiência Média</div><div class="kv">${t.efic_media ? (t.efic_media*100).toFixed(1)+'%' : '—'}</div><div class="ks">todos os turnos</div></div>
+      <div class="kc r"><div class="kl">Total Refugo</div><div class="kv">${fmt(t.total_refugo)}</div><div class="ks">peças rejeitadas</div></div>`;
+
+    // Refs
+    const rb = document.getElementById('dash-ref-body');
+    rb.innerHTML = !d.prog.length
+      ? `<tr><td colspan="7" class="empty"><div class="ei">☰</div>Nenhuma referência no programa deste mês.</td></tr>`
+      : d.prog.map(r => {
+          const mT = +r.meta_total||0, rT = +r.realizado||0, sl = rT-mT;
+          const p = mT>0?rT/mT:0; const bc = p>=1?'pg':p>=.8?'py':'pr';
+          return `<tr>
+            <td style="font-family:monospace;font-size:11px">${r.cod}</td>
+            <td style="max-width:200px;font-size:12px">${r.descricao}</td>
+            <td><span class="bt" style="background:rgba(245,158,11,.15);color:var(--accent)">${r.num_turnos}T</span></td>
+            <td>${fmt(mT)}</td><td><strong>${fmt(rT)}</strong></td>
+            <td class="${sl>=0?'ok':'bad'}">${sl>=0?'+':''}${fmt(sl)}</td>
+            <td style="min-width:100px"><div style="font-size:10px;color:var(--muted);margin-bottom:2px">${pct(rT,mT)}</div>
+            <div class="pw"><div class="pf ${bc}" style="width:${Math.min(p*100,100)}%"></div></div></td>
+          </tr>`;
+        }).join('');
+
+    // Turnos
+    document.getElementById('dash-turno').innerHTML = ['T1','T2'].map(t => {
+      const row = d.turnos.find(x => x.turno === t);
+      const r = row ? +row.realizado : 0;
+      const ef = row?.efic_media ? +row.efic_media : null;
+      return `<tr><td><span class="bt ${t.toLowerCase()}">${t}</span></td><td><strong>${fmt(r)}</strong></td>
+        <td class="${ef!=null?eClass(ef):''}">${ef!=null?(ef*100).toFixed(1)+'%':'—'}</td></tr>`;
+    }).join('');
+
+    // Recentes
+    document.getElementById('dash-recent').innerHTML = !d.recentes.length
+      ? `<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:16px;font-size:12px">Sem lançamentos</td></tr>`
+      : d.recentes.map(l => `<tr>
+          <td style="font-family:monospace;font-size:10px">${l.ref_cod}</td>
+          <td><span class="bt ${l.turno?.toLowerCase()}">${l.turno}</span></td>
+          <td>${fmt(+l.realizado||0)}</td>
+          <td style="font-size:10px;color:var(--muted)">${String(l.data).slice(5).split('-').reverse().join('/')}</td>
+        </tr>`).join('');
+
+  } catch(e) {
+    document.getElementById('kpi-grid').innerHTML = `<div class="kc r"><div class="kl">Erro</div><div class="kv" style="font-size:14px">${e.message}</div></div>`;
+  }
+}
+
+// ═══════════════════════════════════════
+// PROGRAMA
+// ═══════════════════════════════════════
+async function renderPrograma() {
+  const mes = document.getElementById('prog-mes').value;
+  const tbody = document.getElementById('prog-body');
+  if (!mes) { tbody.innerHTML = `<tr><td colspan="10" class="empty">Selecione um mês.</td></tr>`; return; }
+  tbody.innerHTML = `<tr><td colspan="10" class="empty"><span class="loading"></span></td></tr>`;
+  try {
+    const rows = await GET('programa?mes=' + mes);
+    const lancs = await GET('lancamentos?mes=' + mes);
+    _progCache[mes] = rows;
+    document.getElementById('prog-count').textContent = rows.length + ' referências';
+    const isAdmin = USER?.perfil === 'admin';
+    tbody.innerHTML = !rows.length
+      ? `<tr><td colspan="10" class="empty"><div class="ei">☰</div>Nenhuma referência no programa. ${isAdmin?'Clique em "+ Adicionar Referência".':''}</td></tr>`
+      : rows.map(r => {
+          const mT = +r.meta_total||0;
+          const rT1 = lancs.filter(l=>l.ref_cod===r.ref_cod&&l.turno==='T1').reduce((s,l)=>s+(+l.realizado||0),0);
+          const rT2 = lancs.filter(l=>l.ref_cod===r.ref_cod&&l.turno==='T2').reduce((s,l)=>s+(+l.realizado||0),0);
+          const rT = rT1+rT2; const p = mT>0?rT/mT:0;
+          return `<tr>
+            <td style="font-family:monospace;font-size:11px">${r.ref_cod}</td>
+            <td style="max-width:220px;font-size:12px">${r.descricao}</td>
+            <td>${fmt(+r.meta_turno||0)}</td>
+            <td><span class="bt" style="background:rgba(245,158,11,.15);color:var(--accent)">${r.num_turnos}T</span></td>
+            <td><strong>${fmt(mT)}</strong></td>
+            <td style="color:var(--accent)">${fmt(rT1)}</td>
+            <td style="color:var(--blue)">${fmt(rT2)}</td>
+            <td><strong>${fmt(rT)}</strong></td>
+            <td class="${p>=1?'ok':p>=.8?'warn':'bad'}">${pct(rT,mT)}</td>
+            ${isAdmin?`<td>
+              <button class="btn bd bsm" onclick="deleteProg('${r.ref_cod}','${mes}')">✕</button>
+            </td>`:''}
+          </tr>`;
+        }).join('');
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="10" class="empty" style="color:var(--red)">${e.message}</td></tr>`;
+  }
+}
+
+function openModalProg() {
+  const mes = document.getElementById('prog-mes').value || curMes();
+  document.getElementById('mp-mes').value = mes;
+  document.getElementById('mp-ref').innerHTML = '<option value="">Selecione...</option>' +
+    _refs.map(r => `<option value="${r.cod}">${r.cod} — ${r.descricao}</option>`).join('');
+  document.getElementById('mp-meta').value = '';
+  document.getElementById('mp-nt').value = '2';
+  document.getElementById('modal-prog').style.display = 'flex';
+}
+function closeModal() { document.getElementById('modal-prog').style.display = 'none'; }
+
+async function salvarProg() {
+  const mes_ano   = document.getElementById('mp-mes').value;
+  const ref_cod   = document.getElementById('mp-ref').value;
+  const meta_turno= +document.getElementById('mp-meta').value || 0;
+  const num_turnos= +document.getElementById('mp-nt').value || 2;
+  if (!mes_ano || !ref_cod) { alert('Selecione o mês e a referência.'); return; }
+  try {
+    await POST('programa', { mes_ano, ref_cod, meta_turno, num_turnos });
+    closeModal();
+    await loadMeses();
+    document.getElementById('prog-mes').value = mes_ano;
+    renderPrograma();
+  } catch(e) { alert('Erro: ' + e.message); }
+}
+
+async function deleteProg(ref_cod, mes_ano) {
+  if (!confirm(`Remover ${ref_cod} do programa de ${mesL(mes_ano)}?`)) return;
+  try { await DELETE('programa', { ref_cod, mes_ano }); renderPrograma(); }
+  catch(e) { alert('Erro: ' + e.message); }
+}
+
+// ═══════════════════════════════════════
+// LANÇAMENTO
+// ═══════════════════════════════════════
+async function atualizaRefSel() {
+  const mes = (document.getElementById('ldata')?.value || today()).slice(0,7);
+  const sel = document.getElementById('lref');
+  const note = document.getElementById('lref-note');
+  try {
+    const rows = _progCache[mes] || await GET('programa?mes=' + mes);
+    _progCache[mes] = rows;
+    if (!rows.length) {
+      sel.innerHTML = '<option value="">— Sem programa para este mês —</option>';
+      note.textContent = '⚠ Nenhuma referência no programa de ' + mesL(mes) + '.';
+      note.style.display = 'block';
+    } else {
+      sel.innerHTML = '<option value="">Selecione a referência...</option>' +
+        rows.map(r => `<option value="${r.ref_cod}">${r.ref_cod} — ${r.descricao} (${r.num_turnos}T · ${fmt(+r.meta_turno||0)} pçs/turno)</option>`).join('');
+      note.style.display = 'none';
+    }
+  } catch(e) { sel.innerHTML = '<option value="">Erro ao carregar</option>'; }
+  preencheRef();
+}
+
+function preencheRef() {
+  const mes = (document.getElementById('ldata')?.value || today()).slice(0,7);
+  const cod = document.getElementById('lref').value;
+  const rows = _progCache[mes] || [];
+  const r = rows.find(x => x.ref_cod === cod);
+  document.getElementById('ldesc').value = r ? r.descricao : '';
+  const meta = r ? +r.meta_turno || 0 : 0;
+  document.getElementById('lmeta').value = meta || '';
+  const info = document.getElementById('lref-note');
+  if (r) { info.textContent = `${r.num_turnos} turno(s) — meta ${fmt(meta)} pçs/turno`; info.style.display='block'; info.style.color='var(--muted)'; }
+  calcEfic();
+}
+
+function calcEfic() {
+  const real = +document.getElementById('lreal').value||0;
+  const meta = +document.getElementById('lmeta').value||0;
+  const el = document.getElementById('lefic');
+  if (meta>0&&real>0) {
+    const e=real/meta; el.value=(e*100).toFixed(1)+'%';
+    el.style.color=e>=1?'var(--green)':e>=.8?'var(--orange)':'var(--red)';
+  } else { el.value='—'; el.style.color=''; }
+}
+
+async function salvarLanc() {
+  const data   = document.getElementById('ldata').value;
+  const turno  = document.getElementById('lturno').value;
+  const ref_cod= document.getElementById('lref').value;
+  const real   = document.getElementById('lreal').value;
+  if (!data||!turno||!ref_cod||real==='') {
+    showAlert('alrt-lanc','ae','Preencha Data, Turno, Referência e Realizado.'); return;
+  }
+  try {
+    await POST('lancamentos', {
+      data, turno, ref_cod,
+      descricao: document.getElementById('ldesc').value,
+      operador:  document.getElementById('lop').value || USER.nome,
+      realizado: +real,
+      meta:      +document.getElementById('lmeta').value||0,
+      refugo:    +document.getElementById('lrefugo').value||0,
+      hora_inicio: document.getElementById('lhi').value,
+      hora_fim:    document.getElementById('lhf').value,
+      obs:         document.getElementById('lobs').value,
+    });
+    showAlert('alrt-lanc','as','✔ Lançamento salvo com sucesso no banco de dados!');
+    limparForm(true);
+  } catch(e) { showAlert('alrt-lanc','ae','Erro ao salvar: ' + e.message); }
+}
+
+function limparForm(keepDate) {
+  ['lturno','lref','ldesc','lmeta','lhi','lhf','lreal','lrefugo','lobs','lefic','lop']
+    .forEach(id => document.getElementById(id).value='');
+  if (!keepDate) document.getElementById('ldata').value = today();
+}
+
+// ═══════════════════════════════════════
+// HISTÓRICO
+// ═══════════════════════════════════════
+async function renderHist() {
+  const mes   = document.getElementById('hist-mes').value;
+  const turno = document.getElementById('hist-turno').value;
+  const ref   = document.getElementById('hist-ref').value;
+  const tbody = document.getElementById('hist-body');
+  tbody.innerHTML = `<tr><td colspan="13" class="empty"><span class="loading"></span></td></tr>`;
+  try {
+    let q = 'lancamentos?mes=' + mes;
+    if (turno) q += '&turno=' + turno;
+    if (ref)   q += '&ref=' + ref;
+    const rows = await GET(q);
+    document.getElementById('hist-count').textContent = rows.length + ' registro(s)';
+    const isAdmin = USER?.perfil === 'admin';
+    tbody.innerHTML = !rows.length
+      ? `<tr><td colspan="13" class="empty"><div class="ei">⊞</div>Nenhum lançamento encontrado.</td></tr>`
+      : rows.map(l => {
+          const m=+l.meta||0, r=+l.realizado||0, ef=+l.eficiencia||0;
+          return `<tr>
+            <td style="white-space:nowrap">${String(l.data).slice(0,10).split('-').reverse().join('/')}</td>
+            <td><span class="bt ${l.turno?.toLowerCase()}">${l.turno}</span></td>
+            <td style="font-family:monospace;font-size:11px">${l.ref_cod}</td>
+            <td style="max-width:160px;font-size:11px">${l.descricao||''}</td>
+            <td style="font-size:11px">${l.operador||''}</td>
+            <td><strong>${fmt(r)}</strong></td><td>${fmt(m)}</td>
+            <td style="color:var(--red)">${fmt(+l.refugo||0)}</td>
+            <td class="${ef>0?eClass(ef):''}">${ef>0?(ef*100).toFixed(1)+'%':'—'}</td>
+            <td style="font-size:10px">${l.hora_inicio||'—'}</td>
+            <td style="font-size:10px">${l.hora_fim||'—'}</td>
+            <td style="max-width:130px;font-size:10px;color:var(--muted)">${l.obs||''}</td>
+            ${isAdmin?`<td><button class="btn bd bsm" onclick="delLanc(${l.id})">✕</button></td>`:''}
+          </tr>`;
+        }).join('');
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="13" class="empty" style="color:var(--red)">${e.message}</td></tr>`;
+  }
+}
+
+async function delLanc(id) {
+  if (!confirm('Excluir este lançamento?')) return;
+  try { await DELETE('lancamentos', { id }); renderHist(); }
+  catch(e) { alert('Erro: ' + e.message); }
+}
+
+// ═══════════════════════════════════════
+// REFERÊNCIAS
+// ═══════════════════════════════════════
+async function renderRefs() {
+  const tbody = document.getElementById('refs-body');
+  tbody.innerHTML = `<tr><td colspan="4" class="empty"><span class="loading"></span></td></tr>`;
+  try {
+    const rows = await GET('referencias');
+    _refs = rows;
+    tbody.innerHTML = !rows.length
+      ? `<tr><td colspan="4" class="empty">Nenhuma referência cadastrada.</td></tr>`
+      : rows.map((r,i) => `<tr>
+          <td>${i+1}</td>
+          <td style="font-family:monospace;font-size:11px">${r.cod}</td>
+          <td>${r.descricao}</td>
+          <td><button class="btn bd bsm" onclick="delRef('${r.cod}')">✕</button></td>
+        </tr>`).join('');
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="4" class="empty" style="color:var(--red)">${e.message}</td></tr>`;
+  }
+}
+
+async function salvarRef() {
+  const cod = document.getElementById('r-cod').value.trim().toUpperCase();
+  const desc= document.getElementById('r-desc').value.trim();
+  if (!cod||!desc) { alert('Código e Descrição são obrigatórios.'); return; }
+  try {
+    await POST('referencias', { cod, descricao: desc });
+    document.getElementById('r-cod').value = '';
+    document.getElementById('r-desc').value = '';
+    renderRefs();
+    loadRefs();
+  } catch(e) { alert('Erro: ' + e.message); }
+}
+
+async function delRef(cod) {
+  if (!confirm(`Desativar referência ${cod}?`)) return;
+  try { await DELETE('referencias', { cod }); renderRefs(); loadRefs(); }
+  catch(e) { alert('Erro: ' + e.message); }
+}
+
+// ═══════════════════════════════════════
+// USUÁRIOS
+// ═══════════════════════════════════════
+async function renderUsers() {
+  const tbody = document.getElementById('users-body');
+  try {
+    const rows = await GET('usuarios');
+    tbody.innerHTML = rows.map((u,i) => `<tr>
+      <td>${i+1}</td>
+      <td style="font-family:monospace">${u.login}</td>
+      <td>${u.nome}</td>
+      <td><span class="badge ${u.perfil==='admin'?'ba':'bu'}">${u.perfil}</span></td>
+      <td>${u.login!=='admin'?`<button class="btn bd bsm" onclick="delUser('${u.login}')">✕</button>`:'—'}</td>
+    </tr>`).join('');
+  } catch(e) { tbody.innerHTML = `<tr><td colspan="5" class="empty" style="color:var(--red)">${e.message}</td></tr>`; }
+}
+
+async function salvarUser() {
+  const login = document.getElementById('u-login').value.trim();
+  const senha = document.getElementById('u-senha').value;
+  const nome  = document.getElementById('u-nome').value.trim();
+  const perfil= document.getElementById('u-perfil').value;
+  if (!login||!senha||!nome) { alert('Preencha todos os campos.'); return; }
+  try {
+    await POST('usuarios', { login, senha, nome, perfil });
+    ['u-login','u-senha','u-nome'].forEach(id => document.getElementById(id).value='');
+    renderUsers();
+  } catch(e) { alert('Erro: ' + e.message); }
+}
+
+async function delUser(login) {
+  if (!confirm(`Desativar usuário ${login}?`)) return;
+  try { await DELETE('usuarios', { login }); renderUsers(); }
+  catch(e) { alert('Erro: ' + e.message); }
+}
+
+// ═══════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════
+async function init() {
+  if (TOKEN) {
+    try {
+      USER = await GET('me');
+      showApp();
+    } catch { TOKEN = null; localStorage.removeItem('sp_token'); }
+  }
+}
+init();
+</script>
+</body>
+</html>
