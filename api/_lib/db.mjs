@@ -58,10 +58,11 @@ export async function initDB(sql) {
     id SERIAL PRIMARY KEY,
     mes_ano VARCHAR(7) NOT NULL,
     ref_cod VARCHAR(30) NOT NULL,
+    celula VARCHAR(30) DEFAULT 'Panos',
     meta_turno INT DEFAULT 0,
     num_turnos INT DEFAULT 2,
     ativo BOOLEAN DEFAULT true,
-    UNIQUE(mes_ano, ref_cod)
+    UNIQUE(mes_ano, ref_cod, celula)
   )`;
   await sql`CREATE TABLE IF NOT EXISTS lancamentos (
     id SERIAL PRIMARY KEY,

@@ -201,6 +201,15 @@ tbody tr:hover{background:rgba(255,255,255,.02)}
       <!-- PROGRAMA -->
       <div class="ps" id="sec-programa">
         <div class="filtbar">
+          <div class="fi"><label>Célula</label>
+            <select id="prog-celula" onchange="renderPrograma()" style="min-width:160px">
+              <option value="Aluminio">Celular de Alumínio</option>
+              <option value="Panos" selected>Máquina de Panos</option>
+              <option value="Placas">Máquina de Placas</option>
+              <option value="Rodos">Máquina de Rodos</option>
+              <option value="Manual">Trabalho Manual</option>
+            </select>
+          </div>
           <div class="fi"><label>Mês</label>
             <select id="prog-mes" onchange="renderPrograma()" style="min-width:160px">
               <option value="">Selecione...</option>
@@ -225,6 +234,15 @@ tbody tr:hover{background:rgba(255,255,255,.02)}
         <div class="fc">
           <div class="fct">LANÇAR PRODUÇÃO</div>
           <div class="fgrid c3">
+            <div class="fi"><label>Célula</label>
+              <select id="lcelula" onchange="atualizaRefSel()" style="min-width:160px">
+                <option value="Aluminio">Celular de Alumínio</option>
+                <option value="Panos" selected>Máquina de Panos</option>
+                <option value="Placas">Máquina de Placas</option>
+                <option value="Rodos">Máquina de Rodos</option>
+                <option value="Manual">Trabalho Manual</option>
+              </select>
+            </div>
             <div class="fi"><label>Data</label><input type="date" id="ldata" onchange="atualizaRefSel()"></div>
             <div class="fi"><label>Turno</label>
               <select id="lturno" onchange="preencheRef()">
@@ -233,9 +251,9 @@ tbody tr:hover{background:rgba(255,255,255,.02)}
                 <option value="T2">T2 — Turno 2</option>
               </select>
             </div>
-            <div class="fi"><label>Operador</label><input type="text" id="lop" placeholder="Nome do operador"></div>
           </div>
-          <div class="fgrid c4" style="margin-top:12px">
+          <div class="fgrid c3" style="margin-top:12px">
+            <div class="fi"><label>Operador</label><input type="text" id="lop" placeholder="Nome do operador"></div>
             <div class="fi"><label>Referência</label>
               <select id="lref" onchange="preencheRef()"><option value="">Selecione...</option></select>
               <div class="fnote" id="lref-note"></div>
@@ -265,6 +283,15 @@ tbody tr:hover{background:rgba(255,255,255,.02)}
       <!-- HISTÓRICO -->
       <div class="ps" id="sec-historico">
         <div class="filtbar">
+          <div class="fi"><label>Célula</label>
+            <select id="hist-celula" onchange="renderHist()" style="min-width:160px">
+              <option value="Aluminio">Celular de Alumínio</option>
+              <option value="Panos" selected>Máquina de Panos</option>
+              <option value="Placas">Máquina de Placas</option>
+              <option value="Rodos">Máquina de Rodos</option>
+              <option value="Manual">Trabalho Manual</option>
+            </select>
+          </div>
           <div class="fi"><label>Mês</label><input type="month" id="hist-mes" onchange="renderHist()" style="min-width:150px"></div>
           <div class="fi"><label>Turno</label>
             <select id="hist-turno" onchange="renderHist()"><option value="">Todos</option><option>T1</option><option>T2</option></select>
@@ -560,12 +587,13 @@ async function renderDashboard() {
 // ═══════════════════════════════════════
 async function renderPrograma() {
   const mes = document.getElementById('prog-mes').value;
+  const celula = document.getElementById('prog-celula').value;
   const tbody = document.getElementById('prog-body');
   if (!mes) { tbody.innerHTML = `<tr><td colspan="10" class="empty">Selecione um mês.</td></tr>`; return; }
   tbody.innerHTML = `<tr><td colspan="10" class="empty"><span class="loading"></span></td></tr>`;
   try {
-    const rows = await GET('programa?mes=' + mes);
-    const lancs = await GET('lancamentos?mes=' + mes);
+    const rows = await GET('programa?mes=' + mes + '&celula=' + celula);
+    const lancs = await GET('lancamentos?mes=' + mes + '&celula=' + celula);
     _progCache[mes] = rows;
     document.getElementById('prog-count').textContent = rows.length + ' referências';
     const isAdmin = USER?.perfil === 'admin';
@@ -587,7 +615,7 @@ async function renderPrograma() {
             <td><strong>${fmt(rT)}</strong></td>
             <td class="${p>=1?'ok':p>=.8?'warn':'bad'}">${pct(rT,mT)}</td>
             ${isAdmin?`<td>
-              <button class="btn bd bsm" onclick="deleteProg('${r.ref_cod}','${mes}')">✕</button>
+              <button class="btn bd bsm" onclick="deleteProg('${r.ref_cod}','${mes}','${celula}')">✕</button>
             </td>`:''}
           </tr>`;
         }).join('');
@@ -610,11 +638,12 @@ function closeModal() { document.getElementById('modal-prog').style.display = 'n
 async function salvarProg() {
   const mes_ano   = document.getElementById('mp-mes').value;
   const ref_cod   = document.getElementById('mp-ref').value;
+  const celula    = document.getElementById('prog-celula').value;
   const meta_turno= +document.getElementById('mp-meta').value || 0;
   const num_turnos= +document.getElementById('mp-nt').value || 2;
   if (!mes_ano || !ref_cod) { alert('Selecione o mês e a referência.'); return; }
   try {
-    await POST('programa', { mes_ano, ref_cod, meta_turno, num_turnos });
+    await POST('programa', { mes_ano, ref_cod, celula, meta_turno, num_turnos });
     closeModal();
     await loadMeses();
     document.getElementById('prog-mes').value = mes_ano;
@@ -622,9 +651,9 @@ async function salvarProg() {
   } catch(e) { alert('Erro: ' + e.message); }
 }
 
-async function deleteProg(ref_cod, mes_ano) {
+async function deleteProg(ref_cod, mes_ano, celula) {
   if (!confirm(`Remover ${ref_cod} do programa de ${mesL(mes_ano)}?`)) return;
-  try { await DELETE('programa', { ref_cod, mes_ano }); renderPrograma(); }
+  try { await DELETE('programa', { ref_cod, mes_ano, celula }); renderPrograma(); }
   catch(e) { alert('Erro: ' + e.message); }
 }
 
@@ -633,11 +662,13 @@ async function deleteProg(ref_cod, mes_ano) {
 // ═══════════════════════════════════════
 async function atualizaRefSel() {
   const mes = (document.getElementById('ldata')?.value || today()).slice(0,7);
+  const celula = document.getElementById('lcelula').value;
   const sel = document.getElementById('lref');
   const note = document.getElementById('lref-note');
   try {
-    const rows = _progCache[mes] || await GET('programa?mes=' + mes);
-    _progCache[mes] = rows;
+    const cacheKey = mes + '_' + celula;
+    const rows = _progCache[cacheKey] || await GET('programa?mes=' + mes + '&celula=' + celula);
+    _progCache[cacheKey] = rows;
     if (!rows.length) {
       sel.innerHTML = '<option value="">— Sem programa para este mês —</option>';
       note.textContent = '⚠ Nenhuma referência no programa de ' + mesL(mes) + '.';
@@ -734,10 +765,11 @@ async function renderHist() {
   const mes   = document.getElementById('hist-mes').value;
   const turno = document.getElementById('hist-turno').value;
   const ref   = document.getElementById('hist-ref').value;
+  const celula = document.getElementById('hist-celula').value;
   const tbody = document.getElementById('hist-body');
   tbody.innerHTML = `<tr><td colspan="13" class="empty"><span class="loading"></span></td></tr>`;
   try {
-    let q = 'lancamentos?mes=' + mes;
+    let q = 'lancamentos?mes=' + mes + '&celula=' + celula;
     if (turno) q += '&turno=' + turno;
     if (ref)   q += '&ref=' + ref;
     const rows = await GET(q);

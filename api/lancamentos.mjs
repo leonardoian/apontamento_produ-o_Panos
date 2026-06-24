@@ -12,17 +12,30 @@ export default async function handler(req, res) {
   try { await initDB(sql); } catch (e) { return res.status(500).json({ error: "Erro initDB: " + e.message }); }
 
   if (req.method === "GET") {
-    const { mes, turno, ref } = req.query || {};
+    const { mes, turno, ref, celula } = req.query || {};
     try {
       let rows;
+      const celulaFilter = celula || "Panos";
+      
       if (mes && turno && ref) {
-        rows = await sql`SELECT * FROM lancamentos WHERE TO_CHAR(data,'YYYY-MM') = ${mes} AND turno = ${turno} AND ref_cod = ${ref} ORDER BY data DESC, criado_em DESC`;
+        rows = await sql`SELECT l.* FROM lancamentos l 
+          WHERE TO_CHAR(l.data,'YYYY-MM') = ${mes} AND l.turno = ${turno} AND l.ref_cod = ${ref} 
+          AND l.ref_cod IN (SELECT ref_cod FROM programa WHERE celula = ${celulaFilter})
+          ORDER BY l.data DESC, l.criado_em DESC`;
       } else if (mes && turno) {
-        rows = await sql`SELECT * FROM lancamentos WHERE TO_CHAR(data,'YYYY-MM') = ${mes} AND turno = ${turno} ORDER BY data DESC, criado_em DESC`;
+        rows = await sql`SELECT l.* FROM lancamentos l 
+          WHERE TO_CHAR(l.data,'YYYY-MM') = ${mes} AND l.turno = ${turno}
+          AND l.ref_cod IN (SELECT ref_cod FROM programa WHERE celula = ${celulaFilter})
+          ORDER BY l.data DESC, l.criado_em DESC`;
       } else if (mes) {
-        rows = await sql`SELECT * FROM lancamentos WHERE TO_CHAR(data,'YYYY-MM') = ${mes} ORDER BY data DESC, criado_em DESC`;
+        rows = await sql`SELECT l.* FROM lancamentos l 
+          WHERE TO_CHAR(l.data,'YYYY-MM') = ${mes}
+          AND l.ref_cod IN (SELECT ref_cod FROM programa WHERE celula = ${celulaFilter})
+          ORDER BY l.data DESC, l.criado_em DESC`;
       } else {
-        rows = await sql`SELECT * FROM lancamentos ORDER BY criado_em DESC LIMIT 100`;
+        rows = await sql`SELECT l.* FROM lancamentos l 
+          WHERE l.ref_cod IN (SELECT ref_cod FROM programa WHERE celula = ${celulaFilter})
+          ORDER BY l.criado_em DESC LIMIT 100`;
       }
       return res.status(200).json(rows);
     } catch (e) {
