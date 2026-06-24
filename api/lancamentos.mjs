@@ -31,9 +31,10 @@ export default async function handler(req, res) {
   }
 
   if (req.method === "POST") {
-    const { data, turno, ref_cod, descricao, operador, realizado, meta, refugo, hora_inicio, hora_fim, obs } = getBody(req);
+    const { data, turno, ref_cod, descricao, operador, realizado, meta, refugo, hora_inicio, hora_fim, obs, eficiencia } = getBody(req);
     if (!data || !turno || !ref_cod) return res.status(400).json({ error: "data, turno e ref_cod obrigatórios" });
-    const efic = meta > 0 ? (realizado / meta).toFixed(4) : null;
+    // Se eficiência foi enviada do frontend, usa esse valor. Caso contrário, calcula como fallback
+    const efic = eficiencia !== undefined && eficiencia !== null ? eficiencia : (meta > 0 ? (realizado / meta).toFixed(4) : null);
     try {
       const row = await sql`INSERT INTO lancamentos
         (data, turno, ref_cod, descricao, operador, realizado, meta, refugo, eficiencia, hora_inicio, hora_fim, obs, usuario_login)

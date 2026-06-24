@@ -16,11 +16,11 @@ export default async function handler(req, res) {
     try {
       const rows = mes
         ? await sql`SELECT p.id, p.mes_ano, p.ref_cod, p.meta_turno, p.num_turnos,
-            (p.meta_turno * p.num_turnos) AS meta_total, r.descricao
+            (p.meta_turno * p.num_turnos) AS meta_total, r.descricao, r.meta_hora
             FROM programa p JOIN referencias r ON r.cod = p.ref_cod
             WHERE p.mes_ano = ${mes} AND p.ativo = true ORDER BY r.cod`
         : await sql`SELECT p.id, p.mes_ano, p.ref_cod, p.meta_turno, p.num_turnos,
-            (p.meta_turno * p.num_turnos) AS meta_total, r.descricao
+            (p.meta_turno * p.num_turnos) AS meta_total, r.descricao, r.meta_hora
             FROM programa p JOIN referencias r ON r.cod = p.ref_cod
             WHERE p.ativo = true ORDER BY p.mes_ano, r.cod`;
       return res.status(200).json(rows);

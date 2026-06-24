@@ -242,12 +242,13 @@ tbody tr:hover{background:rgba(255,255,255,.02)}
             </div>
             <div class="fi"><label>Descrição</label><input type="text" id="ldesc" readonly></div>
             <div class="fi"><label>Meta (pçs)</label><input type="number" id="lmeta" readonly></div>
-            <div class="fi"><label>Hora Início</label><input type="time" id="lhi"></div>
+            <input type="hidden" id="lmeta-hora">
+            <div class="fi"><label>Hora Início</label><input type="time" id="lhi" oninput="calcEfic()"></div>
           </div>
           <div class="fgrid c4" style="margin-top:12px">
             <div class="fi"><label>Realizado (pçs)</label><input type="number" id="lreal" placeholder="0" min="0" oninput="calcEfic()"></div>
             <div class="fi"><label>Refugo (pçs)</label><input type="number" id="lrefugo" placeholder="0" min="0"></div>
-            <div class="fi"><label>Hora Fim</label><input type="time" id="lhf"></div>
+            <div class="fi"><label>Hora Fim</label><input type="time" id="lhf" oninput="calcEfic()"></div>
             <div class="fi"><label>Eficiência</label><input type="text" id="lefic" readonly placeholder="—"></div>
           </div>
           <div class="fgrid" style="margin-top:12px">
@@ -657,20 +658,38 @@ function preencheRef() {
   const r = rows.find(x => x.ref_cod === cod);
   document.getElementById('ldesc').value = r ? r.descricao : '';
   const meta = r ? +r.meta_turno || 0 : 0;
+  const metaHora = r ? +r.meta_hora || 0 : 0;
   document.getElementById('lmeta').value = meta || '';
+  document.getElementById('lmeta-hora').value = metaHora || '';
   const info = document.getElementById('lref-note');
-  if (r) { info.textContent = `${r.num_turnos} turno(s) — meta ${fmt(meta)} pçs/turno`; info.style.display='block'; info.style.color='var(--muted)'; }
+  if (r) { info.textContent = `${r.num_turnos} turno(s) — meta ${fmt(meta)} pçs/turno${metaHora ? ` (${metaHora} pçs/h)` : ''}`; info.style.display='block'; info.style.color='var(--muted)'; }
   calcEfic();
 }
 
 function calcEfic() {
   const real = +document.getElementById('lreal').value||0;
-  const meta = +document.getElementById('lmeta').value||0;
+  const metaHora = +document.getElementById('lmeta-hora').value||0;
+  const metaTurno = +document.getElementById('lmeta').value||0;
+  const hi = document.getElementById('lhi').value;
+  const hf = document.getElementById('lhf').value;
   const el = document.getElementById('lefic');
-  if (meta>0&&real>0) {
-    const e=real/meta; el.value=(e*100).toFixed(1)+'%';
-    el.style.color=e>=1?'var(--green)':e>=.8?'var(--orange)':'var(--red)';
-  } else { el.value='—'; el.style.color=''; }
+  
+  let metaCalculada = 0;
+  
+  if (metaHora > 0 && hi && hf) {
+    const [h1, m1] = hi.split(':').map(Number);
+    const [h2, m2] = hf.split(':').map(Number);
+    const horas = ((h2*60+m2) - (h1*60+m1)) / 60;
+    metaCalculada = metaHora * horas;
+  } else if (metaTurno > 0) {
+    metaCalculada = metaTurno;
+  }
+  
+  if (metaCalculada > 0 && real > 0) {
+    const e = real / metaCalculada;
+    el.value = (e*100).toFixed(1) + '%';
+    el.style.color = e >= 1 ? 'var(--green)' : e >= .8 ? 'var(--orange)' : 'var(--red)';
+  } else { el.value = '—'; el.style.color = ''; }
 }
 
 async function salvarLanc() {
@@ -682,6 +701,9 @@ async function salvarLanc() {
     showAlert('alrt-lanc','ae','Preencha Data, Turno, Referência e Realizado.'); return;
   }
   try {
+    const eficStr = document.getElementById('lefic').value;
+    const eficiencia = eficStr && eficStr !== '—' ? parseFloat(eficStr) / 100 : null;
+    
     await POST('lancamentos', {
       data, turno, ref_cod,
       descricao: document.getElementById('ldesc').value,
@@ -692,6 +714,7 @@ async function salvarLanc() {
       hora_inicio: document.getElementById('lhi').value,
       hora_fim:    document.getElementById('lhf').value,
       obs:         document.getElementById('lobs').value,
+      eficiencia:  eficiencia
     });
     showAlert('alrt-lanc','as','✔ Lançamento salvo com sucesso no banco de dados!');
     limparForm(true);
