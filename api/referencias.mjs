@@ -25,8 +25,13 @@ export default async function handler(req, res) {
     const { cod, descricao, meta_hora } = getBody(req);
     if (!cod || !descricao) return res.status(400).json({ error: "cod e descricao obrigatórios" });
     try {
-      await sql`INSERT INTO referencias (cod, descricao, meta_hora) VALUES (${cod.toUpperCase()}, ${descricao}, ${meta_hora || null})
-        ON CONFLICT (cod) DO UPDATE SET descricao = EXCLUDED.descricao, meta_hora = EXCLUDED.meta_hora, ativo = true`;
+      if (meta_hora === undefined) {
+        await sql`INSERT INTO referencias (cod, descricao, meta_hora) VALUES (${cod.toUpperCase()}, ${descricao}, null)
+          ON CONFLICT (cod) DO UPDATE SET descricao = EXCLUDED.descricao, ativo = true`;
+      } else {
+        await sql`INSERT INTO referencias (cod, descricao, meta_hora) VALUES (${cod.toUpperCase()}, ${descricao}, ${meta_hora})
+          ON CONFLICT (cod) DO UPDATE SET descricao = EXCLUDED.descricao, meta_hora = EXCLUDED.meta_hora, ativo = true`;
+      }
       return res.status(200).json({ ok: true });
     } catch (e) {
       return res.status(500).json({ error: e.message });

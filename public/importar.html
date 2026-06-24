@@ -223,12 +223,27 @@ function parseRefs(wb){
   DATA.refs=[];
   const rows=sheetRows(wb,'REFERENC'); if(!rows) return;
   const hi=findHeader(rows,['COD_REF','COD. REF','CÓDIGO REF','DESCRI','ATIVO']); if(hi<0) return;
-  const c=colMap(rows[hi],{cod:['COD_REF','COD. REF','CÓDIGO'],desc:['DESCRI'],ativo:['ATIVO']});
+  const c=colMap(rows[hi],{
+    cod:['COD_REF','COD. REF','CÓDIGO'],
+    desc:['DESCRI'],
+    ativo:['ATIVO'],
+    meta:['META HORA','META_HORA','PÇS/HORA','PCS/HORA','PÇS HORA','PCS HORA']
+  });
+  const metaColPresent = c.meta >= 0;
   for(let r=hi+1;r<rows.length;r++){
     const cod=up(rows[r][c.cod]); if(!cod) continue;
     const desc=norm(rows[r][c.desc]);
     const ativo=up(rows[r][c.ativo]);
-    DATA.refs.push({cod,desc,ativo:ativo==='S'||ativo===''?'S':'N'});
+    let meta_hora;
+    if (metaColPresent) {
+      const raw = rows[r][c.meta];
+      if (raw != null && String(raw).trim() !== '') {
+        meta_hora = toInt(raw);
+      } else {
+        meta_hora = null;
+      }
+    }
+    DATA.refs.push({cod,desc,ativo:ativo==='S'||ativo===''?'S':'N', meta_hora});
   }
 }
 
@@ -331,8 +346,12 @@ $('send').addEventListener('click',async()=>{
   // 1) referências primeiro — rastreia quais foram enviadas
   const sentRefs = new Set();
   for(const r of DATA.refs){
-    try{ await post('referencias',{cod:r.cod,descricao:r.desc||r.cod}); sentRefs.add(r.cod); }
-    catch(e){ fails.push('ref '+r.cod+': '+e.message); }
+    try{
+      const payload = { cod:r.cod, descricao:r.desc||r.cod };
+      if (r.meta_hora !== undefined) payload.meta_hora = r.meta_hora;
+      await post('referencias', payload);
+      sentRefs.add(r.cod);
+    } catch(e){ fails.push('ref '+r.cod+': '+e.message); }
     step(); $('status').textContent=`Enviando referências… ${done}/${total}`;
   }
 
