@@ -290,6 +290,7 @@ tbody tr:hover{background:rgba(255,255,255,.02)}
           <div class="fgrid c2">
             <div class="fi"><label>Código</label><input type="text" id="r-cod" placeholder="Ex: SP2745LR"></div>
             <div class="fi"><label>Descrição</label><input type="text" id="r-desc" placeholder="Nome do produto"></div>
+            <div class="fi"><label>Meta Hora</label><input type="number" id="r-meta-hora" placeholder="Ex: 80" min="0"></div>
           </div>
           <div class="brow"><button class="btn bp bsm" onclick="salvarRef()">+ ADICIONAR</button></div>
         </div>
@@ -298,7 +299,7 @@ tbody tr:hover{background:rgba(255,255,255,.02)}
             <button class="btn bs bsm" onclick="loadRefs()">↻ Atualizar</button>
           </div>
           <div style="overflow-x:auto"><table><thead><tr>
-            <th>#</th><th>Código</th><th>Descrição</th><th>Ação</th>
+            <th>#</th><th>Código</th><th>Descrição</th><th>Meta Hora</th><th></th>Ação</th>
           </tr></thead><tbody id="refs-body"></tbody></table></div>
         </div>
       </div>
@@ -754,31 +755,38 @@ async function delLanc(id) {
 // ═══════════════════════════════════════
 async function renderRefs() {
   const tbody = document.getElementById('refs-body');
-  tbody.innerHTML = `<tr><td colspan="4" class="empty"><span class="loading"></span></td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="5" class="empty"><span class="loading"></span></td></tr>`;
   try {
     const rows = await GET('referencias');
     _refs = rows;
     tbody.innerHTML = !rows.length
-      ? `<tr><td colspan="4" class="empty">Nenhuma referência cadastrada.</td></tr>`
+      ? `<tr><td colspan="5" class="empty">Nenhuma referência cadastrada.</td></tr>`
       : rows.map((r,i) => `<tr>
           <td>${i+1}</td>
           <td style="font-family:monospace;font-size:11px">${r.cod}</td>
           <td>${r.descricao}</td>
+          <td>${r.meta_hora ? r.meta_hora + ' pçs/h' : '—'}</td>
           <td><button class="btn bd bsm" onclick="delRef('${r.cod}')">✕</button></td>
         </tr>`).join('');
   } catch(e) {
-    tbody.innerHTML = `<tr><td colspan="4" class="empty" style="color:var(--red)">${e.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="5" class="empty" style="color:var(--red)">${e.message}</td></tr>`;
   }
 }
 
 async function salvarRef() {
   const cod = document.getElementById('r-cod').value.trim().toUpperCase();
   const desc= document.getElementById('r-desc').value.trim();
+  const metaHora = document.getElementById('r-meta-hora').value.trim();
   if (!cod||!desc) { alert('Código e Descrição são obrigatórios.'); return; }
   try {
-    await POST('referencias', { cod, descricao: desc });
+    await POST('referencias', { 
+      cod, 
+      descricao: desc,
+      meta_hora: metaHora ? parseInt(metaHora) : null
+    });
     document.getElementById('r-cod').value = '';
     document.getElementById('r-desc').value = '';
+    document.getElementById('r-meta-hora').value = '';
     renderRefs();
     loadRefs();
   } catch(e) { alert('Erro: ' + e.message); }

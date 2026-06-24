@@ -51,6 +51,7 @@ export async function initDB(sql) {
     id SERIAL PRIMARY KEY,
     cod VARCHAR(30) UNIQUE NOT NULL,
     descricao VARCHAR(200) NOT NULL,
+    meta_hora INT DEFAULT NULL,
     ativo BOOLEAN DEFAULT true
   )`;
   await sql`CREATE TABLE IF NOT EXISTS programa (

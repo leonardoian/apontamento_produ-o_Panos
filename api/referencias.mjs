@@ -13,7 +13,7 @@ export default async function handler(req, res) {
 
   if (req.method === "GET") {
     try {
-      const rows = await sql`SELECT cod, descricao FROM referencias WHERE ativo = true ORDER BY cod`;
+      const rows = await sql`SELECT cod, descricao, meta_hora FROM referencias WHERE ativo = true ORDER BY cod`;
       return res.status(200).json(rows);
     } catch (e) {
       return res.status(500).json({ error: e.message });
@@ -22,11 +22,11 @@ export default async function handler(req, res) {
 
   if (req.method === "POST") {
     if (u.perfil !== "admin") return res.status(403).json({ error: "Acesso negado" });
-    const { cod, descricao } = getBody(req);
+    const { cod, descricao, meta_hora } = getBody(req);
     if (!cod || !descricao) return res.status(400).json({ error: "cod e descricao obrigatórios" });
     try {
-      await sql`INSERT INTO referencias (cod, descricao) VALUES (${cod.toUpperCase()}, ${descricao})
-        ON CONFLICT (cod) DO UPDATE SET descricao = EXCLUDED.descricao, ativo = true`;
+      await sql`INSERT INTO referencias (cod, descricao, meta_hora) VALUES (${cod.toUpperCase()}, ${descricao}, ${meta_hora || null})
+        ON CONFLICT (cod) DO UPDATE SET descricao = EXCLUDED.descricao, meta_hora = EXCLUDED.meta_hora, ativo = true`;
       return res.status(200).json({ ok: true });
     } catch (e) {
       return res.status(500).json({ error: e.message });
