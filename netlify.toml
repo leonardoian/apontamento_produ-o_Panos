@@ -1,8 +1,0 @@
-[build]
-  publish = "public"
-  functions = "netlify/functions"
-  command = "npm install"
-
-[functions]
-  node_bundler = "esbuild"
-  external_node_modules = ["@neondatabase/serverless"]
