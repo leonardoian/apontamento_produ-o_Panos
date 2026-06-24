@@ -601,7 +601,8 @@ async function renderPrograma() {
   try {
     const rows = await GET('programa?mes=' + mes + '&celula=' + celula);
     const lancs = await GET('lancamentos?mes=' + mes + '&celula=' + celula);
-    _progCache[mes] = rows;
+    const cacheKey = mes + '_' + celula;
+    _progCache[cacheKey] = rows;
     document.getElementById('prog-count').textContent = rows.length + ' referências';
     const isAdmin = USER?.perfil === 'admin';
     tbody.innerHTML = !rows.length
@@ -691,8 +692,10 @@ async function atualizaRefSel() {
 
 function preencheRef() {
   const mes = (document.getElementById('ldata')?.value || today()).slice(0,7);
+  const celula = document.getElementById('lcelula').value;
   const cod = document.getElementById('lref').value;
-  const rows = _progCache[mes] || [];
+  const cacheKey = mes + '_' + celula;
+  const rows = _progCache[cacheKey] || [];
   const r = rows.find(x => x.ref_cod === cod);
   document.getElementById('ldesc').value = r ? r.descricao : '';
   const meta = r ? +r.meta_turno || 0 : 0;
