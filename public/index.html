@@ -765,7 +765,7 @@ async function renderRefs() {
           <td>${i+1}</td>
           <td style="font-family:monospace;font-size:11px">${r.cod}</td>
           <td>${r.descricao}</td>
-          <td>${r.meta_hora ? r.meta_hora + ' pçs/h' : '—'}</td>
+          <td style="cursor:pointer;color:var(--blue)" onclick="editMetaHora('${r.cod}', '${r.descricao}', ${r.meta_hora || 0})">${r.meta_hora ? r.meta_hora + ' pçs/h' : '—'} <span style="font-size:12px">✎</span></td>
           <td><button class="btn bd bsm" onclick="delRef('${r.cod}')">✕</button></td>
         </tr>`).join('');
   } catch(e) {
@@ -796,6 +796,18 @@ async function delRef(cod) {
   if (!confirm(`Desativar referência ${cod}?`)) return;
   try { await DELETE('referencias', { cod }); renderRefs(); loadRefs(); }
   catch(e) { alert('Erro: ' + e.message); }
+}
+
+async function editMetaHora(cod, descricao, metaAtual) {
+  const novaMetaStr = prompt(`Editar Meta Hora para ${cod}:\n(Digite o número de peças/hora)`, metaAtual || '');
+  if (novaMetaStr === null) return;
+  const novaMeta = novaMetaStr.trim() ? parseInt(novaMetaStr) : null;
+  if (novaMetaStr.trim() && isNaN(novaMeta)) { alert('Valor inválido. Use apenas números.'); return; }
+  try {
+    await POST('referencias', { cod, descricao, meta_hora: novaMeta });
+    renderRefs();
+    loadRefs();
+  } catch(e) { alert('Erro ao atualizar: ' + e.message); }
 }
 
 // ═══════════════════════════════════════
