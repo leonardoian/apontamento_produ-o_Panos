@@ -100,7 +100,7 @@
     <a class="back" href="/">← Voltar ao sistema</a>
   </header>
   <p class="sub">Envie a planilha de produção (.xlsx). O sistema lê as abas <b>REFERENCIAS</b> e <b>PROGRAMA</b>,
-     mostra uma prévia do que será gravado e envia para o banco. O mês de cada linha vem da coluna <b>MES_ANO</b>.</p>
+     mostra uma prévia do que será gravado e envia para o banco. O mês vem da coluna <b>MES_ANO</b> e a célula da coluna <b>CELULA</b> (padrão: Panos).</p>
 
   <div id="alert" class="alert"></div>
 
@@ -125,7 +125,7 @@
       <div class="meta" id="meta-prog"></div>
       <div class="tablewrap">
         <table>
-          <thead><tr><th>Mês</th><th>Código</th><th>Meta/Turno</th><th>Turnos</th><th>Meta Total</th><th>Status</th></tr></thead>
+          <thead><tr><th>Mês</th><th>Célula</th><th>Código</th><th>Meta/Turno</th><th>Turnos</th><th>Meta Total</th><th>Status</th></tr></thead>
           <tbody id="tb-prog"></tbody>
         </table>
       </div>
@@ -146,7 +146,7 @@
       <button class="go" id="send">Enviar para o sistema</button>
     </div>
     <div class="prog" id="bar"><i id="barfill"></i></div>
-    <div class="hint">Referências são enviadas primeiro (o programa depende delas). Itens existentes são atualizados.</div>
+    <div class="hint">Referências são enviadas primeiro (o programa depende delas). Itens existentes são atualizados. A célula padrão é "Panos" se não preenchida.</div>
   </div>
 </div>
 
@@ -238,6 +238,7 @@ function parseProg(wb){
   const hi=findHeader(rows,['COD_REF','COD. REF','MES_ANO','MÊS/ANO','META POR TURNO','PÇS/TURNO','TURNOS']); if(hi<0) return;
   const c=colMap(rows[hi],{
     mes:['MES_ANO','MÊS/ANO','MES/ANO','MÊS'],
+    celula:['CELULA','CÉLULA','MAQUINA','MÁQUINA','SETOR'],
     cod:['COD_REF','COD. REF','REFERÊNCIA','REFERENCIA'],
     meta:['META POR TURNO','META/TURNO','PÇS/TURNO','PCS/TURNO'],
     turnos:['Nº DE TURNOS','N DE TURNOS','TURNOS']
@@ -245,11 +246,12 @@ function parseProg(wb){
   for(let r=hi+1;r<rows.length;r++){
     const cod=up(rows[r][c.cod]); if(!cod) continue;       // pula linhas sem código
     let mes=norm(rows[r][c.mes]);
+    let celula=norm(rows[r][c.celula])||'Panos';           // padrão: Panos
     // normaliza datas que o Excel possa ter convertido
     if(/^\d{4}-\d{2}/.test(mes)) mes=mes.slice(0,7);
     const meta=toInt(rows[r][c.meta]);
     const turnos=toInt(rows[r][c.turnos])||2;
-    DATA.prog.push({mes,cod,meta,turnos,total:meta*turnos});
+    DATA.prog.push({mes,celula,cod,meta,turnos,total:meta*turnos});
   }
 }
 
@@ -272,6 +274,7 @@ function renderAll(fname){
     const bad = !p.mes || !/^\d{4}-\d{2}$/.test(p.mes);
     return `<tr class="${bad?'skip':''}">
       <td>${p.mes||'<span class="pill bad">sem mês</span>'}</td>
+      <td>${p.celula}</td>
       <td class="cod">${p.cod}</td>
       <td class="num">${p.meta.toLocaleString('pt-BR')}</td>
       <td class="num">${p.turnos}</td>
@@ -342,7 +345,7 @@ $('send').addEventListener('click',async()=>{
 
   // 2) programa
   for(const p of validProg){
-    try{ await post('programa',{mes_ano:p.mes,ref_cod:p.cod,meta_turno:p.meta,num_turnos:p.turnos}); }
+    try{ await post('programa',{mes_ano:p.mes,ref_cod:p.cod,celula:p.celula,meta_turno:p.meta,num_turnos:p.turnos}); }
     catch(e){ fails.push('prog '+p.cod+': '+e.message); }
     step(); $('status').textContent=`Enviando programa… ${done}/${total}`;
   }
