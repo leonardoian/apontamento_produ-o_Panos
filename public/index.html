@@ -327,7 +327,7 @@ tbody tr:hover{background:rgba(255,255,255,.02)}
             <button class="btn bs bsm" onclick="loadRefs()">↻ Atualizar</button>
           </div>
           <div style="overflow-x:auto"><table><thead><tr>
-            <th>#</th><th>Código</th><th>Descrição</th><th>Meta Hora</th><th></th>Ação</th>
+            <th>#</th><th>Código</th><th>Descrição</th><th>Meta Hora</th><th>Ação</th>
           </tr></thead><tbody id="refs-body"></tbody></table></div>
         </div>
       </div>
@@ -386,6 +386,7 @@ let USER  = null;
 let _refs = [];   // cache de referências
 let _meses = [];  // cache de meses do programa
 let _progCache = {}; // cache programa por mês
+let lastRefsUpdate = localStorage.getItem('sp_refs_updated');
 
 // ═══════════════════════════════════════
 // HTTP
@@ -494,10 +495,16 @@ async function loadMeses() {
 
 async function loadRefs() {
   try {
-    _refs = await GET('referencias');
-    // Popula select de referências no histórico
-    const sel = document.getElementById('hist-ref');
-    sel.innerHTML = '<option value="">Todas</option>' + _refs.map(r => `<option value="${r.cod}">${r.cod}</option>`).join('');
+    const rows = await GET('referencias');
+    _refs = rows;
+    const histSel = document.getElementById('hist-ref');
+    if (histSel) {
+      histSel.innerHTML = '<option value="">Todas</option>' + _refs.map(r => `<option value="${r.cod}">${r.cod}</option>`).join('');
+    }
+    const mpRef = document.getElementById('mp-ref');
+    if (mpRef) {
+      mpRef.innerHTML = '<option value="">Selecione...</option>' + _refs.map(r => `<option value="${r.cod}">${r.cod} — ${r.descricao}</option>`).join('');
+    }
   } catch(e) { console.warn('Erro ao carregar refs:', e); }
 }
 
@@ -912,6 +919,18 @@ async function init() {
     } catch { TOKEN = null; localStorage.removeItem('sp_token'); }
   }
 }
+
+window.addEventListener('focus', async () => {
+  const updated = localStorage.getItem('sp_refs_updated');
+  if (updated && updated !== lastRefsUpdate) {
+    lastRefsUpdate = updated;
+    await loadRefs();
+    if (document.getElementById('sec-referencias')?.classList.contains('active')) {
+      renderRefs();
+    }
+  }
+});
+
 init();
 </script>
 </body>

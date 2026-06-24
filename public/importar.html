@@ -350,6 +350,8 @@ $('send').addEventListener('click',async()=>{
     step(); $('status').textContent=`Enviando programa… ${done}/${total}`;
   }
 
+  localStorage.setItem('sp_refs_updated', String(Date.now()));
+
   if(fails.length){
     showAlert('e',`Concluído com ${fails.length} erro(s). Primeiros: `+fails.slice(0,3).join(' | '));
     $('status').textContent='Finalizado com erros.';
