@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Importar Excel — Superpro</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --bg:#0a0e14; --panel:#121821; --panel2:#0e141c; --line:#1f2937;
+    --ink:#e8edf4; --muted:#7d8aa0; --accent:#f5a524; --accent-d:#c97f12;
+    --ok:#34d399; --okbg:#0c2a20; --bad:#f87171; --badbg:#2a1212;
+    --warn:#fbbf24; --warnbg:#2a2310;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:var(--bg); color:var(--ink); min-height:100vh;
+    font-family:"Segoe UI",system-ui,sans-serif; padding:24px;
+    background-image:linear-gradient(#0d1219 1px,transparent 1px),linear-gradient(90deg,#0d1219 1px,transparent 1px);
+    background-size:42px 42px;
+  }
+  .wrap{max-width:1080px;margin:0 auto}
+  header{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+  .brand .eye{color:var(--accent);font-size:11px;letter-spacing:.32em;font-weight:700;text-transform:uppercase}
+  .brand h1{font-size:30px;font-weight:800;letter-spacing:-.5px;text-transform:uppercase;line-height:1}
+  .brand h1 b{color:var(--accent);font-weight:800}
+  .back{color:var(--muted);text-decoration:none;font-size:13px;border:1px solid var(--line);padding:8px 14px;border-radius:8px;transition:.15s}
+  .back:hover{border-color:var(--accent);color:var(--accent)}
+  .sub{color:var(--muted);font-size:13px;margin:8px 0 22px;max-width:680px;line-height:1.5}
+
+  .drop{
+    border:1.5px dashed var(--line); border-radius:14px; background:var(--panel2);
+    padding:38px 24px; text-align:center; cursor:pointer; transition:.18s; margin-bottom:20px;
+  }
+  .drop:hover,.drop.over{border-color:var(--accent);background:#0f1620}
+  .drop .ic{font-size:34px;margin-bottom:10px}
+  .drop b{color:var(--ink);font-size:15px}
+  .drop span{display:block;color:var(--muted);font-size:12px;margin-top:6px}
+  .drop input{display:none}
+
+  .tabs{display:flex;gap:8px;margin-bottom:14px}
+  .tab{
+    flex:1;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--panel);
+    cursor:pointer;text-align:center;transition:.15s
+  }
+  .tab.active{border-color:var(--accent);background:#161d27}
+  .tab .n{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
+  .tab.active .n{color:var(--accent)}
+  .tab .c{font-size:22px;font-weight:800;margin-top:2px}
+  .pane{display:none}
+  .pane.active{display:block}
+
+  .meta{display:flex;gap:18px;flex-wrap:wrap;margin-bottom:12px;font-size:13px;color:var(--muted)}
+  .meta b{color:var(--ink)}
+  .pill{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700}
+  .pill.ok{background:var(--okbg);color:var(--ok)}
+  .pill.bad{background:var(--badbg);color:var(--bad)}
+  .pill.warn{background:var(--warnbg);color:var(--warn)}
+
+  .tablewrap{border:1px solid var(--line);border-radius:12px;overflow:hidden;max-height:380px;overflow-y:auto}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  thead th{
+    position:sticky;top:0;background:#0c1119;color:var(--muted);text-align:left;
+    padding:10px 12px;font-size:11px;letter-spacing:.06em;text-transform:uppercase;border-bottom:1px solid var(--line)
+  }
+  tbody td{padding:9px 12px;border-bottom:1px solid #161d27}
+  tbody tr:hover{background:#0f1620}
+  tbody tr.skip{opacity:.42}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  .cod{font-weight:700;color:var(--accent)}
+
+  .bar{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:18px}
+  .status{font-size:13px;color:var(--muted)}
+  button.go{
+    background:var(--accent);color:#10141b;border:none;padding:13px 26px;border-radius:10px;
+    font-size:14px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;transition:.15s
+  }
+  button.go:hover{background:var(--accent-d)}
+  button.go:disabled{opacity:.4;cursor:not-allowed}
+
+  .alert{padding:12px 16px;border-radius:10px;margin-bottom:16px;font-size:13px;display:none}
+  .alert.show{display:block}
+  .alert.e{background:var(--badbg);color:#fca5a5;border:1px solid #3a1a1a}
+  .alert.s{background:var(--okbg);color:#86efac;border:1px solid #16432f}
+  .alert.i{background:#10202e;color:#7dd3fc;border:1px solid #1a3a4a}
+
+  .prog{height:6px;background:#0c1119;border-radius:6px;overflow:hidden;margin-top:14px;display:none}
+  .prog.show{display:block}
+  .prog i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+  .hint{color:var(--muted);font-size:12px;margin-top:10px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <div class="eye">▸ Superpro Industrial</div>
+      <h1>Importar <b>Programa</b></h1>
+    </div>
+    <a class="back" href="/">← Voltar ao sistema</a>
+  </header>
+  <p class="sub">Envie a planilha de produção (.xlsx). O sistema lê as abas <b>REFERENCIAS</b> e <b>PROGRAMA</b>,
+     mostra uma prévia do que será gravado e envia para o banco. O mês de cada linha vem da coluna <b>MES_ANO</b>.</p>
+
+  <div id="alert" class="alert"></div>
+
+  <label class="drop" id="drop">
+    <div class="ic">⬆</div>
+    <b>Arraste o Excel aqui ou clique para escolher</b>
+    <span>Aceita .xlsx / .xls — o mesmo arquivo do programa mensal</span>
+    <input type="file" id="file" accept=".xlsx,.xls">
+  </label>
+
+  <div id="result" style="display:none">
+    <div class="tabs">
+      <div class="tab active" data-pane="prog">
+        <div class="n">Programa</div><div class="c" id="cnt-prog">0</div>
+      </div>
+      <div class="tab" data-pane="refs">
+        <div class="n">Referências</div><div class="c" id="cnt-refs">0</div>
+      </div>
+    </div>
+
+    <div class="pane active" id="pane-prog">
+      <div class="meta" id="meta-prog"></div>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Mês</th><th>Código</th><th>Meta/Turno</th><th>Turnos</th><th>Meta Total</th><th>Status</th></tr></thead>
+          <tbody id="tb-prog"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="pane" id="pane-refs">
+      <div class="meta" id="meta-refs"></div>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Código</th><th>Descrição</th><th>Ativo</th><th>Status</th></tr></thead>
+          <tbody id="tb-refs"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="bar">
+      <div class="status" id="status">Confira a prévia e envie.</div>
+      <button class="go" id="send">Enviar para o sistema</button>
+    </div>
+    <div class="prog" id="bar"><i id="barfill"></i></div>
+    <div class="hint">Referências são enviadas primeiro (o programa depende delas). Itens existentes são atualizados.</div>
+  </div>
+</div>
+
+<script>
+const API = '/api';
+const TOKEN = localStorage.getItem('sp_token');
+let DATA = { refs:[], prog:[] };
+
+const $ = id => document.getElementById(id);
+function showAlert(type,msg){ const a=$('alert'); a.className='alert show '+type; a.textContent=msg; }
+function hideAlert(){ $('alert').className='alert'; }
+
+if(!TOKEN){
+  showAlert('e','Você não está logado. Abra o sistema, faça login e volte para esta página.');
+}
+
+// ── Drag & drop ────────────────────────────────────────
+const drop=$('drop'), fileInput=$('file');
+['dragover','dragenter'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('over');}));
+['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('over');}));
+drop.addEventListener('drop',e=>{ if(e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]); });
+fileInput.addEventListener('change',e=>{ if(e.target.files.length) handleFile(e.target.files[0]); });
+
+// ── Helpers de leitura ─────────────────────────────────
+const norm = s => String(s==null?'':s).trim();
+const up   = s => norm(s).toUpperCase();
+const toInt= v => { const n=parseInt(String(v).replace(/[^\d-]/g,''),10); return isNaN(n)?0:n; };
+
+// Encontra a linha de cabeçalho: a que tiver MAIS palavras-chave distintas.
+// Evita pegar linhas de aviso que mencionam só um termo (ex.: "Preencha MES_ANO...").
+function findHeader(rows, keys){
+  let best=-1, bestScore=0;
+  for(let i=0;i<Math.min(rows.length,10);i++){
+    const joined = rows[i].map(up).join('|');
+    const score = keys.reduce((s,k)=>s+(joined.includes(k)?1:0),0);
+    if(score>bestScore){ bestScore=score; best=i; }
+  }
+  return bestScore>=2 ? best : (bestScore===1 ? best : -1);
+}
+// Mapeia índices de coluna por palavra-chave no cabeçalho
+function colMap(headerRow, defs){
+  const H = headerRow.map(up);
+  const out={};
+  for(const [key,words] of Object.entries(defs)){
+    out[key] = H.findIndex(h => words.some(w=>h.includes(w)));
+  }
+  return out;
+}
+
+function handleFile(file){
+  hideAlert();
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
+      parseRefs(wb);
+      parseProg(wb);
+      renderAll(file.name);
+    }catch(err){
+      showAlert('e','Não consegui ler o arquivo: '+err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function sheetRows(wb,name){
+  // procura aba por nome aproximado (REFERENCIAS, PROGRAMA)
+  const found = wb.SheetNames.find(n=>up(n).includes(name));
+  if(!found) return null;
+  return XLSX.utils.sheet_to_json(wb.Sheets[found],{header:1,blankrows:false,defval:''});
+}
+
+function parseRefs(wb){
+  DATA.refs=[];
+  const rows=sheetRows(wb,'REFERENC'); if(!rows) return;
+  const hi=findHeader(rows,['COD_REF','COD. REF','CÓDIGO REF','DESCRI','ATIVO']); if(hi<0) return;
+  const c=colMap(rows[hi],{cod:['COD_REF','COD. REF','CÓDIGO'],desc:['DESCRI'],ativo:['ATIVO']});
+  for(let r=hi+1;r<rows.length;r++){
+    const cod=up(rows[r][c.cod]); if(!cod) continue;
+    const desc=norm(rows[r][c.desc]);
+    const ativo=up(rows[r][c.ativo]);
+    DATA.refs.push({cod,desc,ativo:ativo==='S'||ativo===''?'S':'N'});
+  }
+}
+
+function parseProg(wb){
+  DATA.prog=[];
+  const rows=sheetRows(wb,'PROGRAMA'); if(!rows) return;
+  const hi=findHeader(rows,['COD_REF','COD. REF','MES_ANO','MÊS/ANO','META POR TURNO','PÇS/TURNO','TURNOS']); if(hi<0) return;
+  const c=colMap(rows[hi],{
+    mes:['MES_ANO','MÊS/ANO','MES/ANO','MÊS'],
+    cod:['COD_REF','COD. REF','REFERÊNCIA','REFERENCIA'],
+    meta:['META POR TURNO','META/TURNO','PÇS/TURNO','PCS/TURNO'],
+    turnos:['Nº DE TURNOS','N DE TURNOS','TURNOS']
+  });
+  for(let r=hi+1;r<rows.length;r++){
+    const cod=up(rows[r][c.cod]); if(!cod) continue;       // pula linhas sem código
+    let mes=norm(rows[r][c.mes]);
+    // normaliza datas que o Excel possa ter convertido
+    if(/^\d{4}-\d{2}/.test(mes)) mes=mes.slice(0,7);
+    const meta=toInt(rows[r][c.meta]);
+    const turnos=toInt(rows[r][c.turnos])||2;
+    DATA.prog.push({mes,cod,meta,turnos,total:meta*turnos});
+  }
+}
+
+// ── Render ─────────────────────────────────────────────
+function renderAll(fname){
+  const okRefs=DATA.refs.length, okProg=DATA.prog.length;
+  if(!okRefs && !okProg){
+    showAlert('e','Não encontrei dados nas abas REFERENCIAS ou PROGRAMA. Confira se as abas e os cabeçalhos (COD_REF, MES_ANO) existem.');
+    return;
+  }
+  $('result').style.display='block';
+  $('cnt-prog').textContent=okProg;
+  $('cnt-refs').textContent=okRefs;
+
+  // Programa
+  const meses=[...new Set(DATA.prog.map(p=>p.mes).filter(Boolean))];
+  $('meta-prog').innerHTML =
+    `Arquivo: <b>${fname}</b> &nbsp;·&nbsp; Mês(es): <b>${meses.join(', ')||'—'}</b> &nbsp;·&nbsp; Linhas: <b>${okProg}</b>`;
+  $('tb-prog').innerHTML = DATA.prog.map(p=>{
+    const bad = !p.mes || !/^\d{4}-\d{2}$/.test(p.mes);
+    return `<tr class="${bad?'skip':''}">
+      <td>${p.mes||'<span class="pill bad">sem mês</span>'}</td>
+      <td class="cod">${p.cod}</td>
+      <td class="num">${p.meta.toLocaleString('pt-BR')}</td>
+      <td class="num">${p.turnos}</td>
+      <td class="num">${p.total.toLocaleString('pt-BR')}</td>
+      <td>${bad?'<span class="pill bad">ignorada</span>':'<span class="pill ok">ok</span>'}</td>
+    </tr>`;
+  }).join('');
+
+  // Referências
+  $('meta-refs').innerHTML = `Linhas: <b>${okRefs}</b> — serão cadastradas ou atualizadas.`;
+  $('tb-refs').innerHTML = DATA.refs.map(r=>`
+    <tr>
+      <td class="cod">${r.cod}</td>
+      <td>${r.desc||'<span style="color:var(--muted)">(sem descrição)</span>'}</td>
+      <td>${r.ativo==='S'?'<span class="pill ok">S</span>':'<span class="pill warn">N</span>'}</td>
+      <td><span class="pill ok">ok</span></td>
+    </tr>`).join('');
+
+  const validProg = DATA.prog.filter(p=>/^\d{4}-\d{2}$/.test(p.mes)).length;
+  $('status').textContent = `Pronto: ${okRefs} referência(s) e ${validProg} linha(s) de programa válidas.`;
+  $('send').disabled = !TOKEN || (okRefs+validProg)===0;
+}
+
+// ── Tabs ───────────────────────────────────────────────
+document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.pane').forEach(x=>x.classList.remove('active'));
+  t.classList.add('active');
+  $('pane-'+t.dataset.pane).classList.add('active');
+}));
+
+// ── Envio ──────────────────────────────────────────────
+async function post(path,body){
+  const r=await fetch(API+'/'+path,{
+    method:'POST',
+    headers:{'Content-Type':'application/json',Authorization:'Bearer '+TOKEN},
+    body:JSON.stringify(body)
+  });
+  const d=await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error(d.error||('Erro '+r.status));
+  return d;
+}
+
+$('send').addEventListener('click',async()=>{
+  if(!TOKEN){ showAlert('e','Sessão expirada. Faça login no sistema novamente.'); return; }
+  const btn=$('send'); btn.disabled=true;
+  hideAlert();
+  $('bar').classList.add('show');
+  const validProg = DATA.prog.filter(p=>/^\d{4}-\d{2}$/.test(p.mes));
+  const total = DATA.refs.length + validProg.length;
+  let done=0, fails=[];
+  const step=()=>{ done++; $('barfill').style.width=Math.round(done/total*100)+'%'; };
+
+  // 1) referências primeiro
+  for(const r of DATA.refs){
+    try{ await post('referencias',{cod:r.cod,descricao:r.desc||r.cod}); }
+    catch(e){ fails.push('ref '+r.cod+': '+e.message); }
+    step(); $('status').textContent=`Enviando referências… ${done}/${total}`;
+  }
+  // 2) programa
+  for(const p of validProg){
+    try{ await post('programa',{mes_ano:p.mes,ref_cod:p.cod,meta_turno:p.meta,num_turnos:p.turnos}); }
+    catch(e){ fails.push('prog '+p.cod+': '+e.message); }
+    step(); $('status').textContent=`Enviando programa… ${done}/${total}`;
+  }
+
+  if(fails.length){
+    showAlert('e',`Concluído com ${fails.length} erro(s). Primeiros: `+fails.slice(0,3).join(' | '));
+    $('status').textContent='Finalizado com erros.';
+  }else{
+    showAlert('s',`Tudo certo! ${DATA.refs.length} referência(s) e ${validProg.length} linha(s) de programa enviadas.`);
+    $('status').textContent='Importação concluída.';
+  }
+  btn.disabled=false;
+});
+</script>
+</body>
+</html>
