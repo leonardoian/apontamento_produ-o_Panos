@@ -58,6 +58,16 @@
       <!-- DASHBOARD -->
       <div class="ps active" id="sec-dashboard">
         <div class="filtbar" style="margin-bottom:18px">
+          <div class="fi"><label>Célula</label>
+            <select id="dash-celula" onchange="renderDashboard()" style="min-width:160px">
+              <option value="">Todas as Células</option>
+              <option value="Aluminio">Celular de Alumínio</option>
+              <option value="Panos">Máquina de Panos</option>
+              <option value="Placas">Máquina de Placas</option>
+              <option value="Rodos">Máquina de Rodos</option>
+              <option value="Manual">Trabalho Manual</option>
+            </select>
+          </div>
           <div class="fi"><label>Mês</label>
             <select id="dash-mes" onchange="renderDashboard()" style="min-width:160px">
               <option value="">Mês atual</option>
@@ -422,12 +432,16 @@ function goTo(p) {
 // DASHBOARD
 // ═══════════════════════════════════════
 async function renderDashboard() {
-  const mes = document.getElementById('dash-mes').value || curMes();
+  const mes    = document.getElementById('dash-mes').value || curMes();
+  const celula = document.getElementById('dash-celula').value;
   document.getElementById('kpi-grid').innerHTML = `<div class="kc y"><div class="kl">Carregando</div><div class="kv"><span class="loading"></span></div></div>`;
   try {
-    const d = await GET('dashboard?mes=' + mes);
+    let q = 'dashboard?mes=' + mes;
+    if (celula) q += '&celula=' + celula;
+    const d = await GET(q);
     const t = d.totais;
-    document.getElementById('dash-mes-lbl').textContent = mesL(mes);
+    const celulaLbl = celula ? ` · ${document.getElementById('dash-celula').options[document.getElementById('dash-celula').selectedIndex].text}` : '';
+    document.getElementById('dash-mes-lbl').textContent = mesL(mes) + celulaLbl;
 
     document.getElementById('kpi-grid').innerHTML = `
       <div class="kc y"><div class="kl">Total Realizado</div><div class="kv">${fmt(t.total_realizado)}</div><div class="ks">peças — ${mesL(mes)}</div></div>
