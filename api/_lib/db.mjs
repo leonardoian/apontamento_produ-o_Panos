@@ -2,7 +2,8 @@ import { neon } from "@neondatabase/serverless";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
-const JWT_SECRET = process.env.JWT_SECRET || "superpro_secret_2026";
+if (!process.env.JWT_SECRET) throw new Error("JWT_SECRET não configurada");
+const JWT_SECRET = process.env.JWT_SECRET;
 
 export function setCors(res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
