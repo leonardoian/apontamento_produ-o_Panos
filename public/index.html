@@ -489,7 +489,7 @@ async function renderDashboard() {
           <td style="font-family:monospace;font-size:10px">${l.ref_cod}</td>
           <td><span class="bt ${l.turno?.toLowerCase()}">${l.turno}</span></td>
           <td>${fmt(+l.realizado||0)}</td>
-          <td style="font-size:10px;color:var(--muted)">${String(l.data).slice(5).split('-').reverse().join('/')}</td>
+          <td style="font-size:10px;color:var(--muted)">${String(l.data).slice(0,10).slice(5).split('-').reverse().join('/')}</td>
         </tr>`).join('');
 
   } catch(e) {
