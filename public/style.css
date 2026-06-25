@@ -110,6 +110,14 @@ tbody tr:hover { background: rgba(255,255,255,.02); }
 .py { background: var(--accent); }
 .pr { background: var(--red); }
 
+/* ── ÍCONES NATIVOS ── */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="month"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  cursor: pointer;
+}
+
 /* ── FORMULÁRIOS ── */
 .fc { background: var(--card); border: 1px solid var(--border); padding: 20px 24px; margin-bottom: 18px; }
 .fct { font: 700 17px/1 var(--fh); letter-spacing: 1px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
