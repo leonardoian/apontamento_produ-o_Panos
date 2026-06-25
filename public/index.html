@@ -645,10 +645,16 @@ function calcEfic() {
 }
 
 async function salvarLanc() {
-  const data   = document.getElementById('ldata').value;
-  const turno  = document.getElementById('lturno').value;
-  const ref_cod= document.getElementById('lref').value;
-  const real   = document.getElementById('lreal').value;
+  const data     = document.getElementById('ldata').value;
+  const turno    = document.getElementById('lturno').value;
+  const ref_cod  = document.getElementById('lref').value;
+  const real     = document.getElementById('lreal').value;
+  const operador = document.getElementById('lop').value.trim();
+  if (!operador) {
+    showAlert('alrt-lanc','ae','⚠ Informe o nome do operador antes de salvar.');
+    document.getElementById('lop').focus();
+    return;
+  }
   if (!data||!turno||!ref_cod||real==='') {
     showAlert('alrt-lanc','ae','Preencha Data, Turno, Referência e Realizado.'); return;
   }
@@ -659,7 +665,7 @@ async function salvarLanc() {
     await POST('lancamentos', {
       data, turno, ref_cod,
       descricao: document.getElementById('ldesc').value,
-      operador:  document.getElementById('lop').value || USER.nome,
+      operador:  operador,
       realizado: +real,
       meta:      +document.getElementById('lmeta').value||0,
       refugo:    +document.getElementById('lrefugo').value||0,
