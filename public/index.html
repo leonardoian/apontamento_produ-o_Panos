@@ -624,12 +624,15 @@ function calcEfic() {
   const el = document.getElementById('lefic');
   
   let metaCalculada = 0;
-  
-  if (metaHora > 0 && hi && hf) {
-    const [h1, m1] = hi.split(':').map(Number);
-    const [h2, m2] = hf.split(':').map(Number);
-    const horas = ((h2*60+m2) - (h1*60+m1)) / 60;
-    metaCalculada = metaHora * horas;
+
+  if (metaHora > 0) {
+    if (hi && hf) {
+      const [h1, m1] = hi.split(':').map(Number);
+      const [h2, m2] = hf.split(':').map(Number);
+      const horas = ((h2*60+m2) - (h1*60+m1)) / 60;
+      if (horas > 0) metaCalculada = metaHora * horas;
+    }
+    // meta_hora cadastrada mas sem horas → não calcula
   } else if (metaTurno > 0) {
     metaCalculada = metaTurno;
   }
