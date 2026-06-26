@@ -341,7 +341,7 @@
             <span id="op-count" style="font-size:12px;color:var(--muted)"></span>
           </div>
           <div style="overflow-x:auto"><table><thead><tr>
-            <th>#</th><th>Operador</th><th>Total Realizado</th><th>Lançamentos</th>
+            <th>#</th><th>Matrícula</th><th>Nome</th><th>Total Realizado</th><th>Lançamentos</th>
             <th>Efic. Média</th><th style="color:var(--accent)">Realiz. T1</th>
             <th style="color:var(--blue)">Realiz. T2</th><th style="color:var(--red)">Refugo</th>
           </tr></thead><tbody id="op-body">
@@ -1056,12 +1056,13 @@ async function renderOperadores() {
     _opData = { rows, mes, celula };
     document.getElementById('op-count').textContent = rows.length + ' operador(es)';
     tbody.innerHTML = !rows.length
-      ? `<tr><td colspan="8" class="empty"><div class="ei">◈</div>Nenhum lançamento encontrado para este período.</td></tr>`
+      ? `<tr><td colspan="9" class="empty"><div class="ei">◈</div>Nenhum lançamento encontrado para este período.</td></tr>`
       : rows.map((r, i) => {
           const ef = +r.efic_media || 0;
           return `<tr>
             <td>${i + 1}</td>
-            <td style="font-weight:600">${r.operador || '—'}</td>
+            <td style="font-family:monospace;font-size:12px">${r.operador || '—'}</td>
+            <td style="font-weight:600">${r.nome_usuario || '<span style="color:var(--muted);font-size:11px">—</span>'}</td>
             <td><strong>${fmt(r.total_realizado)}</strong></td>
             <td>${r.total_lancamentos}</td>
             <td class="${ef > 0 ? eClass(ef) : ''}">${ef > 0 ? (ef * 100).toFixed(1) + '%' : '—'}</td>
@@ -1165,10 +1166,10 @@ function exportOpExcel() {
   if (!_opData) { alert('Carregue os dados antes de exportar.'); return; }
   const { rows, mes } = _opData;
   const wb  = XLSX.utils.book_new();
-  const data = [['#', 'Operador', 'Total Realizado', 'Lançamentos', 'Efic. Média', 'Realiz. T1', 'Realiz. T2', 'Refugo']];
+  const data = [['#', 'Matrícula', 'Nome', 'Total Realizado', 'Lançamentos', 'Efic. Média', 'Realiz. T1', 'Realiz. T2', 'Refugo']];
   rows.forEach((r, i) => {
     const ef = +r.efic_media || 0;
-    data.push([i + 1, r.operador, +r.total_realizado, +r.total_lancamentos, ef > 0 ? (ef * 100).toFixed(1) + '%' : '—', +r.real_t1, +r.real_t2, +r.total_refugo]);
+    data.push([i + 1, r.operador, r.nome_usuario || '', +r.total_realizado, +r.total_lancamentos, ef > 0 ? (ef * 100).toFixed(1) + '%' : '—', +r.real_t1, +r.real_t2, +r.total_refugo]);
   });
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(data), 'Operadores');
   XLSX.writeFile(wb, `operadores_${mes}.xlsx`);
@@ -1189,14 +1190,14 @@ function exportOpPDF() {
 
   doc.autoTable({
     startY: 32,
-    head: [['#', 'Operador', 'Total Realizado', 'Lançamentos', 'Efic. Média', 'Realiz. T1', 'Realiz. T2', 'Refugo']],
+    head: [['#', 'Matrícula', 'Nome', 'Total Realizado', 'Lançamentos', 'Efic. Média', 'Realiz. T1', 'Realiz. T2', 'Refugo']],
     body: rows.map((r, i) => {
       const ef = +r.efic_media || 0;
-      return [i + 1, r.operador, fmt(r.total_realizado), r.total_lancamentos, ef > 0 ? (ef * 100).toFixed(1) + '%' : '—', fmt(r.real_t1), fmt(r.real_t2), fmt(r.total_refugo)];
+      return [i + 1, r.operador, r.nome_usuario || '—', fmt(r.total_realizado), r.total_lancamentos, ef > 0 ? (ef * 100).toFixed(1) + '%' : '—', fmt(r.real_t1), fmt(r.real_t2), fmt(r.total_refugo)];
     }),
     theme: 'grid',
     headStyles: { fillColor: [204, 0, 0], textColor: 255 },
-    columnStyles: { 2: { halign: 'right' }, 5: { halign: 'right' }, 6: { halign: 'right' }, 7: { halign: 'right' } },
+    columnStyles: { 3: { halign: 'right' }, 6: { halign: 'right' }, 7: { halign: 'right' }, 8: { halign: 'right' } },
   });
 
   doc.save(`operadores_${mes}.pdf`);
