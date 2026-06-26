@@ -7,6 +7,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/style.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
 
@@ -36,6 +39,7 @@
       <div class="ni" onclick="goTo('lancamento')"><span class="ic">⊕</span>Lançar Produção</div>
       <div class="ni" onclick="goTo('historico')"><span class="ic">⊞</span>Histórico</div>
       <div class="ni" onclick="goTo('graficos')"><span class="ic">◎</span>Gráficos</div>
+      <div class="ni" onclick="goTo('operadores')"><span class="ic">◈</span>Operadores</div>
       <div class="snl" id="snl-admin" style="display:none">Admin</div>
       <div class="ni" id="ni-refs" onclick="goTo('referencias')" style="display:none"><span class="ic">◉</span>Referências</div>
       <div class="ni" id="ni-users" onclick="goTo('usuarios')" style="display:none"><span class="ic">◎</span>Usuários</div>
@@ -76,6 +80,8 @@
             </select>
           </div>
           <button class="btn bs bsm" onclick="renderDashboard()">↻ Atualizar</button>
+          <button class="btn bs bsm" onclick="exportDashExcel()" title="Exportar para Excel">⬇ Excel</button>
+          <button class="btn bs bsm" onclick="exportDashPDF()" title="Exportar para PDF">⬇ PDF</button>
         </div>
         <div class="kg" id="kpi-grid"></div>
         <div class="sr">
@@ -307,6 +313,43 @@
         </div>
       </div>
 
+      <!-- OPERADORES -->
+      <div class="ps" id="sec-operadores">
+        <div class="filtbar" style="margin-bottom:18px">
+          <div class="fi"><label>Célula</label>
+            <select id="op-celula" onchange="renderOperadores()" style="min-width:160px">
+              <option value="">Todas as Células</option>
+              <option value="Aluminio">Celular de Alumínio</option>
+              <option value="Panos">Máquina de Panos</option>
+              <option value="Placas">Máquina de Placas</option>
+              <option value="Rodos">Máquina de Rodos</option>
+              <option value="Manual">Trabalho Manual</option>
+            </select>
+          </div>
+          <div class="fi"><label>Mês</label>
+            <select id="op-mes" onchange="renderOperadores()" style="min-width:160px">
+              <option value="">Mês atual</option>
+            </select>
+          </div>
+          <button class="btn bs bsm" onclick="renderOperadores()">↻ Atualizar</button>
+          <button class="btn bs bsm" onclick="exportOpExcel()" title="Exportar para Excel">⬇ Excel</button>
+          <button class="btn bs bsm" onclick="exportOpPDF()" title="Exportar para PDF">⬇ PDF</button>
+        </div>
+        <div class="tw">
+          <div class="th">
+            <div class="tt">EFICIÊNCIA POR OPERADOR</div>
+            <span id="op-count" style="font-size:12px;color:var(--muted)"></span>
+          </div>
+          <div style="overflow-x:auto"><table><thead><tr>
+            <th>#</th><th>Operador</th><th>Total Realizado</th><th>Lançamentos</th>
+            <th>Efic. Média</th><th style="color:var(--accent)">Realiz. T1</th>
+            <th style="color:var(--blue)">Realiz. T2</th><th style="color:var(--red)">Refugo</th>
+          </tr></thead><tbody id="op-body">
+            <tr><td colspan="8" class="empty">Selecione um período.</td></tr>
+          </tbody></table></div>
+        </div>
+      </div>
+
       <!-- USUÁRIOS (admin) -->
       <div class="ps" id="sec-usuarios">
         <div class="fc">
@@ -457,7 +500,7 @@ async function loadMeses() {
   try {
     _meses = await GET('meses');
     const cur = curMes();
-    ['dash-mes','prog-mes','graf-mes'].forEach(id => {
+    ['dash-mes','prog-mes','graf-mes','op-mes'].forEach(id => {
       const sel = document.getElementById(id);
       if (!sel) return;
       const old = sel.value;
@@ -490,7 +533,7 @@ function populateSelects() {
 // ═══════════════════════════════════════
 // NAVEGAÇÃO
 // ═══════════════════════════════════════
-const TITLES = { dashboard:'Dashboard', programa:'Programa do Mês', lancamento:'Lançar Produção', historico:'Histórico', graficos:'Gráficos por Célula', referencias:'Referências', usuarios:'Usuários' };
+const TITLES = { dashboard:'Dashboard', programa:'Programa do Mês', lancamento:'Lançar Produção', historico:'Histórico', graficos:'Gráficos por Célula', operadores:'Operadores', referencias:'Referências', usuarios:'Usuários' };
 function goTo(p) {
   document.querySelectorAll('.ps').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.ni').forEach(n => n.classList.remove('active'));
@@ -502,6 +545,7 @@ function goTo(p) {
   if (p === 'lancamento') { document.getElementById('ldata').value = today(); atualizaRefSel(); }
   if (p === 'historico')  { document.getElementById('hist-mes').value = curMes(); renderHist(); }
   if (p === 'graficos')   renderGraficos();
+  if (p === 'operadores') renderOperadores();
   if (p === 'referencias') renderRefs();
   if (p === 'usuarios')   renderUsers();
 }
@@ -509,6 +553,9 @@ function goTo(p) {
 // ═══════════════════════════════════════
 // DASHBOARD
 // ═══════════════════════════════════════
+let _dashData = null;
+let _dashMes  = null;
+
 async function renderDashboard() {
   const mes    = document.getElementById('dash-mes').value || curMes();
   const celula = document.getElementById('dash-celula').value;
@@ -517,6 +564,7 @@ async function renderDashboard() {
     let q = 'dashboard?mes=' + mes;
     if (celula) q += '&celula=' + celula;
     const d = await GET(q);
+    _dashData = d; _dashMes = mes;
     const t = d.totais;
     const celulaLbl = celula ? ` · ${document.getElementById('dash-celula').options[document.getElementById('dash-celula').selectedIndex].text}` : '';
     document.getElementById('dash-mes-lbl').textContent = mesL(mes) + celulaLbl;
@@ -926,23 +974,6 @@ const CELULAS_GRAF = [
 ];
 const _chartInstances = {};
 
-const centerTextPlugin = {
-  id: 'centerText',
-  afterDraw(chart) {
-    if (!chart.config._pct) return;
-    const { ctx, chartArea: { left, top, width, height } } = chart;
-    const cx = left + width / 2, cy = top + height / 2;
-    ctx.save();
-    ctx.font = '700 22px "Barlow Condensed", sans-serif';
-    ctx.fillStyle = chart.config._color || '#f0f0f0';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(chart.config._pct, cx, cy);
-    ctx.restore();
-  }
-};
-Chart.register(centerTextPlugin);
-
 async function renderGraficos() {
   const mes = document.getElementById('graf-mes').value || curMes();
 
@@ -951,16 +982,16 @@ async function renderGraficos() {
   );
 
   CELULAS_GRAF.forEach((c, i) => {
-    const d = results[i];
+    const d        = results[i];
     const totais   = d?.totais || {};
     const prog     = d?.prog   || [];
-    const metaTotal  = prog.reduce((s, r) => s + (+r.meta_total || 0), 0);
-    const realizado  = +totais.total_realizado || 0;
-    const eficMedia  = totais.efic_media;
-    const pct        = metaTotal > 0 ? realizado / metaTotal : 0;
-    const restante   = Math.max(metaTotal - realizado, 0);
-    const pctLabel   = metaTotal > 0 ? (pct * 100).toFixed(1) + '%' : '—';
-    const cor        = pct >= 1 ? '#10b981' : pct >= 0.8 ? '#f97316' : '#CC0000';
+    const metaTotal = prog.reduce((s, r) => s + (+r.meta_total || 0), 0);
+    const realizado = +totais.total_realizado || 0;
+    const eficMedia = totais.efic_media;
+    const p         = metaTotal > 0 ? realizado / metaTotal : 0;
+    const restante  = Math.max(metaTotal - realizado, 0);
+    const pctLabel  = metaTotal > 0 ? (p * 100).toFixed(1) + '%' : '—';
+    const cor       = p >= 1 ? '#10b981' : p >= 0.8 ? '#f97316' : '#CC0000';
 
     document.getElementById('gm-' + c.value).textContent = fmt(metaTotal) || '—';
     document.getElementById('gr-' + c.value).textContent = fmt(realizado) || '—';
@@ -971,13 +1002,26 @@ async function renderGraficos() {
 
     const canvas = document.getElementById('chart-' + c.value);
     if (!canvas) return;
-
     if (_chartInstances[c.value]) _chartInstances[c.value].destroy();
 
-    const cfg = {
+    // plugin inline com closure — captura pctLabel e cor do escopo atual
+    const pluginCentro = {
+      id: 'centro_' + c.value,
+      afterDraw(chart) {
+        const { ctx, chartArea: { left, top, width, height } } = chart;
+        const cx = left + width / 2, cy = top + height / 2;
+        ctx.save();
+        ctx.font = '700 24px "Barlow Condensed", sans-serif';
+        ctx.fillStyle = metaTotal > 0 ? cor : '#888888';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(pctLabel, cx, cy);
+        ctx.restore();
+      }
+    };
+
+    _chartInstances[c.value] = new Chart(canvas.getContext('2d'), {
       type: 'doughnut',
-      _pct: pctLabel,
-      _color: cor,
       data: {
         datasets: [{
           data: metaTotal > 0 ? [realizado, restante] : [1, 0],
@@ -989,10 +1033,173 @@ async function renderGraficos() {
         cutout: '72%',
         plugins: { legend: { display: false }, tooltip: { enabled: false } },
         animation: { animateRotate: true, duration: 800 }
-      }
-    };
-    _chartInstances[c.value] = new Chart(canvas.getContext('2d'), cfg);
+      },
+      plugins: [pluginCentro]
+    });
   });
+}
+
+// ═══════════════════════════════════════
+// OPERADORES
+// ═══════════════════════════════════════
+let _opData = null;
+
+async function renderOperadores() {
+  const mes    = document.getElementById('op-mes').value || curMes();
+  const celula = document.getElementById('op-celula').value;
+  const tbody  = document.getElementById('op-body');
+  tbody.innerHTML = `<tr><td colspan="8" class="empty"><span class="loading"></span></td></tr>`;
+  try {
+    let q = 'operadores?mes=' + mes;
+    if (celula) q += '&celula=' + celula;
+    const rows = await GET(q);
+    _opData = { rows, mes, celula };
+    document.getElementById('op-count').textContent = rows.length + ' operador(es)';
+    tbody.innerHTML = !rows.length
+      ? `<tr><td colspan="8" class="empty"><div class="ei">◈</div>Nenhum lançamento encontrado para este período.</td></tr>`
+      : rows.map((r, i) => {
+          const ef = +r.efic_media || 0;
+          return `<tr>
+            <td>${i + 1}</td>
+            <td style="font-weight:600">${r.operador || '—'}</td>
+            <td><strong>${fmt(r.total_realizado)}</strong></td>
+            <td>${r.total_lancamentos}</td>
+            <td class="${ef > 0 ? eClass(ef) : ''}">${ef > 0 ? (ef * 100).toFixed(1) + '%' : '—'}</td>
+            <td style="color:var(--accent)">${fmt(r.real_t1)}</td>
+            <td style="color:var(--blue)">${fmt(r.real_t2)}</td>
+            <td style="color:var(--red)">${fmt(r.total_refugo)}</td>
+          </tr>`;
+        }).join('');
+  } catch (e) {
+    tbody.innerHTML = `<tr><td colspan="8" class="empty" style="color:var(--red)">${e.message}</td></tr>`;
+  }
+}
+
+// ═══════════════════════════════════════
+// EXPORTAÇÃO
+// ═══════════════════════════════════════
+function exportDashExcel() {
+  if (!_dashData) { alert('Carregue o dashboard antes de exportar.'); return; }
+  const mes = _dashMes || curMes();
+  const wb  = XLSX.utils.book_new();
+
+  // Resumo KPIs
+  const metaTotal = _dashData.prog.reduce((s, r) => s + (+r.meta_total || 0), 0);
+  const ws1 = XLSX.utils.aoa_to_sheet([
+    ['SuperPro — Dashboard de Produção'],
+    ['Mês:', mesL(mes)],
+    [],
+    ['Indicador', 'Valor'],
+    ['Total Realizado', +_dashData.totais.total_realizado || 0],
+    ['Meta do Mês',     metaTotal],
+    ['Eficiência Média', _dashData.totais.efic_media ? (+_dashData.totais.efic_media * 100).toFixed(1) + '%' : '—'],
+    ['Total Refugo',    +_dashData.totais.total_refugo || 0],
+  ]);
+  XLSX.utils.book_append_sheet(wb, ws1, 'Resumo');
+
+  // Meta vs Realizado
+  const progRows = [['Cód.', 'Descrição', 'Turnos', 'Meta Total', 'Realizado', 'Saldo', '%']];
+  _dashData.prog.forEach(r => {
+    const mT = +r.meta_total || 0, rT = +r.realizado || 0;
+    progRows.push([r.cod, r.descricao, r.num_turnos + 'T', mT, rT, rT - mT, mT > 0 ? ((rT / mT) * 100).toFixed(1) + '%' : '—']);
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(progRows), 'Meta vs Realizado');
+
+  // Por Turno
+  const turnoRows = [['Turno', 'Realizado', 'Efic. Média']];
+  _dashData.turnos.forEach(t => turnoRows.push([t.turno, +t.realizado || 0, t.efic_media ? (+t.efic_media * 100).toFixed(1) + '%' : '—']));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(turnoRows), 'Por Turno');
+
+  // Últimos Lançamentos
+  const recentRows = [['Ref.', 'Turno', 'Operador', 'Realizado', 'Data']];
+  _dashData.recentes.forEach(l => recentRows.push([l.ref_cod, l.turno, l.operador || '', +l.realizado || 0, String(l.data).slice(0, 10)]));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(recentRows), 'Últimos Lançamentos');
+
+  XLSX.writeFile(wb, `dashboard_${mes}.xlsx`);
+}
+
+function exportDashPDF() {
+  if (!_dashData) { alert('Carregue o dashboard antes de exportar.'); return; }
+  const mes = _dashMes || curMes();
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text('SuperPro — Dashboard de Produção', 14, 18);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Mês: ' + mesL(mes), 14, 26);
+
+  const metaTotal = _dashData.prog.reduce((s, r) => s + (+r.meta_total || 0), 0);
+  doc.autoTable({
+    startY: 32,
+    head: [['Indicador', 'Valor']],
+    body: [
+      ['Total Realizado', fmt(+_dashData.totais.total_realizado || 0)],
+      ['Meta do Mês',     fmt(metaTotal)],
+      ['Eficiência Média', _dashData.totais.efic_media ? (+_dashData.totais.efic_media * 100).toFixed(1) + '%' : '—'],
+      ['Total Refugo',    fmt(+_dashData.totais.total_refugo || 0)],
+    ],
+    theme: 'grid',
+    headStyles: { fillColor: [204, 0, 0], textColor: 255 },
+    columnStyles: { 1: { halign: 'right' } },
+  });
+
+  doc.autoTable({
+    startY: doc.lastAutoTable.finalY + 8,
+    head: [['Cód.', 'Descrição', 'Meta Total', 'Realizado', 'Saldo', '%']],
+    body: _dashData.prog.map(r => {
+      const mT = +r.meta_total || 0, rT = +r.realizado || 0;
+      return [r.cod, r.descricao, fmt(mT), fmt(rT), (rT >= mT ? '+' : '') + fmt(rT - mT), mT > 0 ? ((rT / mT) * 100).toFixed(1) + '%' : '—'];
+    }),
+    theme: 'grid',
+    headStyles: { fillColor: [204, 0, 0], textColor: 255 },
+    columnStyles: { 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' }, 5: { halign: 'right' } },
+  });
+
+  doc.save(`dashboard_${mes}.pdf`);
+}
+
+function exportOpExcel() {
+  if (!_opData) { alert('Carregue os dados antes de exportar.'); return; }
+  const { rows, mes } = _opData;
+  const wb  = XLSX.utils.book_new();
+  const data = [['#', 'Operador', 'Total Realizado', 'Lançamentos', 'Efic. Média', 'Realiz. T1', 'Realiz. T2', 'Refugo']];
+  rows.forEach((r, i) => {
+    const ef = +r.efic_media || 0;
+    data.push([i + 1, r.operador, +r.total_realizado, +r.total_lancamentos, ef > 0 ? (ef * 100).toFixed(1) + '%' : '—', +r.real_t1, +r.real_t2, +r.total_refugo]);
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(data), 'Operadores');
+  XLSX.writeFile(wb, `operadores_${mes}.xlsx`);
+}
+
+function exportOpPDF() {
+  if (!_opData) { alert('Carregue os dados antes de exportar.'); return; }
+  const { rows, mes } = _opData;
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'landscape' });
+
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text('SuperPro — Eficiência por Operador', 14, 18);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Mês: ' + mesL(mes), 14, 26);
+
+  doc.autoTable({
+    startY: 32,
+    head: [['#', 'Operador', 'Total Realizado', 'Lançamentos', 'Efic. Média', 'Realiz. T1', 'Realiz. T2', 'Refugo']],
+    body: rows.map((r, i) => {
+      const ef = +r.efic_media || 0;
+      return [i + 1, r.operador, fmt(r.total_realizado), r.total_lancamentos, ef > 0 ? (ef * 100).toFixed(1) + '%' : '—', fmt(r.real_t1), fmt(r.real_t2), fmt(r.total_refugo)];
+    }),
+    theme: 'grid',
+    headStyles: { fillColor: [204, 0, 0], textColor: 255 },
+    columnStyles: { 2: { halign: 'right' }, 5: { halign: 'right' }, 6: { halign: 'right' }, 7: { halign: 'right' } },
+  });
+
+  doc.save(`operadores_${mes}.pdf`);
 }
 
 // ═══════════════════════════════════════
