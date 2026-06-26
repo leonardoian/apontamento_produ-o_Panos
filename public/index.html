@@ -257,6 +257,7 @@
               <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Meta Total</span><span id="gm-Aluminio" style="font:600 12px var(--fb)">—</span></div>
               <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Realizado</span><span id="gr-Aluminio" style="font:600 12px var(--fb)">—</span></div>
               <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Efic. Média</span><span id="ge-Aluminio" style="font:600 12px var(--fb)">—</span></div>
+              <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:8px;margin-top:2px"><span style="font:700 11px/1 var(--fh);letter-spacing:1px;color:var(--muted);text-transform:uppercase">Atingimento</span><span id="ga-Aluminio" style="font:900 16px/1 var(--fh)">—</span></div>
             </div>
           </div>
           <!-- Máquina de Panos -->
@@ -267,6 +268,7 @@
               <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Meta Total</span><span id="gm-Panos" style="font:600 12px var(--fb)">—</span></div>
               <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Realizado</span><span id="gr-Panos" style="font:600 12px var(--fb)">—</span></div>
               <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Efic. Média</span><span id="ge-Panos" style="font:600 12px var(--fb)">—</span></div>
+              <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:8px;margin-top:2px"><span style="font:700 11px/1 var(--fh);letter-spacing:1px;color:var(--muted);text-transform:uppercase">Atingimento</span><span id="ga-Panos" style="font:900 16px/1 var(--fh)">—</span></div>
             </div>
           </div>
           <!-- Máquina de Placas -->
@@ -277,6 +279,7 @@
               <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Meta Total</span><span id="gm-Placas" style="font:600 12px var(--fb)">—</span></div>
               <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Realizado</span><span id="gr-Placas" style="font:600 12px var(--fb)">—</span></div>
               <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Efic. Média</span><span id="ge-Placas" style="font:600 12px var(--fb)">—</span></div>
+              <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:8px;margin-top:2px"><span style="font:700 11px/1 var(--fh);letter-spacing:1px;color:var(--muted);text-transform:uppercase">Atingimento</span><span id="ga-Placas" style="font:900 16px/1 var(--fh)">—</span></div>
             </div>
           </div>
           <!-- Máquina de Rodos -->
@@ -287,6 +290,7 @@
               <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Meta Total</span><span id="gm-Rodos" style="font:600 12px var(--fb)">—</span></div>
               <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Realizado</span><span id="gr-Rodos" style="font:600 12px var(--fb)">—</span></div>
               <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Efic. Média</span><span id="ge-Rodos" style="font:600 12px var(--fb)">—</span></div>
+              <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:8px;margin-top:2px"><span style="font:700 11px/1 var(--fh);letter-spacing:1px;color:var(--muted);text-transform:uppercase">Atingimento</span><span id="ga-Rodos" style="font:900 16px/1 var(--fh)">—</span></div>
             </div>
           </div>
           <!-- Trabalho Manual -->
@@ -297,6 +301,7 @@
               <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Meta Total</span><span id="gm-Manual" style="font:600 12px var(--fb)">—</span></div>
               <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Realizado</span><span id="gr-Manual" style="font:600 12px var(--fb)">—</span></div>
               <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Efic. Média</span><span id="ge-Manual" style="font:600 12px var(--fb)">—</span></div>
+              <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:8px;margin-top:2px"><span style="font:700 11px/1 var(--fh);letter-spacing:1px;color:var(--muted);text-transform:uppercase">Atingimento</span><span id="ga-Manual" style="font:900 16px/1 var(--fh)">—</span></div>
             </div>
           </div>
         </div>
@@ -960,6 +965,9 @@ async function renderGraficos() {
     document.getElementById('gm-' + c.value).textContent = fmt(metaTotal) || '—';
     document.getElementById('gr-' + c.value).textContent = fmt(realizado) || '—';
     document.getElementById('ge-' + c.value).textContent = eficMedia ? (eficMedia * 100).toFixed(1) + '%' : '—';
+    const elAt = document.getElementById('ga-' + c.value);
+    elAt.textContent = pctLabel;
+    elAt.style.color = metaTotal > 0 ? cor : 'var(--muted)';
 
     const canvas = document.getElementById('chart-' + c.value);
     if (!canvas) return;
