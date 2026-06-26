@@ -1,147 +1,162 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Superpro — Sistema de Produção</title>
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/style.css">
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Superpro — Sistema de Produção</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@300;400;500;600&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 </head>
+
 <body>
 
-<!-- LOGIN -->
-<div id="login">
-  <div class="lbox">
-    <img src="/SUPERPRO-logo.png" alt="SuperPro" style="width:260px;display:block;margin:0 auto 24px;filter:brightness(0) invert(1)">
-    <div class="ltitle" style="text-align:center">SISTEMA DE<br><span>PRODUÇÃO</span></div>
-    <div class="fg"><label>Usuário</label><input type="text" id="l-user" placeholder="seu login" autocomplete="off"></div>
-    <div class="fg"><label>Senha</label><input type="password" id="l-pass" placeholder="••••••••"></div>
-    <button class="btn-login" onclick="doLogin()">ENTRAR →</button>
-    <div class="lerr" id="l-err">Usuário ou senha incorretos.</div>
+  <!-- LOGIN -->
+  <div id="login">
+    <div class="lbox">
+      <img src="/SUPERPRO-logo.png" alt="SuperPro"
+        style="width:400px;display:block;margin:0 auto 24px;filter:brightness(0) invert(1)">
+      <div class="ltitle" style="text-align:center">SISTEMA DE<br><span>PRODUÇÃO</span></div>
+      <div class="fg"><label>Usuário</label><input type="text" id="l-user" placeholder="seu login" autocomplete="off">
+      </div>
+      <div class="fg"><label>Senha</label><input type="password" id="l-pass" placeholder="••••••••"></div>
+      <button class="btn-login" onclick="doLogin()">ENTRAR →</button>
+      <div class="lerr" id="l-err">Usuário ou senha incorretos.</div>
+    </div>
   </div>
-</div>
 
-<!-- APP -->
-<div id="app">
-  <nav class="sidebar">
-    <div class="slogo">
-      <img src="/SUPERPRO-logo.png" alt="SuperPro" style="width:100%;display:block;margin-bottom:10px;filter:brightness(0) invert(1)">
-      <div class="name" style="text-align:center">APONTAMENTO<br><span>DE PRODUÇÃO</span></div>
-    </div>
-    <div class="snav">
-      <div class="snl">Principal</div>
-      <div class="ni active" onclick="goTo('dashboard')"><span class="ic">◈</span>Dashboard</div>
-      <div class="ni" onclick="goTo('programa')"><span class="ic">☰</span>Programa do Mês</div>
-      <div class="ni" onclick="goTo('lancamento')"><span class="ic">⊕</span>Lançar Produção</div>
-      <div class="ni" onclick="goTo('historico')"><span class="ic">⊞</span>Histórico</div>
-      <div class="ni" onclick="goTo('graficos')"><span class="ic">◎</span>Gráficos</div>
-      <div class="ni" onclick="goTo('operadores')"><span class="ic">◈</span>Operadores</div>
-      <div class="snl" id="snl-admin" style="display:none">Admin</div>
-      <div class="ni" id="ni-refs" onclick="goTo('referencias')" style="display:none"><span class="ic">◉</span>Referências</div>
-      <div class="ni" id="ni-users" onclick="goTo('usuarios')" style="display:none"><span class="ic">◎</span>Usuários</div>
-    </div>
-    <div class="sfoot">
-      <div class="un" id="sb-nome">—</div>
-      <div class="ur" id="sb-role">—</div>
-      <button class="btn-out" onclick="doLogout()">Sair</button>
-    </div>
-  </nav>
-
-  <div class="main">
-    <div class="topbar">
-      <div class="tpt" id="tp-title">Dashboard</div>
-      <div class="tpr">
-        <span id="tp-badge" class="badge"></span>
-        <span style="font-size:11px;color:var(--muted)" id="tp-date"></span>
+  <!-- APP -->
+  <div id="app">
+    <nav class="sidebar">
+      <div class="slogo">
+        <img src="/SUPERPRO-logo.png" alt="SuperPro"
+          style="width:100%;display:block;margin-bottom:10px;filter:brightness(0) invert(1)">
+        <div class="name" style="text-align:center">APONTAMENTO<br><span>DE PRODUÇÃO</span></div>
       </div>
-    </div>
-    <div class="content">
-
-      <!-- DASHBOARD -->
-      <div class="ps active" id="sec-dashboard">
-        <div class="filtbar" style="margin-bottom:18px">
-          <div class="fi"><label>Célula</label>
-            <select id="dash-celula" onchange="renderDashboard()" style="min-width:160px">
-              <option value="">Todas as Células</option>
-              <option value="Aluminio">Celular de Alumínio</option>
-              <option value="Panos">Máquina de Panos</option>
-              <option value="Placas">Máquina de Placas</option>
-              <option value="Rodos">Máquina de Rodos</option>
-              <option value="Manual">Trabalho Manual</option>
-            </select>
-          </div>
-          <div class="fi"><label>Mês</label>
-            <select id="dash-mes" onchange="renderDashboard()" style="min-width:160px">
-              <option value="">Mês atual</option>
-            </select>
-          </div>
-          <button class="btn bs bsm" onclick="renderDashboard()">↻ Atualizar</button>
-          <button class="btn bs bsm" onclick="exportDashExcel()" title="Exportar para Excel">⬇ Excel</button>
-          <button class="btn bs bsm" onclick="exportDashPDF()" title="Exportar para PDF">⬇ PDF</button>
-        </div>
-        <div class="kg" id="kpi-grid"></div>
-        <div class="sr">
-          <div class="tw" style="flex:1.7">
-            <div class="th"><div class="tt">META × REALIZADO</div><span id="dash-mes-lbl" style="font-size:11px;color:var(--muted)"></span></div>
-            <div style="overflow-x:auto"><table><thead><tr>
-              <th>Cód.</th><th>Descrição</th><th>Turnos</th><th>Meta Total</th><th>Realizado</th><th>Saldo</th><th>%</th>
-            </tr></thead><tbody id="dash-ref-body"></tbody></table></div>
-          </div>
-          <div style="width:270px;display:flex;flex-direction:column;gap:14px">
-            <div class="tw"><div class="th"><div class="tt">POR TURNO</div></div>
-              <table><thead><tr><th>Turno</th><th>Realiz.</th><th>Efic.</th></tr></thead>
-              <tbody id="dash-turno"></tbody></table>
-            </div>
-            <div class="tw"><div class="th"><div class="tt">ÚLTIMOS</div></div>
-              <table><thead><tr><th>Ref</th><th>T</th><th>Pçs</th><th>Data</th></tr></thead>
-              <tbody id="dash-recent"></tbody></table>
-            </div>
-          </div>
+      <div class="snav">
+        <div class="snl">Principal</div>
+        <div class="ni active" onclick="goTo('dashboard')"><span class="ic">◈</span>Dashboard</div>
+        <div class="ni" onclick="goTo('programa')"><span class="ic">☰</span>Programa do Mês</div>
+        <div class="ni" onclick="goTo('lancamento')"><span class="ic">⊕</span>Lançar Produção</div>
+        <div class="ni" onclick="goTo('historico')"><span class="ic">⊞</span>Histórico</div>
+        <div class="ni" onclick="goTo('graficos')"><span class="ic">◎</span>Gráficos</div>
+        <div class="ni" onclick="goTo('operadores')"><span class="ic">◈</span>Operadores</div>
+        <div class="snl" id="snl-admin" style="display:none">Admin</div>
+        <div class="ni" id="ni-refs" onclick="goTo('referencias')" style="display:none"><span
+            class="ic">◉</span>Referências</div>
+        <div class="ni" id="ni-users" onclick="goTo('usuarios')" style="display:none"><span class="ic">◎</span>Usuários
         </div>
       </div>
+      <div class="sfoot">
+        <div class="un" id="sb-nome">—</div>
+        <div class="ur" id="sb-role">—</div>
+        <button class="btn-out" onclick="doLogout()">Sair</button>
+      </div>
+    </nav>
 
-      <!-- PROGRAMA -->
-      <div class="ps" id="sec-programa">
-        <div class="filtbar">
-          <div class="fi"><label>Célula</label>
-            <select id="prog-celula" onchange="renderPrograma()" style="min-width:160px">
-              <option value="Aluminio">Celular de Alumínio</option>
-              <option value="Panos" selected>Máquina de Panos</option>
-              <option value="Placas">Máquina de Placas</option>
-              <option value="Rodos">Máquina de Rodos</option>
-              <option value="Manual">Trabalho Manual</option>
-            </select>
-          </div>
-          <div class="fi"><label>Mês</label>
-            <select id="prog-mes" onchange="renderPrograma()" style="min-width:160px">
-              <option value="">Selecione...</option>
-            </select>
-          </div>
-          <button class="btn bs bsm" onclick="renderPrograma()">↻ Atualizar</button>
-          <button class="btn bp bsm" id="btn-add-prog" style="display:none" onclick="openModalProg()">+ Adicionar Referência</button>
-        </div>
-        <div class="tw">
-          <div class="th"><div class="tt">PROGRAMA DO MÊS</div><span id="prog-count" style="font-size:12px;color:var(--muted)"></span></div>
-          <div style="overflow-x:auto"><table><thead><tr>
-            <th>Cód.</th><th>Descrição</th><th>Meta/Turno</th><th>Nº Turnos</th><th>Meta Total</th>
-            <th style="color:var(--accent)">Real. T1</th><th style="color:var(--blue)">Real. T2</th>
-            <th>Total Real.</th><th>%</th><th id="th-prog-ac" style="display:none">Ações</th>
-          </tr></thead><tbody id="prog-body"></tbody></table></div>
+    <div class="main">
+      <div class="topbar">
+        <div class="tpt" id="tp-title">Dashboard</div>
+        <div class="tpr">
+          <span id="tp-badge" class="badge"></span>
+          <span style="font-size:11px;color:var(--muted)" id="tp-date"></span>
         </div>
       </div>
+      <div class="content">
 
-      <!-- LANÇAMENTO -->
-      <div class="ps" id="sec-lancamento">
-        <div id="alrt-lanc"></div>
-        <div class="fc">
-          <div class="fct">LANÇAR PRODUÇÃO</div>
-          <div class="fgrid c3">
+        <!-- DASHBOARD -->
+        <div class="ps active" id="sec-dashboard">
+          <div class="filtbar" style="margin-bottom:18px">
             <div class="fi"><label>Célula</label>
-              <select id="lcelula" onchange="atualizaRefSel()" style="min-width:160px">
+              <select id="dash-celula" onchange="renderDashboard()" style="min-width:160px">
+                <option value="">Todas as Células</option>
+                <option value="Aluminio">Celular de Alumínio</option>
+                <option value="Panos">Máquina de Panos</option>
+                <option value="Placas">Máquina de Placas</option>
+                <option value="Rodos">Máquina de Rodos</option>
+                <option value="Manual">Trabalho Manual</option>
+              </select>
+            </div>
+            <div class="fi"><label>Mês</label>
+              <select id="dash-mes" onchange="renderDashboard()" style="min-width:160px">
+                <option value="">Mês atual</option>
+              </select>
+            </div>
+            <button class="btn bs bsm" onclick="renderDashboard()">↻ Atualizar</button>
+            <button class="btn bs bsm" onclick="exportDashExcel()" title="Exportar para Excel">⬇ Excel</button>
+            <button class="btn bs bsm" onclick="exportDashPDF()" title="Exportar para PDF">⬇ PDF</button>
+          </div>
+          <div class="kg" id="kpi-grid"></div>
+          <div class="sr">
+            <div class="tw" style="flex:1.7">
+              <div class="th">
+                <div class="tt">META × REALIZADO</div><span id="dash-mes-lbl"
+                  style="font-size:11px;color:var(--muted)"></span>
+              </div>
+              <div style="overflow-x:auto">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Cód.</th>
+                      <th>Descrição</th>
+                      <th>Turnos</th>
+                      <th>Meta Total</th>
+                      <th>Realizado</th>
+                      <th>Saldo</th>
+                      <th>%</th>
+                    </tr>
+                  </thead>
+                  <tbody id="dash-ref-body"></tbody>
+                </table>
+              </div>
+            </div>
+            <div style="width:270px;display:flex;flex-direction:column;gap:14px">
+              <div class="tw">
+                <div class="th">
+                  <div class="tt">POR TURNO</div>
+                </div>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Turno</th>
+                      <th>Realiz.</th>
+                      <th>Efic.</th>
+                    </tr>
+                  </thead>
+                  <tbody id="dash-turno"></tbody>
+                </table>
+              </div>
+              <div class="tw">
+                <div class="th">
+                  <div class="tt">ÚLTIMOS</div>
+                </div>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Ref</th>
+                      <th>T</th>
+                      <th>Pçs</th>
+                      <th>Data</th>
+                    </tr>
+                  </thead>
+                  <tbody id="dash-recent"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PROGRAMA -->
+        <div class="ps" id="sec-programa">
+          <div class="filtbar">
+            <div class="fi"><label>Célula</label>
+              <select id="prog-celula" onchange="renderPrograma()" style="min-width:160px">
                 <option value="Aluminio">Celular de Alumínio</option>
                 <option value="Panos" selected>Máquina de Panos</option>
                 <option value="Placas">Máquina de Placas</option>
@@ -149,917 +164,1119 @@
                 <option value="Manual">Trabalho Manual</option>
               </select>
             </div>
-            <div class="fi"><label>Data</label><input type="date" id="ldata" onchange="atualizaRefSel()"></div>
-            <div class="fi"><label>Turno</label>
-              <select id="lturno" onchange="preencheRef()">
+            <div class="fi"><label>Mês</label>
+              <select id="prog-mes" onchange="renderPrograma()" style="min-width:160px">
                 <option value="">Selecione...</option>
-                <option value="T1">T1 — Turno 1</option>
-                <option value="T2">T2 — Turno 2</option>
               </select>
             </div>
+            <button class="btn bs bsm" onclick="renderPrograma()">↻ Atualizar</button>
+            <button class="btn bp bsm" id="btn-add-prog" style="display:none" onclick="openModalProg()">+ Adicionar
+              Referência</button>
           </div>
-          <div class="fgrid c3" style="margin-top:12px">
-            <div class="fi"><label>Operador</label><input type="text" id="lop" placeholder="Nome do operador"></div>
+          <div class="tw">
+            <div class="th">
+              <div class="tt">PROGRAMA DO MÊS</div><span id="prog-count"
+                style="font-size:12px;color:var(--muted)"></span>
+            </div>
+            <div style="overflow-x:auto">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Cód.</th>
+                    <th>Descrição</th>
+                    <th>Meta/Turno</th>
+                    <th>Nº Turnos</th>
+                    <th>Meta Total</th>
+                    <th style="color:var(--accent)">Real. T1</th>
+                    <th style="color:var(--blue)">Real. T2</th>
+                    <th>Total Real.</th>
+                    <th>%</th>
+                    <th id="th-prog-ac" style="display:none">Ações</th>
+                  </tr>
+                </thead>
+                <tbody id="prog-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- LANÇAMENTO -->
+        <div class="ps" id="sec-lancamento">
+          <div id="alrt-lanc"></div>
+          <div class="fc">
+            <div class="fct">LANÇAR PRODUÇÃO</div>
+            <div class="fgrid c3">
+              <div class="fi"><label>Célula</label>
+                <select id="lcelula" onchange="atualizaRefSel()" style="min-width:160px">
+                  <option value="Aluminio">Celular de Alumínio</option>
+                  <option value="Panos" selected>Máquina de Panos</option>
+                  <option value="Placas">Máquina de Placas</option>
+                  <option value="Rodos">Máquina de Rodos</option>
+                  <option value="Manual">Trabalho Manual</option>
+                </select>
+              </div>
+              <div class="fi"><label>Data</label><input type="date" id="ldata" onchange="atualizaRefSel()"></div>
+              <div class="fi"><label>Turno</label>
+                <select id="lturno" onchange="preencheRef()">
+                  <option value="">Selecione...</option>
+                  <option value="T1">T1 — Turno 1</option>
+                  <option value="T2">T2 — Turno 2</option>
+                </select>
+              </div>
+            </div>
+            <div class="fgrid c3" style="margin-top:12px">
+              <div class="fi"><label>Operador</label><input type="text" id="lop" placeholder="Nome do operador"></div>
+              <div class="fi"><label>Referência</label>
+                <select id="lref" onchange="preencheRef()">
+                  <option value="">Selecione...</option>
+                </select>
+                <div class="fnote" id="lref-note"></div>
+              </div>
+              <div class="fi"><label>Descrição</label><input type="text" id="ldesc" readonly></div>
+              <div class="fi"><label>Meta (pçs)</label><input type="number" id="lmeta" readonly></div>
+              <input type="hidden" id="lmeta-hora">
+              <div class="fi"><label>Hora Início</label><input type="time" id="lhi" oninput="calcEfic()"></div>
+            </div>
+            <div class="fgrid c4" style="margin-top:12px">
+              <div class="fi"><label>Realizado (pçs)</label><input type="number" id="lreal" placeholder="0" min="0"
+                  oninput="calcEfic()"></div>
+              <div class="fi"><label>Refugo (pçs)</label><input type="number" id="lrefugo" placeholder="0" min="0">
+              </div>
+              <div class="fi"><label>Hora Fim</label><input type="time" id="lhf" oninput="calcEfic()"></div>
+              <div class="fi"><label>Eficiência</label><input type="text" id="lefic" readonly placeholder="—"></div>
+            </div>
+            <div class="fgrid" style="margin-top:12px">
+              <div class="fi"><label>Ocorrência / Obs</label>
+                <textarea id="lobs" placeholder="Descreva paradas, ocorrências..."></textarea>
+              </div>
+            </div>
+            <div class="brow">
+              <button class="btn bp" onclick="salvarLanc()">✔ SALVAR LANÇAMENTO</button>
+              <button class="btn bs" onclick="limparForm()">✕ LIMPAR</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- HISTÓRICO -->
+        <div class="ps" id="sec-historico">
+          <div class="filtbar">
+            <div class="fi"><label>Célula</label>
+              <select id="hist-celula" onchange="renderHist()" style="min-width:160px">
+                <option value="Aluminio">Celular de Alumínio</option>
+                <option value="Panos" selected>Máquina de Panos</option>
+                <option value="Placas">Máquina de Placas</option>
+                <option value="Rodos">Máquina de Rodos</option>
+                <option value="Manual">Trabalho Manual</option>
+              </select>
+            </div>
+            <div class="fi"><label>Mês</label><input type="month" id="hist-mes" onchange="renderHist()"
+                style="min-width:150px"></div>
+            <div class="fi"><label>Turno</label>
+              <select id="hist-turno" onchange="renderHist()">
+                <option value="">Todos</option>
+                <option>T1</option>
+                <option>T2</option>
+              </select>
+            </div>
             <div class="fi"><label>Referência</label>
-              <select id="lref" onchange="preencheRef()"><option value="">Selecione...</option></select>
-              <div class="fnote" id="lref-note"></div>
+              <select id="hist-ref" onchange="renderHist()" style="min-width:170px">
+                <option value="">Todas</option>
+              </select>
             </div>
-            <div class="fi"><label>Descrição</label><input type="text" id="ldesc" readonly></div>
-            <div class="fi"><label>Meta (pçs)</label><input type="number" id="lmeta" readonly></div>
-            <input type="hidden" id="lmeta-hora">
-            <div class="fi"><label>Hora Início</label><input type="time" id="lhi" oninput="calcEfic()"></div>
+            <button class="btn bs bsm" onclick="renderHist()">↻ Atualizar</button>
           </div>
-          <div class="fgrid c4" style="margin-top:12px">
-            <div class="fi"><label>Realizado (pçs)</label><input type="number" id="lreal" placeholder="0" min="0" oninput="calcEfic()"></div>
-            <div class="fi"><label>Refugo (pçs)</label><input type="number" id="lrefugo" placeholder="0" min="0"></div>
-            <div class="fi"><label>Hora Fim</label><input type="time" id="lhf" oninput="calcEfic()"></div>
-            <div class="fi"><label>Eficiência</label><input type="text" id="lefic" readonly placeholder="—"></div>
-          </div>
-          <div class="fgrid" style="margin-top:12px">
-            <div class="fi"><label>Ocorrência / Obs</label>
-              <textarea id="lobs" placeholder="Descreva paradas, ocorrências..."></textarea></div>
-          </div>
-          <div class="brow">
-            <button class="btn bp" onclick="salvarLanc()">✔ SALVAR LANÇAMENTO</button>
-            <button class="btn bs" onclick="limparForm()">✕ LIMPAR</button>
+          <div class="tw">
+            <div class="th">
+              <div class="tt">HISTÓRICO DE PRODUÇÃO</div><span id="hist-count"
+                style="font-size:12px;color:var(--muted)"></span>
+            </div>
+            <div style="overflow-x:auto">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Data</th>
+                    <th>Turno</th>
+                    <th>Ref.</th>
+                    <th>Descrição</th>
+                    <th>Operador</th>
+                    <th>Realizado</th>
+                    <th>Meta</th>
+                    <th>Refugo</th>
+                    <th>Efic.</th>
+                    <th>Início</th>
+                    <th>Fim</th>
+                    <th>Obs</th>
+                    <th id="hist-del-col" style="display:none">Del.</th>
+                  </tr>
+                </thead>
+                <tbody id="hist-body"></tbody>
+              </table>
+            </div>
           </div>
         </div>
-      </div>
 
-      <!-- HISTÓRICO -->
-      <div class="ps" id="sec-historico">
-        <div class="filtbar">
-          <div class="fi"><label>Célula</label>
-            <select id="hist-celula" onchange="renderHist()" style="min-width:160px">
-              <option value="Aluminio">Celular de Alumínio</option>
-              <option value="Panos" selected>Máquina de Panos</option>
-              <option value="Placas">Máquina de Placas</option>
-              <option value="Rodos">Máquina de Rodos</option>
-              <option value="Manual">Trabalho Manual</option>
-            </select>
+        <!-- REFERÊNCIAS (admin) -->
+        <div class="ps" id="sec-referencias">
+          <div class="fc">
+            <div class="fct">CADASTRAR REFERÊNCIA</div>
+            <div class="fgrid c2">
+              <div class="fi"><label>Código</label><input type="text" id="r-cod" placeholder="Ex: SP2745LR"></div>
+              <div class="fi"><label>Descrição</label><input type="text" id="r-desc" placeholder="Nome do produto">
+              </div>
+              <div class="fi"><label>Meta Hora</label><input type="number" id="r-meta-hora" placeholder="Ex: 80"
+                  min="0"></div>
+            </div>
+            <div class="brow"><button class="btn bp bsm" onclick="salvarRef()">+ ADICIONAR</button></div>
           </div>
-          <div class="fi"><label>Mês</label><input type="month" id="hist-mes" onchange="renderHist()" style="min-width:150px"></div>
-          <div class="fi"><label>Turno</label>
-            <select id="hist-turno" onchange="renderHist()"><option value="">Todos</option><option>T1</option><option>T2</option></select>
+          <div class="tw">
+            <div class="th">
+              <div class="tt">REFERÊNCIAS CADASTRADAS</div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <input id="refs-busca" type="text" placeholder="Buscar por código ou descrição..."
+                  oninput="filterRefs()"
+                  style="background:var(--surface);border:1px solid var(--border);color:var(--text);padding:5px 10px;font:13px var(--fb);outline:none;width:280px;transition:border-color .2s"
+                  onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
+                <button class="btn bs bsm" onclick="loadRefs()">↻ Atualizar</button>
+              </div>
+            </div>
+            <div style="overflow-x:auto">
+              <table>
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Código</th>
+                    <th>Descrição</th>
+                    <th>Meta Hora</th>
+                    <th>Ação</th>
+                  </tr>
+                </thead>
+                <tbody id="refs-body"></tbody>
+              </table>
+            </div>
           </div>
-          <div class="fi"><label>Referência</label>
-            <select id="hist-ref" onchange="renderHist()" style="min-width:170px"><option value="">Todas</option></select>
-          </div>
-          <button class="btn bs bsm" onclick="renderHist()">↻ Atualizar</button>
         </div>
-        <div class="tw">
-          <div class="th"><div class="tt">HISTÓRICO DE PRODUÇÃO</div><span id="hist-count" style="font-size:12px;color:var(--muted)"></span></div>
-          <div style="overflow-x:auto"><table><thead><tr>
-            <th>Data</th><th>Turno</th><th>Ref.</th><th>Descrição</th><th>Operador</th>
-            <th>Realizado</th><th>Meta</th><th>Refugo</th><th>Efic.</th><th>Início</th><th>Fim</th><th>Obs</th>
-            <th id="hist-del-col" style="display:none">Del.</th>
-          </tr></thead><tbody id="hist-body"></tbody></table></div>
-        </div>
-      </div>
 
-      <!-- REFERÊNCIAS (admin) -->
-      <div class="ps" id="sec-referencias">
-        <div class="fc">
-          <div class="fct">CADASTRAR REFERÊNCIA</div>
-          <div class="fgrid c2">
-            <div class="fi"><label>Código</label><input type="text" id="r-cod" placeholder="Ex: SP2745LR"></div>
-            <div class="fi"><label>Descrição</label><input type="text" id="r-desc" placeholder="Nome do produto"></div>
-            <div class="fi"><label>Meta Hora</label><input type="number" id="r-meta-hora" placeholder="Ex: 80" min="0"></div>
+        <!-- GRÁFICOS -->
+        <div class="ps" id="sec-graficos">
+          <div class="filtbar" style="margin-bottom:18px">
+            <div class="fi"><label>Mês</label>
+              <select id="graf-mes" onchange="renderGraficos()" style="min-width:160px">
+                <option value="">Mês atual</option>
+              </select>
+            </div>
+            <button class="btn bs bsm" onclick="renderGraficos()">↻ Atualizar</button>
           </div>
-          <div class="brow"><button class="btn bp bsm" onclick="salvarRef()">+ ADICIONAR</button></div>
-        </div>
-        <div class="tw">
-          <div class="th">
-            <div class="tt">REFERÊNCIAS CADASTRADAS</div>
-            <div style="display:flex;align-items:center;gap:8px">
-              <input id="refs-busca" type="text" placeholder="Buscar por código ou descrição..." oninput="filterRefs()"
-                style="background:var(--surface);border:1px solid var(--border);color:var(--text);padding:5px 10px;font:13px var(--fb);outline:none;width:280px;transition:border-color .2s"
-                onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
-              <button class="btn bs bsm" onclick="loadRefs()">↻ Atualizar</button>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:18px" id="graf-grid">
+            <!-- Celular de Alumínio -->
+            <div class="kc" style="padding:24px;text-align:center">
+              <div
+                style="font:700 11px/1 var(--fh);letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:18px">
+                Celular de Alumínio</div>
+              <div style="position:relative;width:150px;height:150px;margin:0 auto"><canvas
+                  id="chart-Aluminio"></canvas></div>
+              <div style="margin-top:16px;display:flex;flex-direction:column;gap:6px;text-align:left">
+                <div style="display:flex;justify-content:space-between"><span
+                    style="color:var(--muted);font-size:11px">Meta Total</span><span id="gm-Aluminio"
+                    style="font:600 12px var(--fb)">—</span></div>
+                <div style="display:flex;justify-content:space-between"><span
+                    style="color:var(--muted);font-size:11px">Realizado</span><span id="gr-Aluminio"
+                    style="font:600 12px var(--fb)">—</span></div>
+                <div style="display:flex;justify-content:space-between"><span
+                    style="color:var(--muted);font-size:11px">Efic. Média</span><span id="ge-Aluminio"
+                    style="font:600 12px var(--fb)">—</span></div>
+                <div
+                  style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:8px;margin-top:2px">
+                  <span
+                    style="font:700 11px/1 var(--fh);letter-spacing:1px;color:var(--muted);text-transform:uppercase">Atingimento</span><span
+                    id="ga-Aluminio" style="font:900 16px/1 var(--fh)">—</span></div>
+              </div>
+            </div>
+            <!-- Máquina de Panos -->
+            <div class="kc" style="padding:24px;text-align:center">
+              <div
+                style="font:700 11px/1 var(--fh);letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:18px">
+                Máquina de Panos</div>
+              <div style="position:relative;width:150px;height:150px;margin:0 auto"><canvas id="chart-Panos"></canvas>
+              </div>
+              <div style="margin-top:16px;display:flex;flex-direction:column;gap:6px;text-align:left">
+                <div style="display:flex;justify-content:space-between"><span
+                    style="color:var(--muted);font-size:11px">Meta Total</span><span id="gm-Panos"
+                    style="font:600 12px var(--fb)">—</span></div>
+                <div style="display:flex;justify-content:space-between"><span
+                    style="color:var(--muted);font-size:11px">Realizado</span><span id="gr-Panos"
+                    style="font:600 12px var(--fb)">—</span></div>
+                <div style="display:flex;justify-content:space-between"><span
+                    style="color:var(--muted);font-size:11px">Efic. Média</span><span id="ge-Panos"
+                    style="font:600 12px var(--fb)">—</span></div>
+                <div
+                  style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:8px;margin-top:2px">
+                  <span
+                    style="font:700 11px/1 var(--fh);letter-spacing:1px;color:var(--muted);text-transform:uppercase">Atingimento</span><span
+                    id="ga-Panos" style="font:900 16px/1 var(--fh)">—</span></div>
+              </div>
+            </div>
+            <!-- Máquina de Placas -->
+            <div class="kc" style="padding:24px;text-align:center">
+              <div
+                style="font:700 11px/1 var(--fh);letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:18px">
+                Máquina de Placas</div>
+              <div style="position:relative;width:150px;height:150px;margin:0 auto"><canvas id="chart-Placas"></canvas>
+              </div>
+              <div style="margin-top:16px;display:flex;flex-direction:column;gap:6px;text-align:left">
+                <div style="display:flex;justify-content:space-between"><span
+                    style="color:var(--muted);font-size:11px">Meta Total</span><span id="gm-Placas"
+                    style="font:600 12px var(--fb)">—</span></div>
+                <div style="display:flex;justify-content:space-between"><span
+                    style="color:var(--muted);font-size:11px">Realizado</span><span id="gr-Placas"
+                    style="font:600 12px var(--fb)">—</span></div>
+                <div style="display:flex;justify-content:space-between"><span
+                    style="color:var(--muted);font-size:11px">Efic. Média</span><span id="ge-Placas"
+                    style="font:600 12px var(--fb)">—</span></div>
+                <div
+                  style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:8px;margin-top:2px">
+                  <span
+                    style="font:700 11px/1 var(--fh);letter-spacing:1px;color:var(--muted);text-transform:uppercase">Atingimento</span><span
+                    id="ga-Placas" style="font:900 16px/1 var(--fh)">—</span></div>
+              </div>
+            </div>
+            <!-- Máquina de Rodos -->
+            <div class="kc" style="padding:24px;text-align:center">
+              <div
+                style="font:700 11px/1 var(--fh);letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:18px">
+                Máquina de Rodos</div>
+              <div style="position:relative;width:150px;height:150px;margin:0 auto"><canvas id="chart-Rodos"></canvas>
+              </div>
+              <div style="margin-top:16px;display:flex;flex-direction:column;gap:6px;text-align:left">
+                <div style="display:flex;justify-content:space-between"><span
+                    style="color:var(--muted);font-size:11px">Meta Total</span><span id="gm-Rodos"
+                    style="font:600 12px var(--fb)">—</span></div>
+                <div style="display:flex;justify-content:space-between"><span
+                    style="color:var(--muted);font-size:11px">Realizado</span><span id="gr-Rodos"
+                    style="font:600 12px var(--fb)">—</span></div>
+                <div style="display:flex;justify-content:space-between"><span
+                    style="color:var(--muted);font-size:11px">Efic. Média</span><span id="ge-Rodos"
+                    style="font:600 12px var(--fb)">—</span></div>
+                <div
+                  style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:8px;margin-top:2px">
+                  <span
+                    style="font:700 11px/1 var(--fh);letter-spacing:1px;color:var(--muted);text-transform:uppercase">Atingimento</span><span
+                    id="ga-Rodos" style="font:900 16px/1 var(--fh)">—</span></div>
+              </div>
+            </div>
+            <!-- Trabalho Manual -->
+            <div class="kc" style="padding:24px;text-align:center">
+              <div
+                style="font:700 11px/1 var(--fh);letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:18px">
+                Trabalho Manual</div>
+              <div style="position:relative;width:150px;height:150px;margin:0 auto"><canvas id="chart-Manual"></canvas>
+              </div>
+              <div style="margin-top:16px;display:flex;flex-direction:column;gap:6px;text-align:left">
+                <div style="display:flex;justify-content:space-between"><span
+                    style="color:var(--muted);font-size:11px">Meta Total</span><span id="gm-Manual"
+                    style="font:600 12px var(--fb)">—</span></div>
+                <div style="display:flex;justify-content:space-between"><span
+                    style="color:var(--muted);font-size:11px">Realizado</span><span id="gr-Manual"
+                    style="font:600 12px var(--fb)">—</span></div>
+                <div style="display:flex;justify-content:space-between"><span
+                    style="color:var(--muted);font-size:11px">Efic. Média</span><span id="ge-Manual"
+                    style="font:600 12px var(--fb)">—</span></div>
+                <div
+                  style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:8px;margin-top:2px">
+                  <span
+                    style="font:700 11px/1 var(--fh);letter-spacing:1px;color:var(--muted);text-transform:uppercase">Atingimento</span><span
+                    id="ga-Manual" style="font:900 16px/1 var(--fh)">—</span></div>
+              </div>
             </div>
           </div>
-          <div style="overflow-x:auto"><table><thead><tr>
-            <th>#</th><th>Código</th><th>Descrição</th><th>Meta Hora</th><th>Ação</th>
-          </tr></thead><tbody id="refs-body"></tbody></table></div>
         </div>
-      </div>
 
-      <!-- GRÁFICOS -->
-      <div class="ps" id="sec-graficos">
-        <div class="filtbar" style="margin-bottom:18px">
-          <div class="fi"><label>Mês</label>
-            <select id="graf-mes" onchange="renderGraficos()" style="min-width:160px">
-              <option value="">Mês atual</option>
-            </select>
-          </div>
-          <button class="btn bs bsm" onclick="renderGraficos()">↻ Atualizar</button>
-        </div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:18px" id="graf-grid">
-          <!-- Celular de Alumínio -->
-          <div class="kc" style="padding:24px;text-align:center">
-            <div style="font:700 11px/1 var(--fh);letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:18px">Celular de Alumínio</div>
-            <div style="position:relative;width:150px;height:150px;margin:0 auto"><canvas id="chart-Aluminio"></canvas></div>
-            <div style="margin-top:16px;display:flex;flex-direction:column;gap:6px;text-align:left">
-              <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Meta Total</span><span id="gm-Aluminio" style="font:600 12px var(--fb)">—</span></div>
-              <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Realizado</span><span id="gr-Aluminio" style="font:600 12px var(--fb)">—</span></div>
-              <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Efic. Média</span><span id="ge-Aluminio" style="font:600 12px var(--fb)">—</span></div>
-              <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:8px;margin-top:2px"><span style="font:700 11px/1 var(--fh);letter-spacing:1px;color:var(--muted);text-transform:uppercase">Atingimento</span><span id="ga-Aluminio" style="font:900 16px/1 var(--fh)">—</span></div>
+        <!-- OPERADORES -->
+        <div class="ps" id="sec-operadores">
+          <div class="filtbar" style="margin-bottom:18px">
+            <div class="fi"><label>Célula</label>
+              <select id="op-celula" onchange="renderOperadores()" style="min-width:160px">
+                <option value="">Todas as Células</option>
+                <option value="Aluminio">Celular de Alumínio</option>
+                <option value="Panos">Máquina de Panos</option>
+                <option value="Placas">Máquina de Placas</option>
+                <option value="Rodos">Máquina de Rodos</option>
+                <option value="Manual">Trabalho Manual</option>
+              </select>
             </div>
-          </div>
-          <!-- Máquina de Panos -->
-          <div class="kc" style="padding:24px;text-align:center">
-            <div style="font:700 11px/1 var(--fh);letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:18px">Máquina de Panos</div>
-            <div style="position:relative;width:150px;height:150px;margin:0 auto"><canvas id="chart-Panos"></canvas></div>
-            <div style="margin-top:16px;display:flex;flex-direction:column;gap:6px;text-align:left">
-              <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Meta Total</span><span id="gm-Panos" style="font:600 12px var(--fb)">—</span></div>
-              <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Realizado</span><span id="gr-Panos" style="font:600 12px var(--fb)">—</span></div>
-              <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Efic. Média</span><span id="ge-Panos" style="font:600 12px var(--fb)">—</span></div>
-              <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:8px;margin-top:2px"><span style="font:700 11px/1 var(--fh);letter-spacing:1px;color:var(--muted);text-transform:uppercase">Atingimento</span><span id="ga-Panos" style="font:900 16px/1 var(--fh)">—</span></div>
+            <div class="fi"><label>Mês</label>
+              <select id="op-mes" onchange="renderOperadores()" style="min-width:160px">
+                <option value="">Mês atual</option>
+              </select>
             </div>
+            <button class="btn bs bsm" onclick="renderOperadores()">↻ Atualizar</button>
+            <button class="btn bs bsm" onclick="exportOpExcel()" title="Exportar para Excel">⬇ Excel</button>
+            <button class="btn bs bsm" onclick="exportOpPDF()" title="Exportar para PDF">⬇ PDF</button>
           </div>
-          <!-- Máquina de Placas -->
-          <div class="kc" style="padding:24px;text-align:center">
-            <div style="font:700 11px/1 var(--fh);letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:18px">Máquina de Placas</div>
-            <div style="position:relative;width:150px;height:150px;margin:0 auto"><canvas id="chart-Placas"></canvas></div>
-            <div style="margin-top:16px;display:flex;flex-direction:column;gap:6px;text-align:left">
-              <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Meta Total</span><span id="gm-Placas" style="font:600 12px var(--fb)">—</span></div>
-              <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Realizado</span><span id="gr-Placas" style="font:600 12px var(--fb)">—</span></div>
-              <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Efic. Média</span><span id="ge-Placas" style="font:600 12px var(--fb)">—</span></div>
-              <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:8px;margin-top:2px"><span style="font:700 11px/1 var(--fh);letter-spacing:1px;color:var(--muted);text-transform:uppercase">Atingimento</span><span id="ga-Placas" style="font:900 16px/1 var(--fh)">—</span></div>
+          <div class="tw">
+            <div class="th">
+              <div class="tt">EFICIÊNCIA POR OPERADOR</div>
+              <span id="op-count" style="font-size:12px;color:var(--muted)"></span>
             </div>
-          </div>
-          <!-- Máquina de Rodos -->
-          <div class="kc" style="padding:24px;text-align:center">
-            <div style="font:700 11px/1 var(--fh);letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:18px">Máquina de Rodos</div>
-            <div style="position:relative;width:150px;height:150px;margin:0 auto"><canvas id="chart-Rodos"></canvas></div>
-            <div style="margin-top:16px;display:flex;flex-direction:column;gap:6px;text-align:left">
-              <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Meta Total</span><span id="gm-Rodos" style="font:600 12px var(--fb)">—</span></div>
-              <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Realizado</span><span id="gr-Rodos" style="font:600 12px var(--fb)">—</span></div>
-              <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Efic. Média</span><span id="ge-Rodos" style="font:600 12px var(--fb)">—</span></div>
-              <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:8px;margin-top:2px"><span style="font:700 11px/1 var(--fh);letter-spacing:1px;color:var(--muted);text-transform:uppercase">Atingimento</span><span id="ga-Rodos" style="font:900 16px/1 var(--fh)">—</span></div>
-            </div>
-          </div>
-          <!-- Trabalho Manual -->
-          <div class="kc" style="padding:24px;text-align:center">
-            <div style="font:700 11px/1 var(--fh);letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:18px">Trabalho Manual</div>
-            <div style="position:relative;width:150px;height:150px;margin:0 auto"><canvas id="chart-Manual"></canvas></div>
-            <div style="margin-top:16px;display:flex;flex-direction:column;gap:6px;text-align:left">
-              <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Meta Total</span><span id="gm-Manual" style="font:600 12px var(--fb)">—</span></div>
-              <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Realizado</span><span id="gr-Manual" style="font:600 12px var(--fb)">—</span></div>
-              <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Efic. Média</span><span id="ge-Manual" style="font:600 12px var(--fb)">—</span></div>
-              <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:8px;margin-top:2px"><span style="font:700 11px/1 var(--fh);letter-spacing:1px;color:var(--muted);text-transform:uppercase">Atingimento</span><span id="ga-Manual" style="font:900 16px/1 var(--fh)">—</span></div>
+            <div style="overflow-x:auto">
+              <table>
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Matrícula</th>
+                    <th>Nome</th>
+                    <th>Total Realizado</th>
+                    <th>Lançamentos</th>
+                    <th>Efic. Média</th>
+                    <th style="color:var(--accent)">Realiz. T1</th>
+                    <th style="color:var(--blue)">Realiz. T2</th>
+                    <th style="color:var(--red)">Refugo</th>
+                  </tr>
+                </thead>
+                <tbody id="op-body">
+                  <tr>
+                    <td colspan="8" class="empty">Selecione um período.</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- OPERADORES -->
-      <div class="ps" id="sec-operadores">
-        <div class="filtbar" style="margin-bottom:18px">
-          <div class="fi"><label>Célula</label>
-            <select id="op-celula" onchange="renderOperadores()" style="min-width:160px">
-              <option value="">Todas as Células</option>
-              <option value="Aluminio">Celular de Alumínio</option>
-              <option value="Panos">Máquina de Panos</option>
-              <option value="Placas">Máquina de Placas</option>
-              <option value="Rodos">Máquina de Rodos</option>
-              <option value="Manual">Trabalho Manual</option>
-            </select>
-          </div>
-          <div class="fi"><label>Mês</label>
-            <select id="op-mes" onchange="renderOperadores()" style="min-width:160px">
-              <option value="">Mês atual</option>
-            </select>
-          </div>
-          <button class="btn bs bsm" onclick="renderOperadores()">↻ Atualizar</button>
-          <button class="btn bs bsm" onclick="exportOpExcel()" title="Exportar para Excel">⬇ Excel</button>
-          <button class="btn bs bsm" onclick="exportOpPDF()" title="Exportar para PDF">⬇ PDF</button>
-        </div>
-        <div class="tw">
-          <div class="th">
-            <div class="tt">EFICIÊNCIA POR OPERADOR</div>
-            <span id="op-count" style="font-size:12px;color:var(--muted)"></span>
-          </div>
-          <div style="overflow-x:auto"><table><thead><tr>
-            <th>#</th><th>Matrícula</th><th>Nome</th><th>Total Realizado</th><th>Lançamentos</th>
-            <th>Efic. Média</th><th style="color:var(--accent)">Realiz. T1</th>
-            <th style="color:var(--blue)">Realiz. T2</th><th style="color:var(--red)">Refugo</th>
-          </tr></thead><tbody id="op-body">
-            <tr><td colspan="8" class="empty">Selecione um período.</td></tr>
-          </tbody></table></div>
-        </div>
-      </div>
-
-      <!-- USUÁRIOS (admin) -->
-      <div class="ps" id="sec-usuarios">
-        <div class="fc">
-          <div class="fct">ADICIONAR USUÁRIO</div>
-          <div class="fgrid c4">
-            <div class="fi"><label>Login</label><input type="text" id="u-login" placeholder="usuario"></div>
-            <div class="fi"><label>Senha</label><input type="password" id="u-senha" placeholder="senha"></div>
-            <div class="fi"><label>Nome Completo</label><input type="text" id="u-nome" placeholder="Nome"></div>
-            <div class="fi"><label>Perfil</label>
-              <select id="u-perfil"><option value="operador">Operador</option><option value="admin">Administrador</option></select>
+        <!-- USUÁRIOS (admin) -->
+        <div class="ps" id="sec-usuarios">
+          <div class="fc">
+            <div class="fct">ADICIONAR USUÁRIO</div>
+            <div class="fgrid c4">
+              <div class="fi"><label>Login</label><input type="text" id="u-login" placeholder="usuario"></div>
+              <div class="fi"><label>Senha</label><input type="password" id="u-senha" placeholder="senha"></div>
+              <div class="fi"><label>Nome Completo</label><input type="text" id="u-nome" placeholder="Nome"></div>
+              <div class="fi"><label>Perfil</label>
+                <select id="u-perfil">
+                  <option value="operador">Operador</option>
+                  <option value="admin">Administrador</option>
+                </select>
+              </div>
             </div>
+            <div class="brow"><button class="btn bp bsm" onclick="salvarUser()">+ ADICIONAR</button></div>
           </div>
-          <div class="brow"><button class="btn bp bsm" onclick="salvarUser()">+ ADICIONAR</button></div>
+          <div class="tw">
+            <div class="th">
+              <div class="tt">USUÁRIOS</div>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Login</th>
+                  <th>Nome</th>
+                  <th>Perfil</th>
+                  <th>Ação</th>
+                </tr>
+              </thead>
+              <tbody id="users-body"></tbody>
+            </table>
+          </div>
         </div>
-        <div class="tw">
-          <div class="th"><div class="tt">USUÁRIOS</div></div>
-          <table><thead><tr><th>#</th><th>Login</th><th>Nome</th><th>Perfil</th><th>Ação</th></tr></thead>
-          <tbody id="users-body"></tbody></table>
-        </div>
-      </div>
 
+      </div>
     </div>
   </div>
-</div>
 
-<!-- MODAL PROGRAMA -->
-<div id="modal-prog" style="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:none;align-items:center;justify-content:center">
-  <div style="background:var(--surface);border:1px solid var(--border);border-top:3px solid var(--accent);width:480px;max-width:95vw;padding:26px">
-    <div style="font:700 20px/1 var(--fh);margin-bottom:18px" id="modal-prog-title">ADICIONAR AO PROGRAMA</div>
-    <div class="fgrid c2">
-      <div class="fi"><label>Mês/Ano</label><input type="month" id="mp-mes"></div>
-      <div class="fi"><label>Referência</label>
-        <select id="mp-ref"><option value="">Selecione...</option></select></div>
-      <div class="fi"><label>Meta por Turno (pçs)</label><input type="number" id="mp-meta" min="0" placeholder="0"></div>
-      <div class="fi"><label>Nº de Turnos (1 ou 2)</label>
-        <select id="mp-nt"><option value="2">2 Turnos</option><option value="1">1 Turno</option></select></div>
-    </div>
-    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:20px">
-      <button class="btn bs bsm" onclick="closeModal()">Cancelar</button>
-      <button class="btn bp bsm" onclick="salvarProg()">SALVAR</button>
+  <!-- MODAL PROGRAMA -->
+  <div id="modal-prog"
+    style="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:none;align-items:center;justify-content:center">
+    <div
+      style="background:var(--surface);border:1px solid var(--border);border-top:3px solid var(--accent);width:480px;max-width:95vw;padding:26px">
+      <div style="font:700 20px/1 var(--fh);margin-bottom:18px" id="modal-prog-title">ADICIONAR AO PROGRAMA</div>
+      <div class="fgrid c2">
+        <div class="fi"><label>Mês/Ano</label><input type="month" id="mp-mes"></div>
+        <div class="fi"><label>Referência</label>
+          <select id="mp-ref">
+            <option value="">Selecione...</option>
+          </select>
+        </div>
+        <div class="fi"><label>Meta por Turno (pçs)</label><input type="number" id="mp-meta" min="0" placeholder="0">
+        </div>
+        <div class="fi"><label>Nº de Turnos (1 ou 2)</label>
+          <select id="mp-nt">
+            <option value="2">2 Turnos</option>
+            <option value="1">1 Turno</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:20px">
+        <button class="btn bs bsm" onclick="closeModal()">Cancelar</button>
+        <button class="btn bp bsm" onclick="salvarProg()">SALVAR</button>
+      </div>
     </div>
   </div>
-</div>
 
-<script>
-// ═══════════════════════════════════════
-// CONFIG
-// ═══════════════════════════════════════
-const API = '/api';
-let TOKEN = localStorage.getItem('sp_token');
-let USER  = null;
-let _refs = [];   // cache de referências
-let _meses = [];  // cache de meses do programa
-let _progCache = {}; // cache programa por mês
-let lastRefsUpdate = localStorage.getItem('sp_refs_updated');
+  <script>
+    // ═══════════════════════════════════════
+    // CONFIG
+    // ═══════════════════════════════════════
+    const API = '/api';
+    let TOKEN = localStorage.getItem('sp_token');
+    let USER = null;
+    let _refs = [];   // cache de referências
+    let _meses = [];  // cache de meses do programa
+    let _progCache = {}; // cache programa por mês
+    let lastRefsUpdate = localStorage.getItem('sp_refs_updated');
 
-// ═══════════════════════════════════════
-// HTTP
-// ═══════════════════════════════════════
-async function api(method, path, body) {
-  const opts = {
-    method,
-    headers: { 'Content-Type': 'application/json', ...(TOKEN ? { Authorization: 'Bearer ' + TOKEN } : {}) },
-  };
-  if (body) opts.body = JSON.stringify(body);
-  const r = await fetch(API + '/' + path, opts);
-  const data = await r.json();
-  if (!r.ok) throw new Error(data.error || 'Erro ' + r.status);
-  return data;
-}
-const GET    = path        => api('GET',    path);
-const POST   = (path, b)  => api('POST',   path, b);
-const PUT    = (path, b)  => api('PUT',    path, b);
-const DELETE = (path, b)  => api('DELETE', path, b);
+    // ═══════════════════════════════════════
+    // HTTP
+    // ═══════════════════════════════════════
+    async function api(method, path, body) {
+      const opts = {
+        method,
+        headers: { 'Content-Type': 'application/json', ...(TOKEN ? { Authorization: 'Bearer ' + TOKEN } : {}) },
+      };
+      if (body) opts.body = JSON.stringify(body);
+      const r = await fetch(API + '/' + path, opts);
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || 'Erro ' + r.status);
+      return data;
+    }
+    const GET = path => api('GET', path);
+    const POST = (path, b) => api('POST', path, b);
+    const PUT = (path, b) => api('PUT', path, b);
+    const DELETE = (path, b) => api('DELETE', path, b);
 
-// ═══════════════════════════════════════
-// UTILS
-// ═══════════════════════════════════════
-const fmt   = n => (+n||0).toLocaleString('pt-BR');
-const pct   = (a,b) => b>0?((a/b)*100).toFixed(1)+'%':'—';
-const eClass= v => v>=1?'ok':v>=.8?'warn':'bad';
-const mesL  = m => { if(!m)return''; const[y,mo]=m.split('-'); return ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][+mo-1]+'/'+y; };
-const today = () => new Date().toISOString().slice(0,10);
-const curMes= () => new Date().toISOString().slice(0,7);
+    // ═══════════════════════════════════════
+    // UTILS
+    // ═══════════════════════════════════════
+    const fmt = n => (+n || 0).toLocaleString('pt-BR');
+    const pct = (a, b) => b > 0 ? ((a / b) * 100).toFixed(1) + '%' : '—';
+    const eClass = v => v >= 1 ? 'ok' : v >= .8 ? 'warn' : 'bad';
+    const mesL = m => { if (!m) return ''; const [y, mo] = m.split('-'); return ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'][+mo - 1] + '/' + y; };
+    const today = () => new Date().toISOString().slice(0, 10);
+    const curMes = () => new Date().toISOString().slice(0, 7);
 
-function showAlert(id, type, msg, ms=4000) {
-  const el = document.getElementById(id);
-  el.innerHTML = `<div class="alert ${type}">${msg}</div>`;
-  if (ms) setTimeout(() => el.innerHTML='', ms);
-}
+    function showAlert(id, type, msg, ms = 4000) {
+      const el = document.getElementById(id);
+      el.innerHTML = `<div class="alert ${type}">${msg}</div>`;
+      if (ms) setTimeout(() => el.innerHTML = '', ms);
+    }
 
-// ═══════════════════════════════════════
-// LOGIN
-// ═══════════════════════════════════════
-async function doLogin() {
-  const login = document.getElementById('l-user').value.trim();
-  const senha = document.getElementById('l-pass').value;
-  try {
-    const data = await POST('login', { login, senha });
-    TOKEN = data.token;
-    USER  = data.usuario;
-    localStorage.setItem('sp_token', TOKEN);
-    showApp();
-  } catch(e) {
-    document.getElementById('l-err').style.display = 'block';
-  }
-}
-document.addEventListener('keydown', e => {
-  if (e.key === 'Enter' && document.getElementById('login').style.display !== 'none') doLogin();
-});
-
-function doLogout() {
-  TOKEN = null; USER = null;
-  localStorage.removeItem('sp_token');
-  document.getElementById('app').style.display = 'none';
-  document.getElementById('login').style.display = 'flex';
-  ['l-user','l-pass'].forEach(id => document.getElementById(id).value = '');
-  document.getElementById('l-err').style.display = 'none';
-}
-
-async function showApp() {
-  document.getElementById('login').style.display = 'none';
-  document.getElementById('app').style.display = 'block';
-  document.getElementById('sb-nome').textContent = USER.nome;
-  document.getElementById('sb-role').textContent = USER.perfil === 'admin' ? '▸ Administrador' : '▸ Operador';
-  const b = document.getElementById('tp-badge');
-  b.textContent = USER.perfil === 'admin' ? 'Admin' : 'Operador';
-  b.className = 'badge ' + (USER.perfil === 'admin' ? 'ba' : 'bu');
-  document.getElementById('tp-date').textContent = new Date().toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'short'});
-
-  if (USER.perfil === 'admin') {
-    ['snl-admin','ni-refs','ni-users'].forEach(id => document.getElementById(id).style.display = '');
-    document.getElementById('hist-del-col').style.display = '';
-    document.getElementById('btn-add-prog').style.display = '';
-    document.getElementById('th-prog-ac').style.display = '';
-  }
-
-  // Carrega dados base
-  await Promise.all([loadMeses(), loadRefs()]);
-  populateSelects();
-  goTo('dashboard');
-}
-
-// ═══════════════════════════════════════
-// DADOS BASE
-// ═══════════════════════════════════════
-async function loadMeses() {
-  try {
-    _meses = await GET('meses');
-    const cur = curMes();
-    ['dash-mes','prog-mes','graf-mes','op-mes'].forEach(id => {
-      const sel = document.getElementById(id);
-      if (!sel) return;
-      const old = sel.value;
-      const defOpt = id === 'dash-mes' ? '<option value="">Mês atual</option>' : '<option value="">Selecione...</option>';
-      sel.innerHTML = defOpt + _meses.map(m => `<option value="${m}"${m===cur?' selected':''}>${mesL(m)} (${m})</option>`).join('');
-      if (old && _meses.includes(old)) sel.value = old;
+    // ═══════════════════════════════════════
+    // LOGIN
+    // ═══════════════════════════════════════
+    async function doLogin() {
+      const login = document.getElementById('l-user').value.trim();
+      const senha = document.getElementById('l-pass').value;
+      try {
+        const data = await POST('login', { login, senha });
+        TOKEN = data.token;
+        USER = data.usuario;
+        localStorage.setItem('sp_token', TOKEN);
+        showApp();
+      } catch (e) {
+        document.getElementById('l-err').style.display = 'block';
+      }
+    }
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && document.getElementById('login').style.display !== 'none') doLogin();
     });
-  } catch(e) { console.warn('Erro ao carregar meses:', e); }
-}
 
-async function loadRefs() {
-  try {
-    const rows = await GET('referencias');
-    _refs = rows;
-    const histSel = document.getElementById('hist-ref');
-    if (histSel) {
-      histSel.innerHTML = '<option value="">Todas</option>' + _refs.map(r => `<option value="${r.cod}">${r.cod}</option>`).join('');
+    function doLogout() {
+      TOKEN = null; USER = null;
+      localStorage.removeItem('sp_token');
+      document.getElementById('app').style.display = 'none';
+      document.getElementById('login').style.display = 'flex';
+      ['l-user', 'l-pass'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('l-err').style.display = 'none';
     }
-    const mpRef = document.getElementById('mp-ref');
-    if (mpRef) {
-      mpRef.innerHTML = '<option value="">Selecione...</option>' + _refs.map(r => `<option value="${r.cod}">${r.cod} — ${r.descricao}</option>`).join('');
+
+    async function showApp() {
+      document.getElementById('login').style.display = 'none';
+      document.getElementById('app').style.display = 'block';
+      document.getElementById('sb-nome').textContent = USER.nome;
+      document.getElementById('sb-role').textContent = USER.perfil === 'admin' ? '▸ Administrador' : '▸ Operador';
+      const b = document.getElementById('tp-badge');
+      b.textContent = USER.perfil === 'admin' ? 'Admin' : 'Operador';
+      b.className = 'badge ' + (USER.perfil === 'admin' ? 'ba' : 'bu');
+      document.getElementById('tp-date').textContent = new Date().toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' });
+
+      if (USER.perfil === 'admin') {
+        ['snl-admin', 'ni-refs', 'ni-users'].forEach(id => document.getElementById(id).style.display = '');
+        document.getElementById('hist-del-col').style.display = '';
+        document.getElementById('btn-add-prog').style.display = '';
+        document.getElementById('th-prog-ac').style.display = '';
+      }
+
+      // Carrega dados base
+      await Promise.all([loadMeses(), loadRefs()]);
+      populateSelects();
+      goTo('dashboard');
     }
-  } catch(e) { console.warn('Erro ao carregar refs:', e); }
-}
 
-function populateSelects() {
-  atualizaRefSel();
-}
+    // ═══════════════════════════════════════
+    // DADOS BASE
+    // ═══════════════════════════════════════
+    async function loadMeses() {
+      try {
+        _meses = await GET('meses');
+        const cur = curMes();
+        ['dash-mes', 'prog-mes', 'graf-mes', 'op-mes'].forEach(id => {
+          const sel = document.getElementById(id);
+          if (!sel) return;
+          const old = sel.value;
+          const defOpt = id === 'dash-mes' ? '<option value="">Mês atual</option>' : '<option value="">Selecione...</option>';
+          sel.innerHTML = defOpt + _meses.map(m => `<option value="${m}"${m === cur ? ' selected' : ''}>${mesL(m)} (${m})</option>`).join('');
+          if (old && _meses.includes(old)) sel.value = old;
+        });
+      } catch (e) { console.warn('Erro ao carregar meses:', e); }
+    }
 
-// ═══════════════════════════════════════
-// NAVEGAÇÃO
-// ═══════════════════════════════════════
-const TITLES = { dashboard:'Dashboard', programa:'Programa do Mês', lancamento:'Lançar Produção', historico:'Histórico', graficos:'Gráficos por Célula', operadores:'Operadores', referencias:'Referências', usuarios:'Usuários' };
-function goTo(p) {
-  document.querySelectorAll('.ps').forEach(s => s.classList.remove('active'));
-  document.querySelectorAll('.ni').forEach(n => n.classList.remove('active'));
-  document.getElementById('sec-' + p)?.classList.add('active');
-  document.querySelectorAll('.ni').forEach(n => { if (n.getAttribute('onclick')?.includes("'" + p + "'")) n.classList.add('active'); });
-  document.getElementById('tp-title').textContent = TITLES[p] || p;
-  if (p === 'dashboard')  renderDashboard();
-  if (p === 'programa')   renderPrograma();
-  if (p === 'lancamento') { document.getElementById('ldata').value = today(); atualizaRefSel(); }
-  if (p === 'historico')  { document.getElementById('hist-mes').value = curMes(); renderHist(); }
-  if (p === 'graficos')   renderGraficos();
-  if (p === 'operadores') renderOperadores();
-  if (p === 'referencias') renderRefs();
-  if (p === 'usuarios')   renderUsers();
-}
+    async function loadRefs() {
+      try {
+        const rows = await GET('referencias');
+        _refs = rows;
+        const histSel = document.getElementById('hist-ref');
+        if (histSel) {
+          histSel.innerHTML = '<option value="">Todas</option>' + _refs.map(r => `<option value="${r.cod}">${r.cod}</option>`).join('');
+        }
+        const mpRef = document.getElementById('mp-ref');
+        if (mpRef) {
+          mpRef.innerHTML = '<option value="">Selecione...</option>' + _refs.map(r => `<option value="${r.cod}">${r.cod} — ${r.descricao}</option>`).join('');
+        }
+      } catch (e) { console.warn('Erro ao carregar refs:', e); }
+    }
 
-// ═══════════════════════════════════════
-// DASHBOARD
-// ═══════════════════════════════════════
-let _dashData = null;
-let _dashMes  = null;
+    function populateSelects() {
+      atualizaRefSel();
+    }
 
-async function renderDashboard() {
-  const mes    = document.getElementById('dash-mes').value || curMes();
-  const celula = document.getElementById('dash-celula').value;
-  document.getElementById('kpi-grid').innerHTML = `<div class="kc y"><div class="kl">Carregando</div><div class="kv"><span class="loading"></span></div></div>`;
-  try {
-    let q = 'dashboard?mes=' + mes;
-    if (celula) q += '&celula=' + celula;
-    const d = await GET(q);
-    _dashData = d; _dashMes = mes;
-    const t = d.totais;
-    const celulaLbl = celula ? ` · ${document.getElementById('dash-celula').options[document.getElementById('dash-celula').selectedIndex].text}` : '';
-    document.getElementById('dash-mes-lbl').textContent = mesL(mes) + celulaLbl;
+    // ═══════════════════════════════════════
+    // NAVEGAÇÃO
+    // ═══════════════════════════════════════
+    const TITLES = { dashboard: 'Dashboard', programa: 'Programa do Mês', lancamento: 'Lançar Produção', historico: 'Histórico', graficos: 'Gráficos por Célula', operadores: 'Operadores', referencias: 'Referências', usuarios: 'Usuários' };
+    function goTo(p) {
+      document.querySelectorAll('.ps').forEach(s => s.classList.remove('active'));
+      document.querySelectorAll('.ni').forEach(n => n.classList.remove('active'));
+      document.getElementById('sec-' + p)?.classList.add('active');
+      document.querySelectorAll('.ni').forEach(n => { if (n.getAttribute('onclick')?.includes("'" + p + "'")) n.classList.add('active'); });
+      document.getElementById('tp-title').textContent = TITLES[p] || p;
+      if (p === 'dashboard') renderDashboard();
+      if (p === 'programa') renderPrograma();
+      if (p === 'lancamento') { document.getElementById('ldata').value = today(); atualizaRefSel(); }
+      if (p === 'historico') { document.getElementById('hist-mes').value = curMes(); renderHist(); }
+      if (p === 'graficos') renderGraficos();
+      if (p === 'operadores') renderOperadores();
+      if (p === 'referencias') renderRefs();
+      if (p === 'usuarios') renderUsers();
+    }
 
-    document.getElementById('kpi-grid').innerHTML = `
+    // ═══════════════════════════════════════
+    // DASHBOARD
+    // ═══════════════════════════════════════
+    let _dashData = null;
+    let _dashMes = null;
+
+    async function renderDashboard() {
+      const mes = document.getElementById('dash-mes').value || curMes();
+      const celula = document.getElementById('dash-celula').value;
+      document.getElementById('kpi-grid').innerHTML = `<div class="kc y"><div class="kl">Carregando</div><div class="kv"><span class="loading"></span></div></div>`;
+      try {
+        let q = 'dashboard?mes=' + mes;
+        if (celula) q += '&celula=' + celula;
+        const d = await GET(q);
+        _dashData = d; _dashMes = mes;
+        const t = d.totais;
+        const celulaLbl = celula ? ` · ${document.getElementById('dash-celula').options[document.getElementById('dash-celula').selectedIndex].text}` : '';
+        document.getElementById('dash-mes-lbl').textContent = mesL(mes) + celulaLbl;
+
+        document.getElementById('kpi-grid').innerHTML = `
       <div class="kc y"><div class="kl">Total Realizado</div><div class="kv">${fmt(t.total_realizado)}</div><div class="ks">peças — ${mesL(mes)}</div></div>
-      <div class="kc b"><div class="kl">Meta do Mês</div><div class="kv">${fmt(d.prog.reduce((s,r)=>s+ +r.meta_total,0))}</div><div class="ks">peças programadas</div></div>
-      <div class="kc g"><div class="kl">Eficiência Média</div><div class="kv">${t.efic_media ? (t.efic_media*100).toFixed(1)+'%' : '—'}</div><div class="ks">todos os turnos</div></div>
+      <div class="kc b"><div class="kl">Meta do Mês</div><div class="kv">${fmt(d.prog.reduce((s, r) => s + +r.meta_total, 0))}</div><div class="ks">peças programadas</div></div>
+      <div class="kc g"><div class="kl">Eficiência Média</div><div class="kv">${t.efic_media ? (t.efic_media * 100).toFixed(1) + '%' : '—'}</div><div class="ks">todos os turnos</div></div>
       <div class="kc r"><div class="kl">Total Refugo</div><div class="kv">${fmt(t.total_refugo)}</div><div class="ks">peças rejeitadas</div></div>`;
 
-    // Refs
-    const rb = document.getElementById('dash-ref-body');
-    rb.innerHTML = !d.prog.length
-      ? `<tr><td colspan="7" class="empty"><div class="ei">☰</div>Nenhuma referência no programa deste mês.</td></tr>`
-      : d.prog.map(r => {
-          const mT = +r.meta_total||0, rT = +r.realizado||0, sl = rT-mT;
-          const p = mT>0?rT/mT:0; const bc = p>=1?'pg':p>=.8?'py':'pr';
-          return `<tr>
+        // Refs
+        const rb = document.getElementById('dash-ref-body');
+        rb.innerHTML = !d.prog.length
+          ? `<tr><td colspan="7" class="empty"><div class="ei">☰</div>Nenhuma referência no programa deste mês.</td></tr>`
+          : d.prog.map(r => {
+            const mT = +r.meta_total || 0, rT = +r.realizado || 0, sl = rT - mT;
+            const p = mT > 0 ? rT / mT : 0; const bc = p >= 1 ? 'pg' : p >= .8 ? 'py' : 'pr';
+            return `<tr>
             <td style="font-family:monospace;font-size:11px">${r.cod}</td>
             <td style="max-width:200px;font-size:12px">${r.descricao}</td>
             <td><span class="bt" style="background:rgba(204,0,0,.15);color:var(--accent)">${r.num_turnos}T</span></td>
             <td>${fmt(mT)}</td><td><strong>${fmt(rT)}</strong></td>
-            <td class="${sl>=0?'ok':'bad'}">${sl>=0?'+':''}${fmt(sl)}</td>
-            <td style="min-width:100px"><div style="font-size:10px;color:var(--muted);margin-bottom:2px">${pct(rT,mT)}</div>
-            <div class="pw"><div class="pf ${bc}" style="width:${Math.min(p*100,100)}%"></div></div></td>
+            <td class="${sl >= 0 ? 'ok' : 'bad'}">${sl >= 0 ? '+' : ''}${fmt(sl)}</td>
+            <td style="min-width:100px"><div style="font-size:10px;color:var(--muted);margin-bottom:2px">${pct(rT, mT)}</div>
+            <div class="pw"><div class="pf ${bc}" style="width:${Math.min(p * 100, 100)}%"></div></div></td>
           </tr>`;
+          }).join('');
+
+        // Turnos
+        document.getElementById('dash-turno').innerHTML = ['T1', 'T2'].map(t => {
+          const row = d.turnos.find(x => x.turno === t);
+          const r = row ? +row.realizado : 0;
+          const ef = row?.efic_media ? +row.efic_media : null;
+          return `<tr><td><span class="bt ${t.toLowerCase()}">${t}</span></td><td><strong>${fmt(r)}</strong></td>
+        <td class="${ef != null ? eClass(ef) : ''}">${ef != null ? (ef * 100).toFixed(1) + '%' : '—'}</td></tr>`;
         }).join('');
 
-    // Turnos
-    document.getElementById('dash-turno').innerHTML = ['T1','T2'].map(t => {
-      const row = d.turnos.find(x => x.turno === t);
-      const r = row ? +row.realizado : 0;
-      const ef = row?.efic_media ? +row.efic_media : null;
-      return `<tr><td><span class="bt ${t.toLowerCase()}">${t}</span></td><td><strong>${fmt(r)}</strong></td>
-        <td class="${ef!=null?eClass(ef):''}">${ef!=null?(ef*100).toFixed(1)+'%':'—'}</td></tr>`;
-    }).join('');
-
-    // Recentes
-    document.getElementById('dash-recent').innerHTML = !d.recentes.length
-      ? `<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:16px;font-size:12px">Sem lançamentos</td></tr>`
-      : d.recentes.map(l => `<tr>
+        // Recentes
+        document.getElementById('dash-recent').innerHTML = !d.recentes.length
+          ? `<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:16px;font-size:12px">Sem lançamentos</td></tr>`
+          : d.recentes.map(l => `<tr>
           <td style="font-family:monospace;font-size:10px">${l.ref_cod}</td>
           <td><span class="bt ${l.turno?.toLowerCase()}">${l.turno}</span></td>
-          <td>${fmt(+l.realizado||0)}</td>
-          <td style="font-size:10px;color:var(--muted)">${String(l.data).slice(0,10).slice(5).split('-').reverse().join('/')}</td>
+          <td>${fmt(+l.realizado || 0)}</td>
+          <td style="font-size:10px;color:var(--muted)">${String(l.data).slice(0, 10).slice(5).split('-').reverse().join('/')}</td>
         </tr>`).join('');
 
-  } catch(e) {
-    document.getElementById('kpi-grid').innerHTML = `<div class="kc r"><div class="kl">Erro</div><div class="kv" style="font-size:14px">${e.message}</div></div>`;
-  }
-}
+      } catch (e) {
+        document.getElementById('kpi-grid').innerHTML = `<div class="kc r"><div class="kl">Erro</div><div class="kv" style="font-size:14px">${e.message}</div></div>`;
+      }
+    }
 
-// ═══════════════════════════════════════
-// PROGRAMA
-// ═══════════════════════════════════════
-async function renderPrograma() {
-  const mes = document.getElementById('prog-mes').value;
-  const celula = document.getElementById('prog-celula').value;
-  const tbody = document.getElementById('prog-body');
-  if (!mes) { tbody.innerHTML = `<tr><td colspan="10" class="empty">Selecione um mês.</td></tr>`; return; }
-  tbody.innerHTML = `<tr><td colspan="10" class="empty"><span class="loading"></span></td></tr>`;
-  try {
-    const rows = await GET('programa?mes=' + mes + '&celula=' + celula);
-    const lancs = await GET('lancamentos?mes=' + mes + '&celula=' + celula);
-    const cacheKey = mes + '_' + celula;
-    _progCache[cacheKey] = rows;
-    document.getElementById('prog-count').textContent = rows.length + ' referências';
-    const isAdmin = USER?.perfil === 'admin';
-    tbody.innerHTML = !rows.length
-      ? `<tr><td colspan="10" class="empty"><div class="ei">☰</div>Nenhuma referência no programa. ${isAdmin?'Clique em "+ Adicionar Referência".':''}</td></tr>`
-      : rows.map(r => {
-          const mT = +r.meta_total||0;
-          const rT1 = lancs.filter(l=>l.ref_cod===r.ref_cod&&l.turno==='T1').reduce((s,l)=>s+(+l.realizado||0),0);
-          const rT2 = lancs.filter(l=>l.ref_cod===r.ref_cod&&l.turno==='T2').reduce((s,l)=>s+(+l.realizado||0),0);
-          const rT = rT1+rT2; const p = mT>0?rT/mT:0;
-          return `<tr>
+    // ═══════════════════════════════════════
+    // PROGRAMA
+    // ═══════════════════════════════════════
+    async function renderPrograma() {
+      const mes = document.getElementById('prog-mes').value;
+      const celula = document.getElementById('prog-celula').value;
+      const tbody = document.getElementById('prog-body');
+      if (!mes) { tbody.innerHTML = `<tr><td colspan="10" class="empty">Selecione um mês.</td></tr>`; return; }
+      tbody.innerHTML = `<tr><td colspan="10" class="empty"><span class="loading"></span></td></tr>`;
+      try {
+        const rows = await GET('programa?mes=' + mes + '&celula=' + celula);
+        const lancs = await GET('lancamentos?mes=' + mes + '&celula=' + celula);
+        const cacheKey = mes + '_' + celula;
+        _progCache[cacheKey] = rows;
+        document.getElementById('prog-count').textContent = rows.length + ' referências';
+        const isAdmin = USER?.perfil === 'admin';
+        tbody.innerHTML = !rows.length
+          ? `<tr><td colspan="10" class="empty"><div class="ei">☰</div>Nenhuma referência no programa. ${isAdmin ? 'Clique em "+ Adicionar Referência".' : ''}</td></tr>`
+          : rows.map(r => {
+            const mT = +r.meta_total || 0;
+            const rT1 = lancs.filter(l => l.ref_cod === r.ref_cod && l.turno === 'T1').reduce((s, l) => s + (+l.realizado || 0), 0);
+            const rT2 = lancs.filter(l => l.ref_cod === r.ref_cod && l.turno === 'T2').reduce((s, l) => s + (+l.realizado || 0), 0);
+            const rT = rT1 + rT2; const p = mT > 0 ? rT / mT : 0;
+            return `<tr>
             <td style="font-family:monospace;font-size:11px">${r.ref_cod}</td>
             <td style="max-width:220px;font-size:12px">${r.descricao}</td>
-            <td>${fmt(+r.meta_turno||0)}</td>
+            <td>${fmt(+r.meta_turno || 0)}</td>
             <td><span class="bt" style="background:rgba(204,0,0,.15);color:var(--accent)">${r.num_turnos}T</span></td>
             <td><strong>${fmt(mT)}</strong></td>
             <td style="color:var(--accent)">${fmt(rT1)}</td>
             <td style="color:var(--blue)">${fmt(rT2)}</td>
             <td><strong>${fmt(rT)}</strong></td>
-            <td class="${p>=1?'ok':p>=.8?'warn':'bad'}">${pct(rT,mT)}</td>
-            ${isAdmin?`<td>
+            <td class="${p >= 1 ? 'ok' : p >= .8 ? 'warn' : 'bad'}">${pct(rT, mT)}</td>
+            ${isAdmin ? `<td>
               <button class="btn bd bsm" onclick="deleteProg('${r.ref_cod}','${mes}','${celula}')">✕</button>
-            </td>`:''}
+            </td>`: ''}
           </tr>`;
-        }).join('');
-  } catch(e) {
-    tbody.innerHTML = `<tr><td colspan="10" class="empty" style="color:var(--red)">${e.message}</td></tr>`;
-  }
-}
-
-function openModalProg() {
-  const mes = document.getElementById('prog-mes').value || curMes();
-  document.getElementById('mp-mes').value = mes;
-  document.getElementById('mp-ref').innerHTML = '<option value="">Selecione...</option>' +
-    _refs.map(r => `<option value="${r.cod}">${r.cod} — ${r.descricao}</option>`).join('');
-  document.getElementById('mp-meta').value = '';
-  document.getElementById('mp-nt').value = '2';
-  document.getElementById('modal-prog').style.display = 'flex';
-}
-function closeModal() { document.getElementById('modal-prog').style.display = 'none'; }
-
-async function salvarProg() {
-  const mes_ano   = document.getElementById('mp-mes').value;
-  const ref_cod   = document.getElementById('mp-ref').value;
-  const celula    = document.getElementById('prog-celula').value;
-  const meta_turno= +document.getElementById('mp-meta').value || 0;
-  const num_turnos= +document.getElementById('mp-nt').value || 2;
-  if (!mes_ano || !ref_cod) { alert('Selecione o mês e a referência.'); return; }
-  try {
-    await POST('programa', { mes_ano, ref_cod, celula, meta_turno, num_turnos });
-    closeModal();
-    await loadMeses();
-    document.getElementById('prog-mes').value = mes_ano;
-    renderPrograma();
-  } catch(e) { alert('Erro: ' + e.message); }
-}
-
-async function deleteProg(ref_cod, mes_ano, celula) {
-  if (!confirm(`Remover ${ref_cod} do programa de ${mesL(mes_ano)}?`)) return;
-  try { await DELETE('programa', { ref_cod, mes_ano, celula }); renderPrograma(); }
-  catch(e) { alert('Erro: ' + e.message); }
-}
-
-// ═══════════════════════════════════════
-// LANÇAMENTO
-// ═══════════════════════════════════════
-async function atualizaRefSel() {
-  const mes = (document.getElementById('ldata')?.value || today()).slice(0,7);
-  const celula = document.getElementById('lcelula').value;
-  const sel = document.getElementById('lref');
-  const note = document.getElementById('lref-note');
-  try {
-    const cacheKey = mes + '_' + celula;
-    const rows = _progCache[cacheKey] || await GET('programa?mes=' + mes + '&celula=' + celula);
-    _progCache[cacheKey] = rows;
-    if (!rows.length) {
-      sel.innerHTML = '<option value="">— Sem programa para este mês —</option>';
-      note.textContent = '⚠ Nenhuma referência no programa de ' + mesL(mes) + '.';
-      note.style.display = 'block';
-    } else {
-      sel.innerHTML = '<option value="">Selecione a referência...</option>' +
-        rows.map(r => `<option value="${r.ref_cod}">${r.ref_cod} — ${r.descricao} (${r.num_turnos}T · ${fmt(+r.meta_turno||0)} pçs/turno)</option>`).join('');
-      note.style.display = 'none';
+          }).join('');
+      } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="10" class="empty" style="color:var(--red)">${e.message}</td></tr>`;
+      }
     }
-  } catch(e) { sel.innerHTML = '<option value="">Erro ao carregar</option>'; }
-  preencheRef();
-}
 
-function preencheRef() {
-  const mes = (document.getElementById('ldata')?.value || today()).slice(0,7);
-  const celula = document.getElementById('lcelula').value;
-  const cod = document.getElementById('lref').value;
-  const cacheKey = mes + '_' + celula;
-  const rows = _progCache[cacheKey] || [];
-  const r = rows.find(x => x.ref_cod === cod);
-  document.getElementById('ldesc').value = r ? r.descricao : '';
-  const meta = r ? +r.meta_turno || 0 : 0;
-  const metaHora = r ? +r.meta_hora || 0 : 0;
-  document.getElementById('lmeta').value = meta || '';
-  document.getElementById('lmeta-hora').value = metaHora || '';
-  const info = document.getElementById('lref-note');
-  if (r) { info.textContent = `${r.num_turnos} turno(s) — meta ${fmt(meta)} pçs/turno${metaHora ? ` (${metaHora} pçs/h)` : ''}`; info.style.display='block'; info.style.color='var(--muted)'; }
-  calcEfic();
-}
-
-function calcEfic() {
-  const real = +document.getElementById('lreal').value||0;
-  const metaHora = +document.getElementById('lmeta-hora').value||0;
-  const metaTurno = +document.getElementById('lmeta').value||0;
-  const hi = document.getElementById('lhi').value;
-  const hf = document.getElementById('lhf').value;
-  const el = document.getElementById('lefic');
-  
-  let metaCalculada = 0;
-
-  if (metaHora > 0) {
-    if (hi && hf) {
-      const [h1, m1] = hi.split(':').map(Number);
-      const [h2, m2] = hf.split(':').map(Number);
-      const horas = ((h2*60+m2) - (h1*60+m1)) / 60;
-      if (horas > 0) metaCalculada = metaHora * horas;
+    function openModalProg() {
+      const mes = document.getElementById('prog-mes').value || curMes();
+      document.getElementById('mp-mes').value = mes;
+      document.getElementById('mp-ref').innerHTML = '<option value="">Selecione...</option>' +
+        _refs.map(r => `<option value="${r.cod}">${r.cod} — ${r.descricao}</option>`).join('');
+      document.getElementById('mp-meta').value = '';
+      document.getElementById('mp-nt').value = '2';
+      document.getElementById('modal-prog').style.display = 'flex';
     }
-    // meta_hora cadastrada mas sem horas → não calcula
-  } else if (metaTurno > 0) {
-    metaCalculada = metaTurno;
-  }
-  
-  if (metaCalculada > 0 && real > 0) {
-    const e = real / metaCalculada;
-    el.value = (e*100).toFixed(1) + '%';
-    el.style.color = e >= 1 ? 'var(--green)' : e >= .8 ? 'var(--orange)' : 'var(--red)';
-  } else { el.value = '—'; el.style.color = ''; }
-}
+    function closeModal() { document.getElementById('modal-prog').style.display = 'none'; }
 
-async function salvarLanc() {
-  const data     = document.getElementById('ldata').value;
-  const turno    = document.getElementById('lturno').value;
-  const ref_cod  = document.getElementById('lref').value;
-  const real     = document.getElementById('lreal').value;
-  const operador = document.getElementById('lop').value.trim();
-  if (!operador) {
-    showAlert('alrt-lanc','ae','⚠ Informe o nome do operador antes de salvar.');
-    document.getElementById('lop').focus();
-    return;
-  }
-  if (!data||!turno||!ref_cod||real==='') {
-    showAlert('alrt-lanc','ae','Preencha Data, Turno, Referência e Realizado.'); return;
-  }
-  try {
-    const eficStr = document.getElementById('lefic').value;
-    const eficiencia = eficStr && eficStr !== '—' ? parseFloat(eficStr) / 100 : null;
-    
-    await POST('lancamentos', {
-      data, turno, ref_cod,
-      descricao: document.getElementById('ldesc').value,
-      operador:  operador,
-      realizado: +real,
-      meta:      +document.getElementById('lmeta').value||0,
-      refugo:    +document.getElementById('lrefugo').value||0,
-      hora_inicio: document.getElementById('lhi').value,
-      hora_fim:    document.getElementById('lhf').value,
-      obs:         document.getElementById('lobs').value,
-      eficiencia:  eficiencia
-    });
-    showAlert('alrt-lanc','as','✔ Lançamento salvo com sucesso no banco de dados!');
-    limparForm(true);
-  } catch(e) { showAlert('alrt-lanc','ae','Erro ao salvar: ' + e.message); }
-}
+    async function salvarProg() {
+      const mes_ano = document.getElementById('mp-mes').value;
+      const ref_cod = document.getElementById('mp-ref').value;
+      const celula = document.getElementById('prog-celula').value;
+      const meta_turno = +document.getElementById('mp-meta').value || 0;
+      const num_turnos = +document.getElementById('mp-nt').value || 2;
+      if (!mes_ano || !ref_cod) { alert('Selecione o mês e a referência.'); return; }
+      try {
+        await POST('programa', { mes_ano, ref_cod, celula, meta_turno, num_turnos });
+        closeModal();
+        await loadMeses();
+        document.getElementById('prog-mes').value = mes_ano;
+        renderPrograma();
+      } catch (e) { alert('Erro: ' + e.message); }
+    }
 
-function limparForm(keepDate) {
-  ['lturno','lref','ldesc','lmeta','lhi','lhf','lreal','lrefugo','lobs','lefic','lop']
-    .forEach(id => document.getElementById(id).value='');
-  if (!keepDate) document.getElementById('ldata').value = today();
-}
+    async function deleteProg(ref_cod, mes_ano, celula) {
+      if (!confirm(`Remover ${ref_cod} do programa de ${mesL(mes_ano)}?`)) return;
+      try { await DELETE('programa', { ref_cod, mes_ano, celula }); renderPrograma(); }
+      catch (e) { alert('Erro: ' + e.message); }
+    }
 
-// ═══════════════════════════════════════
-// HISTÓRICO
-// ═══════════════════════════════════════
-async function renderHist() {
-  const mes   = document.getElementById('hist-mes').value;
-  const turno = document.getElementById('hist-turno').value;
-  const ref   = document.getElementById('hist-ref').value;
-  const celula = document.getElementById('hist-celula').value;
-  const tbody = document.getElementById('hist-body');
-  tbody.innerHTML = `<tr><td colspan="13" class="empty"><span class="loading"></span></td></tr>`;
-  try {
-    let q = 'lancamentos?mes=' + mes + '&celula=' + celula;
-    if (turno) q += '&turno=' + turno;
-    if (ref)   q += '&ref=' + ref;
-    const rows = await GET(q);
-    document.getElementById('hist-count').textContent = rows.length + ' registro(s)';
-    const isAdmin = USER?.perfil === 'admin';
-    tbody.innerHTML = !rows.length
-      ? `<tr><td colspan="13" class="empty"><div class="ei">⊞</div>Nenhum lançamento encontrado.</td></tr>`
-      : rows.map(l => {
-          const m=+l.meta||0, r=+l.realizado||0, ef=+l.eficiencia||0;
-          return `<tr>
-            <td style="white-space:nowrap">${String(l.data).slice(0,10).split('-').reverse().join('/')}</td>
+    // ═══════════════════════════════════════
+    // LANÇAMENTO
+    // ═══════════════════════════════════════
+    async function atualizaRefSel() {
+      const mes = (document.getElementById('ldata')?.value || today()).slice(0, 7);
+      const celula = document.getElementById('lcelula').value;
+      const sel = document.getElementById('lref');
+      const note = document.getElementById('lref-note');
+      try {
+        const cacheKey = mes + '_' + celula;
+        const rows = _progCache[cacheKey] || await GET('programa?mes=' + mes + '&celula=' + celula);
+        _progCache[cacheKey] = rows;
+        if (!rows.length) {
+          sel.innerHTML = '<option value="">— Sem programa para este mês —</option>';
+          note.textContent = '⚠ Nenhuma referência no programa de ' + mesL(mes) + '.';
+          note.style.display = 'block';
+        } else {
+          sel.innerHTML = '<option value="">Selecione a referência...</option>' +
+            rows.map(r => `<option value="${r.ref_cod}">${r.ref_cod} — ${r.descricao} (${r.num_turnos}T · ${fmt(+r.meta_turno || 0)} pçs/turno)</option>`).join('');
+          note.style.display = 'none';
+        }
+      } catch (e) { sel.innerHTML = '<option value="">Erro ao carregar</option>'; }
+      preencheRef();
+    }
+
+    function preencheRef() {
+      const mes = (document.getElementById('ldata')?.value || today()).slice(0, 7);
+      const celula = document.getElementById('lcelula').value;
+      const cod = document.getElementById('lref').value;
+      const cacheKey = mes + '_' + celula;
+      const rows = _progCache[cacheKey] || [];
+      const r = rows.find(x => x.ref_cod === cod);
+      document.getElementById('ldesc').value = r ? r.descricao : '';
+      const meta = r ? +r.meta_turno || 0 : 0;
+      const metaHora = r ? +r.meta_hora || 0 : 0;
+      document.getElementById('lmeta').value = meta || '';
+      document.getElementById('lmeta-hora').value = metaHora || '';
+      const info = document.getElementById('lref-note');
+      if (r) { info.textContent = `${r.num_turnos} turno(s) — meta ${fmt(meta)} pçs/turno${metaHora ? ` (${metaHora} pçs/h)` : ''}`; info.style.display = 'block'; info.style.color = 'var(--muted)'; }
+      calcEfic();
+    }
+
+    function calcEfic() {
+      const real = +document.getElementById('lreal').value || 0;
+      const metaHora = +document.getElementById('lmeta-hora').value || 0;
+      const metaTurno = +document.getElementById('lmeta').value || 0;
+      const hi = document.getElementById('lhi').value;
+      const hf = document.getElementById('lhf').value;
+      const el = document.getElementById('lefic');
+
+      let metaCalculada = 0;
+
+      if (metaHora > 0) {
+        if (hi && hf) {
+          const [h1, m1] = hi.split(':').map(Number);
+          const [h2, m2] = hf.split(':').map(Number);
+          const horas = ((h2 * 60 + m2) - (h1 * 60 + m1)) / 60;
+          if (horas > 0) metaCalculada = metaHora * horas;
+        }
+        // meta_hora cadastrada mas sem horas → não calcula
+      } else if (metaTurno > 0) {
+        metaCalculada = metaTurno;
+      }
+
+      if (metaCalculada > 0 && real > 0) {
+        const e = real / metaCalculada;
+        el.value = (e * 100).toFixed(1) + '%';
+        el.style.color = e >= 1 ? 'var(--green)' : e >= .8 ? 'var(--orange)' : 'var(--red)';
+      } else { el.value = '—'; el.style.color = ''; }
+    }
+
+    async function salvarLanc() {
+      const data = document.getElementById('ldata').value;
+      const turno = document.getElementById('lturno').value;
+      const ref_cod = document.getElementById('lref').value;
+      const real = document.getElementById('lreal').value;
+      const operador = document.getElementById('lop').value.trim();
+      if (!operador) {
+        showAlert('alrt-lanc', 'ae', '⚠ Informe o nome do operador antes de salvar.');
+        document.getElementById('lop').focus();
+        return;
+      }
+      if (!data || !turno || !ref_cod || real === '') {
+        showAlert('alrt-lanc', 'ae', 'Preencha Data, Turno, Referência e Realizado.'); return;
+      }
+      try {
+        const eficStr = document.getElementById('lefic').value;
+        const eficiencia = eficStr && eficStr !== '—' ? parseFloat(eficStr) / 100 : null;
+
+        await POST('lancamentos', {
+          data, turno, ref_cod,
+          descricao: document.getElementById('ldesc').value,
+          operador: operador,
+          realizado: +real,
+          meta: +document.getElementById('lmeta').value || 0,
+          refugo: +document.getElementById('lrefugo').value || 0,
+          hora_inicio: document.getElementById('lhi').value,
+          hora_fim: document.getElementById('lhf').value,
+          obs: document.getElementById('lobs').value,
+          eficiencia: eficiencia
+        });
+        showAlert('alrt-lanc', 'as', '✔ Lançamento salvo com sucesso no banco de dados!');
+        limparForm(true);
+      } catch (e) { showAlert('alrt-lanc', 'ae', 'Erro ao salvar: ' + e.message); }
+    }
+
+    function limparForm(keepDate) {
+      ['lturno', 'lref', 'ldesc', 'lmeta', 'lhi', 'lhf', 'lreal', 'lrefugo', 'lobs', 'lefic', 'lop']
+        .forEach(id => document.getElementById(id).value = '');
+      if (!keepDate) document.getElementById('ldata').value = today();
+    }
+
+    // ═══════════════════════════════════════
+    // HISTÓRICO
+    // ═══════════════════════════════════════
+    async function renderHist() {
+      const mes = document.getElementById('hist-mes').value;
+      const turno = document.getElementById('hist-turno').value;
+      const ref = document.getElementById('hist-ref').value;
+      const celula = document.getElementById('hist-celula').value;
+      const tbody = document.getElementById('hist-body');
+      tbody.innerHTML = `<tr><td colspan="13" class="empty"><span class="loading"></span></td></tr>`;
+      try {
+        let q = 'lancamentos?mes=' + mes + '&celula=' + celula;
+        if (turno) q += '&turno=' + turno;
+        if (ref) q += '&ref=' + ref;
+        const rows = await GET(q);
+        document.getElementById('hist-count').textContent = rows.length + ' registro(s)';
+        const isAdmin = USER?.perfil === 'admin';
+        tbody.innerHTML = !rows.length
+          ? `<tr><td colspan="13" class="empty"><div class="ei">⊞</div>Nenhum lançamento encontrado.</td></tr>`
+          : rows.map(l => {
+            const m = +l.meta || 0, r = +l.realizado || 0, ef = +l.eficiencia || 0;
+            return `<tr>
+            <td style="white-space:nowrap">${String(l.data).slice(0, 10).split('-').reverse().join('/')}</td>
             <td><span class="bt ${l.turno?.toLowerCase()}">${l.turno}</span></td>
             <td style="font-family:monospace;font-size:11px">${l.ref_cod}</td>
-            <td style="max-width:160px;font-size:11px">${l.descricao||''}</td>
-            <td style="font-size:11px">${l.operador||''}</td>
+            <td style="max-width:160px;font-size:11px">${l.descricao || ''}</td>
+            <td style="font-size:11px">${l.operador || ''}</td>
             <td><strong>${fmt(r)}</strong></td><td>${fmt(m)}</td>
-            <td style="color:var(--red)">${fmt(+l.refugo||0)}</td>
-            <td class="${ef>0?eClass(ef):''}">${ef>0?(ef*100).toFixed(1)+'%':'—'}</td>
-            <td style="font-size:10px">${l.hora_inicio||'—'}</td>
-            <td style="font-size:10px">${l.hora_fim||'—'}</td>
-            <td style="max-width:130px;font-size:10px;color:var(--muted)">${l.obs||''}</td>
-            ${isAdmin?`<td><button class="btn bd bsm" onclick="delLanc(${l.id})">✕</button></td>`:''}
+            <td style="color:var(--red)">${fmt(+l.refugo || 0)}</td>
+            <td class="${ef > 0 ? eClass(ef) : ''}">${ef > 0 ? (ef * 100).toFixed(1) + '%' : '—'}</td>
+            <td style="font-size:10px">${l.hora_inicio || '—'}</td>
+            <td style="font-size:10px">${l.hora_fim || '—'}</td>
+            <td style="max-width:130px;font-size:10px;color:var(--muted)">${l.obs || ''}</td>
+            ${isAdmin ? `<td><button class="btn bd bsm" onclick="delLanc(${l.id})">✕</button></td>` : ''}
           </tr>`;
-        }).join('');
-  } catch(e) {
-    tbody.innerHTML = `<tr><td colspan="13" class="empty" style="color:var(--red)">${e.message}</td></tr>`;
-  }
-}
+          }).join('');
+      } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="13" class="empty" style="color:var(--red)">${e.message}</td></tr>`;
+      }
+    }
 
-async function delLanc(id) {
-  if (!confirm('Excluir este lançamento?')) return;
-  try { await DELETE('lancamentos', { id }); renderHist(); }
-  catch(e) { alert('Erro: ' + e.message); }
-}
+    async function delLanc(id) {
+      if (!confirm('Excluir este lançamento?')) return;
+      try { await DELETE('lancamentos', { id }); renderHist(); }
+      catch (e) { alert('Erro: ' + e.message); }
+    }
 
-// ═══════════════════════════════════════
-// REFERÊNCIAS
-// ═══════════════════════════════════════
-function renderRefsTable(rows) {
-  const tbody = document.getElementById('refs-body');
-  tbody.innerHTML = !rows.length
-    ? `<tr><td colspan="5" class="empty">Nenhuma referência encontrada.</td></tr>`
-    : rows.map((r,i) => `<tr>
-        <td>${i+1}</td>
+    // ═══════════════════════════════════════
+    // REFERÊNCIAS
+    // ═══════════════════════════════════════
+    function renderRefsTable(rows) {
+      const tbody = document.getElementById('refs-body');
+      tbody.innerHTML = !rows.length
+        ? `<tr><td colspan="5" class="empty">Nenhuma referência encontrada.</td></tr>`
+        : rows.map((r, i) => `<tr>
+        <td>${i + 1}</td>
         <td style="font-family:monospace;font-size:11px">${r.cod}</td>
         <td>${r.descricao}</td>
         <td style="cursor:pointer;color:var(--blue)" onclick="editMetaHora('${r.cod}', '${r.descricao}', ${r.meta_hora || 0})">${r.meta_hora ? r.meta_hora + ' pçs/h' : '—'} <span style="font-size:12px">✎</span></td>
         <td><button class="btn bd bsm" onclick="delRef('${r.cod}')">✕</button></td>
       </tr>`).join('');
-}
+    }
 
-function filterRefs() {
-  const termo = document.getElementById('refs-busca').value.toLowerCase().trim();
-  const filtrados = !termo ? _refs : _refs.filter(r =>
-    r.cod.toLowerCase().includes(termo) || r.descricao.toLowerCase().includes(termo)
-  );
-  renderRefsTable(filtrados);
-}
+    function filterRefs() {
+      const termo = document.getElementById('refs-busca').value.toLowerCase().trim();
+      const filtrados = !termo ? _refs : _refs.filter(r =>
+        r.cod.toLowerCase().includes(termo) || r.descricao.toLowerCase().includes(termo)
+      );
+      renderRefsTable(filtrados);
+    }
 
-async function renderRefs() {
-  const tbody = document.getElementById('refs-body');
-  tbody.innerHTML = `<tr><td colspan="5" class="empty"><span class="loading"></span></td></tr>`;
-  try {
-    const rows = await GET('referencias');
-    _refs = rows;
-    document.getElementById('refs-busca').value = '';
-    renderRefsTable(rows);
-  } catch(e) {
-    tbody.innerHTML = `<tr><td colspan="5" class="empty" style="color:var(--red)">${e.message}</td></tr>`;
-  }
-}
+    async function renderRefs() {
+      const tbody = document.getElementById('refs-body');
+      tbody.innerHTML = `<tr><td colspan="5" class="empty"><span class="loading"></span></td></tr>`;
+      try {
+        const rows = await GET('referencias');
+        _refs = rows;
+        document.getElementById('refs-busca').value = '';
+        renderRefsTable(rows);
+      } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="5" class="empty" style="color:var(--red)">${e.message}</td></tr>`;
+      }
+    }
 
-async function salvarRef() {
-  const cod = document.getElementById('r-cod').value.trim().toUpperCase();
-  const desc= document.getElementById('r-desc').value.trim();
-  const metaHora = document.getElementById('r-meta-hora').value.trim();
-  if (!cod||!desc) { alert('Código e Descrição são obrigatórios.'); return; }
-  try {
-    await POST('referencias', { 
-      cod, 
-      descricao: desc,
-      meta_hora: metaHora ? parseInt(metaHora) : null
-    });
-    document.getElementById('r-cod').value = '';
-    document.getElementById('r-desc').value = '';
-    document.getElementById('r-meta-hora').value = '';
-    renderRefs();
-    loadRefs();
-  } catch(e) { alert('Erro: ' + e.message); }
-}
+    async function salvarRef() {
+      const cod = document.getElementById('r-cod').value.trim().toUpperCase();
+      const desc = document.getElementById('r-desc').value.trim();
+      const metaHora = document.getElementById('r-meta-hora').value.trim();
+      if (!cod || !desc) { alert('Código e Descrição são obrigatórios.'); return; }
+      try {
+        await POST('referencias', {
+          cod,
+          descricao: desc,
+          meta_hora: metaHora ? parseInt(metaHora) : null
+        });
+        document.getElementById('r-cod').value = '';
+        document.getElementById('r-desc').value = '';
+        document.getElementById('r-meta-hora').value = '';
+        renderRefs();
+        loadRefs();
+      } catch (e) { alert('Erro: ' + e.message); }
+    }
 
-async function delRef(cod) {
-  if (!confirm(`Desativar referência ${cod}?`)) return;
-  try { await DELETE('referencias', { cod }); renderRefs(); loadRefs(); }
-  catch(e) { alert('Erro: ' + e.message); }
-}
+    async function delRef(cod) {
+      if (!confirm(`Desativar referência ${cod}?`)) return;
+      try { await DELETE('referencias', { cod }); renderRefs(); loadRefs(); }
+      catch (e) { alert('Erro: ' + e.message); }
+    }
 
-async function editMetaHora(cod, descricao, metaAtual) {
-  const novaMetaStr = prompt(`Editar Meta Hora para ${cod}:\n(Digite o número de peças/hora)`, metaAtual || '');
-  if (novaMetaStr === null) return;
-  const novaMeta = novaMetaStr.trim() ? parseInt(novaMetaStr) : null;
-  if (novaMetaStr.trim() && isNaN(novaMeta)) { alert('Valor inválido. Use apenas números.'); return; }
-  try {
-    await POST('referencias', { cod, descricao, meta_hora: novaMeta });
-    renderRefs();
-    loadRefs();
-  } catch(e) { alert('Erro ao atualizar: ' + e.message); }
-}
+    async function editMetaHora(cod, descricao, metaAtual) {
+      const novaMetaStr = prompt(`Editar Meta Hora para ${cod}:\n(Digite o número de peças/hora)`, metaAtual || '');
+      if (novaMetaStr === null) return;
+      const novaMeta = novaMetaStr.trim() ? parseInt(novaMetaStr) : null;
+      if (novaMetaStr.trim() && isNaN(novaMeta)) { alert('Valor inválido. Use apenas números.'); return; }
+      try {
+        await POST('referencias', { cod, descricao, meta_hora: novaMeta });
+        renderRefs();
+        loadRefs();
+      } catch (e) { alert('Erro ao atualizar: ' + e.message); }
+    }
 
-// ═══════════════════════════════════════
-// USUÁRIOS
-// ═══════════════════════════════════════
-async function renderUsers() {
-  const tbody = document.getElementById('users-body');
-  try {
-    const rows = await GET('usuarios');
-    tbody.innerHTML = rows.map((u,i) => `<tr>
-      <td>${i+1}</td>
+    // ═══════════════════════════════════════
+    // USUÁRIOS
+    // ═══════════════════════════════════════
+    async function renderUsers() {
+      const tbody = document.getElementById('users-body');
+      try {
+        const rows = await GET('usuarios');
+        tbody.innerHTML = rows.map((u, i) => `<tr>
+      <td>${i + 1}</td>
       <td style="font-family:monospace">${u.login}</td>
       <td>${u.nome}</td>
-      <td><span class="badge ${u.perfil==='admin'?'ba':'bu'}">${u.perfil}</span></td>
-      <td>${u.login!=='admin'?`<button class="btn bd bsm" onclick="delUser('${u.login}')">✕</button>`:'—'}</td>
+      <td><span class="badge ${u.perfil === 'admin' ? 'ba' : 'bu'}">${u.perfil}</span></td>
+      <td>${u.login !== 'admin' ? `<button class="btn bd bsm" onclick="delUser('${u.login}')">✕</button>` : '—'}</td>
     </tr>`).join('');
-  } catch(e) { tbody.innerHTML = `<tr><td colspan="5" class="empty" style="color:var(--red)">${e.message}</td></tr>`; }
-}
+      } catch (e) { tbody.innerHTML = `<tr><td colspan="5" class="empty" style="color:var(--red)">${e.message}</td></tr>`; }
+    }
 
-async function salvarUser() {
-  const login = document.getElementById('u-login').value.trim();
-  const senha = document.getElementById('u-senha').value;
-  const nome  = document.getElementById('u-nome').value.trim();
-  const perfil= document.getElementById('u-perfil').value;
-  if (!login||!senha||!nome) { alert('Preencha todos os campos.'); return; }
-  try {
-    await POST('usuarios', { login, senha, nome, perfil });
-    ['u-login','u-senha','u-nome'].forEach(id => document.getElementById(id).value='');
-    renderUsers();
-  } catch(e) { alert('Erro: ' + e.message); }
-}
+    async function salvarUser() {
+      const login = document.getElementById('u-login').value.trim();
+      const senha = document.getElementById('u-senha').value;
+      const nome = document.getElementById('u-nome').value.trim();
+      const perfil = document.getElementById('u-perfil').value;
+      if (!login || !senha || !nome) { alert('Preencha todos os campos.'); return; }
+      try {
+        await POST('usuarios', { login, senha, nome, perfil });
+        ['u-login', 'u-senha', 'u-nome'].forEach(id => document.getElementById(id).value = '');
+        renderUsers();
+      } catch (e) { alert('Erro: ' + e.message); }
+    }
 
-async function delUser(login) {
-  if (!confirm(`Desativar usuário ${login}?`)) return;
-  try { await DELETE('usuarios', { login }); renderUsers(); }
-  catch(e) { alert('Erro: ' + e.message); }
-}
+    async function delUser(login) {
+      if (!confirm(`Desativar usuário ${login}?`)) return;
+      try { await DELETE('usuarios', { login }); renderUsers(); }
+      catch (e) { alert('Erro: ' + e.message); }
+    }
 
-// ═══════════════════════════════════════
-// GRÁFICOS
-// ═══════════════════════════════════════
-const CELULAS_GRAF = [
-  { value: 'Aluminio', label: 'Celular de Alumínio' },
-  { value: 'Panos',    label: 'Máquina de Panos' },
-  { value: 'Placas',   label: 'Máquina de Placas' },
-  { value: 'Rodos',    label: 'Máquina de Rodos' },
-  { value: 'Manual',   label: 'Trabalho Manual' },
-];
-const _chartInstances = {};
+    // ═══════════════════════════════════════
+    // GRÁFICOS
+    // ═══════════════════════════════════════
+    const CELULAS_GRAF = [
+      { value: 'Aluminio', label: 'Celular de Alumínio' },
+      { value: 'Panos', label: 'Máquina de Panos' },
+      { value: 'Placas', label: 'Máquina de Placas' },
+      { value: 'Rodos', label: 'Máquina de Rodos' },
+      { value: 'Manual', label: 'Trabalho Manual' },
+    ];
+    const _chartInstances = {};
 
-async function renderGraficos() {
-  const mes = document.getElementById('graf-mes').value || curMes();
+    async function renderGraficos() {
+      const mes = document.getElementById('graf-mes').value || curMes();
 
-  const results = await Promise.all(
-    CELULAS_GRAF.map(c => GET('dashboard?mes=' + mes + '&celula=' + c.value).catch(() => null))
-  );
+      const results = await Promise.all(
+        CELULAS_GRAF.map(c => GET('dashboard?mes=' + mes + '&celula=' + c.value).catch(() => null))
+      );
 
-  CELULAS_GRAF.forEach((c, i) => {
-    const d        = results[i];
-    const totais   = d?.totais || {};
-    const prog     = d?.prog   || [];
-    const metaTotal = prog.reduce((s, r) => s + (+r.meta_total || 0), 0);
-    const realizado = +totais.total_realizado || 0;
-    const eficMedia = totais.efic_media;
-    const p         = metaTotal > 0 ? realizado / metaTotal : 0;
-    const restante  = Math.max(metaTotal - realizado, 0);
-    const pctLabel  = metaTotal > 0 ? (p * 100).toFixed(1) + '%' : '—';
-    const cor       = p >= 1 ? '#10b981' : p >= 0.8 ? '#f97316' : '#CC0000';
+      CELULAS_GRAF.forEach((c, i) => {
+        const d = results[i];
+        const totais = d?.totais || {};
+        const prog = d?.prog || [];
+        const metaTotal = prog.reduce((s, r) => s + (+r.meta_total || 0), 0);
+        const realizado = +totais.total_realizado || 0;
+        const eficMedia = totais.efic_media;
+        const p = metaTotal > 0 ? realizado / metaTotal : 0;
+        const restante = Math.max(metaTotal - realizado, 0);
+        const pctLabel = metaTotal > 0 ? (p * 100).toFixed(1) + '%' : '—';
+        const cor = p >= 1 ? '#10b981' : p >= 0.8 ? '#f97316' : '#CC0000';
 
-    document.getElementById('gm-' + c.value).textContent = fmt(metaTotal) || '—';
-    document.getElementById('gr-' + c.value).textContent = fmt(realizado) || '—';
-    document.getElementById('ge-' + c.value).textContent = eficMedia ? (eficMedia * 100).toFixed(1) + '%' : '—';
-    const elAt = document.getElementById('ga-' + c.value);
-    elAt.textContent = pctLabel;
-    elAt.style.color = metaTotal > 0 ? cor : 'var(--muted)';
+        document.getElementById('gm-' + c.value).textContent = fmt(metaTotal) || '—';
+        document.getElementById('gr-' + c.value).textContent = fmt(realizado) || '—';
+        document.getElementById('ge-' + c.value).textContent = eficMedia ? (eficMedia * 100).toFixed(1) + '%' : '—';
+        const elAt = document.getElementById('ga-' + c.value);
+        elAt.textContent = pctLabel;
+        elAt.style.color = metaTotal > 0 ? cor : 'var(--muted)';
 
-    const canvas = document.getElementById('chart-' + c.value);
-    if (!canvas) return;
-    if (_chartInstances[c.value]) _chartInstances[c.value].destroy();
+        const canvas = document.getElementById('chart-' + c.value);
+        if (!canvas) return;
+        if (_chartInstances[c.value]) _chartInstances[c.value].destroy();
 
-    // plugin inline com closure — captura pctLabel e cor do escopo atual
-    const pluginCentro = {
-      id: 'centro_' + c.value,
-      afterDraw(chart) {
-        const { ctx, chartArea: { left, top, width, height } } = chart;
-        const cx = left + width / 2, cy = top + height / 2;
-        ctx.save();
-        ctx.font = '700 24px "Barlow Condensed", sans-serif';
-        ctx.fillStyle = metaTotal > 0 ? cor : '#888888';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(pctLabel, cx, cy);
-        ctx.restore();
-      }
-    };
+        // plugin inline com closure — captura pctLabel e cor do escopo atual
+        const pluginCentro = {
+          id: 'centro_' + c.value,
+          afterDraw(chart) {
+            const { ctx, chartArea: { left, top, width, height } } = chart;
+            const cx = left + width / 2, cy = top + height / 2;
+            ctx.save();
+            ctx.font = '700 24px "Barlow Condensed", sans-serif';
+            ctx.fillStyle = metaTotal > 0 ? cor : '#888888';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(pctLabel, cx, cy);
+            ctx.restore();
+          }
+        };
 
-    _chartInstances[c.value] = new Chart(canvas.getContext('2d'), {
-      type: 'doughnut',
-      data: {
-        datasets: [{
-          data: metaTotal > 0 ? [realizado, restante] : [1, 0],
-          backgroundColor: metaTotal > 0 ? [cor, '#2a2f3d'] : ['#2a2f3d', '#1e222d'],
-          borderWidth: 0,
-        }]
-      },
-      options: {
-        cutout: '72%',
-        plugins: { legend: { display: false }, tooltip: { enabled: false } },
-        animation: { animateRotate: true, duration: 800 }
-      },
-      plugins: [pluginCentro]
-    });
-  });
-}
+        _chartInstances[c.value] = new Chart(canvas.getContext('2d'), {
+          type: 'doughnut',
+          data: {
+            datasets: [{
+              data: metaTotal > 0 ? [realizado, restante] : [1, 0],
+              backgroundColor: metaTotal > 0 ? [cor, '#2a2f3d'] : ['#2a2f3d', '#1e222d'],
+              borderWidth: 0,
+            }]
+          },
+          options: {
+            cutout: '72%',
+            plugins: { legend: { display: false }, tooltip: { enabled: false } },
+            animation: { animateRotate: true, duration: 800 }
+          },
+          plugins: [pluginCentro]
+        });
+      });
+    }
 
-// ═══════════════════════════════════════
-// OPERADORES
-// ═══════════════════════════════════════
-let _opData = null;
+    // ═══════════════════════════════════════
+    // OPERADORES
+    // ═══════════════════════════════════════
+    let _opData = null;
 
-async function renderOperadores() {
-  const mes    = document.getElementById('op-mes').value || curMes();
-  const celula = document.getElementById('op-celula').value;
-  const tbody  = document.getElementById('op-body');
-  tbody.innerHTML = `<tr><td colspan="8" class="empty"><span class="loading"></span></td></tr>`;
-  try {
-    let q = 'operadores?mes=' + mes;
-    if (celula) q += '&celula=' + celula;
-    const rows = await GET(q);
-    _opData = { rows, mes, celula };
-    document.getElementById('op-count').textContent = rows.length + ' operador(es)';
-    tbody.innerHTML = !rows.length
-      ? `<tr><td colspan="9" class="empty"><div class="ei">◈</div>Nenhum lançamento encontrado para este período.</td></tr>`
-      : rows.map((r, i) => {
-          const ef = +r.efic_media || 0;
-          return `<tr>
+    async function renderOperadores() {
+      const mes = document.getElementById('op-mes').value || curMes();
+      const celula = document.getElementById('op-celula').value;
+      const tbody = document.getElementById('op-body');
+      tbody.innerHTML = `<tr><td colspan="8" class="empty"><span class="loading"></span></td></tr>`;
+      try {
+        let q = 'operadores?mes=' + mes;
+        if (celula) q += '&celula=' + celula;
+        const rows = await GET(q);
+        _opData = { rows, mes, celula };
+        document.getElementById('op-count').textContent = rows.length + ' operador(es)';
+        tbody.innerHTML = !rows.length
+          ? `<tr><td colspan="9" class="empty"><div class="ei">◈</div>Nenhum lançamento encontrado para este período.</td></tr>`
+          : rows.map((r, i) => {
+            const ef = +r.efic_media || 0;
+            return `<tr>
             <td>${i + 1}</td>
             <td style="font-family:monospace;font-size:12px">${r.operador || '—'}</td>
             <td style="font-weight:600">${r.nome_usuario || '<span style="color:var(--muted);font-size:11px">—</span>'}</td>
@@ -1070,163 +1287,164 @@ async function renderOperadores() {
             <td style="color:var(--blue)">${fmt(r.real_t2)}</td>
             <td style="color:var(--red)">${fmt(r.total_refugo)}</td>
           </tr>`;
-        }).join('');
-  } catch (e) {
-    tbody.innerHTML = `<tr><td colspan="8" class="empty" style="color:var(--red)">${e.message}</td></tr>`;
-  }
-}
-
-// ═══════════════════════════════════════
-// EXPORTAÇÃO
-// ═══════════════════════════════════════
-function exportDashExcel() {
-  if (!_dashData) { alert('Carregue o dashboard antes de exportar.'); return; }
-  const mes = _dashMes || curMes();
-  const wb  = XLSX.utils.book_new();
-
-  // Resumo KPIs
-  const metaTotal = _dashData.prog.reduce((s, r) => s + (+r.meta_total || 0), 0);
-  const ws1 = XLSX.utils.aoa_to_sheet([
-    ['SuperPro — Dashboard de Produção'],
-    ['Mês:', mesL(mes)],
-    [],
-    ['Indicador', 'Valor'],
-    ['Total Realizado', +_dashData.totais.total_realizado || 0],
-    ['Meta do Mês',     metaTotal],
-    ['Eficiência Média', _dashData.totais.efic_media ? (+_dashData.totais.efic_media * 100).toFixed(1) + '%' : '—'],
-    ['Total Refugo',    +_dashData.totais.total_refugo || 0],
-  ]);
-  XLSX.utils.book_append_sheet(wb, ws1, 'Resumo');
-
-  // Meta vs Realizado
-  const progRows = [['Cód.', 'Descrição', 'Turnos', 'Meta Total', 'Realizado', 'Saldo', '%']];
-  _dashData.prog.forEach(r => {
-    const mT = +r.meta_total || 0, rT = +r.realizado || 0;
-    progRows.push([r.cod, r.descricao, r.num_turnos + 'T', mT, rT, rT - mT, mT > 0 ? ((rT / mT) * 100).toFixed(1) + '%' : '—']);
-  });
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(progRows), 'Meta vs Realizado');
-
-  // Por Turno
-  const turnoRows = [['Turno', 'Realizado', 'Efic. Média']];
-  _dashData.turnos.forEach(t => turnoRows.push([t.turno, +t.realizado || 0, t.efic_media ? (+t.efic_media * 100).toFixed(1) + '%' : '—']));
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(turnoRows), 'Por Turno');
-
-  // Últimos Lançamentos
-  const recentRows = [['Ref.', 'Turno', 'Operador', 'Realizado', 'Data']];
-  _dashData.recentes.forEach(l => recentRows.push([l.ref_cod, l.turno, l.operador || '', +l.realizado || 0, String(l.data).slice(0, 10)]));
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(recentRows), 'Últimos Lançamentos');
-
-  XLSX.writeFile(wb, `dashboard_${mes}.xlsx`);
-}
-
-function exportDashPDF() {
-  if (!_dashData) { alert('Carregue o dashboard antes de exportar.'); return; }
-  const mes = _dashMes || curMes();
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF();
-
-  doc.setFontSize(16);
-  doc.setFont('helvetica', 'bold');
-  doc.text('SuperPro — Dashboard de Produção', 14, 18);
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  doc.text('Mês: ' + mesL(mes), 14, 26);
-
-  const metaTotal = _dashData.prog.reduce((s, r) => s + (+r.meta_total || 0), 0);
-  doc.autoTable({
-    startY: 32,
-    head: [['Indicador', 'Valor']],
-    body: [
-      ['Total Realizado', fmt(+_dashData.totais.total_realizado || 0)],
-      ['Meta do Mês',     fmt(metaTotal)],
-      ['Eficiência Média', _dashData.totais.efic_media ? (+_dashData.totais.efic_media * 100).toFixed(1) + '%' : '—'],
-      ['Total Refugo',    fmt(+_dashData.totais.total_refugo || 0)],
-    ],
-    theme: 'grid',
-    headStyles: { fillColor: [204, 0, 0], textColor: 255 },
-    columnStyles: { 1: { halign: 'right' } },
-  });
-
-  doc.autoTable({
-    startY: doc.lastAutoTable.finalY + 8,
-    head: [['Cód.', 'Descrição', 'Meta Total', 'Realizado', 'Saldo', '%']],
-    body: _dashData.prog.map(r => {
-      const mT = +r.meta_total || 0, rT = +r.realizado || 0;
-      return [r.cod, r.descricao, fmt(mT), fmt(rT), (rT >= mT ? '+' : '') + fmt(rT - mT), mT > 0 ? ((rT / mT) * 100).toFixed(1) + '%' : '—'];
-    }),
-    theme: 'grid',
-    headStyles: { fillColor: [204, 0, 0], textColor: 255 },
-    columnStyles: { 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' }, 5: { halign: 'right' } },
-  });
-
-  doc.save(`dashboard_${mes}.pdf`);
-}
-
-function exportOpExcel() {
-  if (!_opData) { alert('Carregue os dados antes de exportar.'); return; }
-  const { rows, mes } = _opData;
-  const wb  = XLSX.utils.book_new();
-  const data = [['#', 'Matrícula', 'Nome', 'Total Realizado', 'Lançamentos', 'Efic. Média', 'Realiz. T1', 'Realiz. T2', 'Refugo']];
-  rows.forEach((r, i) => {
-    const ef = +r.efic_media || 0;
-    data.push([i + 1, r.operador, r.nome_usuario || '', +r.total_realizado, +r.total_lancamentos, ef > 0 ? (ef * 100).toFixed(1) + '%' : '—', +r.real_t1, +r.real_t2, +r.total_refugo]);
-  });
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(data), 'Operadores');
-  XLSX.writeFile(wb, `operadores_${mes}.xlsx`);
-}
-
-function exportOpPDF() {
-  if (!_opData) { alert('Carregue os dados antes de exportar.'); return; }
-  const { rows, mes } = _opData;
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ orientation: 'landscape' });
-
-  doc.setFontSize(16);
-  doc.setFont('helvetica', 'bold');
-  doc.text('SuperPro — Eficiência por Operador', 14, 18);
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  doc.text('Mês: ' + mesL(mes), 14, 26);
-
-  doc.autoTable({
-    startY: 32,
-    head: [['#', 'Matrícula', 'Nome', 'Total Realizado', 'Lançamentos', 'Efic. Média', 'Realiz. T1', 'Realiz. T2', 'Refugo']],
-    body: rows.map((r, i) => {
-      const ef = +r.efic_media || 0;
-      return [i + 1, r.operador, r.nome_usuario || '—', fmt(r.total_realizado), r.total_lancamentos, ef > 0 ? (ef * 100).toFixed(1) + '%' : '—', fmt(r.real_t1), fmt(r.real_t2), fmt(r.total_refugo)];
-    }),
-    theme: 'grid',
-    headStyles: { fillColor: [204, 0, 0], textColor: 255 },
-    columnStyles: { 3: { halign: 'right' }, 6: { halign: 'right' }, 7: { halign: 'right' }, 8: { halign: 'right' } },
-  });
-
-  doc.save(`operadores_${mes}.pdf`);
-}
-
-// ═══════════════════════════════════════
-// INIT
-// ═══════════════════════════════════════
-async function init() {
-  if (TOKEN) {
-    try {
-      USER = await GET('me');
-      showApp();
-    } catch { TOKEN = null; localStorage.removeItem('sp_token'); }
-  }
-}
-
-window.addEventListener('focus', async () => {
-  const updated = localStorage.getItem('sp_refs_updated');
-  if (updated && updated !== lastRefsUpdate) {
-    lastRefsUpdate = updated;
-    await loadRefs();
-    if (document.getElementById('sec-referencias')?.classList.contains('active')) {
-      renderRefs();
+          }).join('');
+      } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="8" class="empty" style="color:var(--red)">${e.message}</td></tr>`;
+      }
     }
-  }
-});
 
-init();
-</script>
+    // ═══════════════════════════════════════
+    // EXPORTAÇÃO
+    // ═══════════════════════════════════════
+    function exportDashExcel() {
+      if (!_dashData) { alert('Carregue o dashboard antes de exportar.'); return; }
+      const mes = _dashMes || curMes();
+      const wb = XLSX.utils.book_new();
+
+      // Resumo KPIs
+      const metaTotal = _dashData.prog.reduce((s, r) => s + (+r.meta_total || 0), 0);
+      const ws1 = XLSX.utils.aoa_to_sheet([
+        ['SuperPro — Dashboard de Produção'],
+        ['Mês:', mesL(mes)],
+        [],
+        ['Indicador', 'Valor'],
+        ['Total Realizado', +_dashData.totais.total_realizado || 0],
+        ['Meta do Mês', metaTotal],
+        ['Eficiência Média', _dashData.totais.efic_media ? (+_dashData.totais.efic_media * 100).toFixed(1) + '%' : '—'],
+        ['Total Refugo', +_dashData.totais.total_refugo || 0],
+      ]);
+      XLSX.utils.book_append_sheet(wb, ws1, 'Resumo');
+
+      // Meta vs Realizado
+      const progRows = [['Cód.', 'Descrição', 'Turnos', 'Meta Total', 'Realizado', 'Saldo', '%']];
+      _dashData.prog.forEach(r => {
+        const mT = +r.meta_total || 0, rT = +r.realizado || 0;
+        progRows.push([r.cod, r.descricao, r.num_turnos + 'T', mT, rT, rT - mT, mT > 0 ? ((rT / mT) * 100).toFixed(1) + '%' : '—']);
+      });
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(progRows), 'Meta vs Realizado');
+
+      // Por Turno
+      const turnoRows = [['Turno', 'Realizado', 'Efic. Média']];
+      _dashData.turnos.forEach(t => turnoRows.push([t.turno, +t.realizado || 0, t.efic_media ? (+t.efic_media * 100).toFixed(1) + '%' : '—']));
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(turnoRows), 'Por Turno');
+
+      // Últimos Lançamentos
+      const recentRows = [['Ref.', 'Turno', 'Operador', 'Realizado', 'Data']];
+      _dashData.recentes.forEach(l => recentRows.push([l.ref_cod, l.turno, l.operador || '', +l.realizado || 0, String(l.data).slice(0, 10)]));
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(recentRows), 'Últimos Lançamentos');
+
+      XLSX.writeFile(wb, `dashboard_${mes}.xlsx`);
+    }
+
+    function exportDashPDF() {
+      if (!_dashData) { alert('Carregue o dashboard antes de exportar.'); return; }
+      const mes = _dashMes || curMes();
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text('SuperPro — Dashboard de Produção', 14, 18);
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Mês: ' + mesL(mes), 14, 26);
+
+      const metaTotal = _dashData.prog.reduce((s, r) => s + (+r.meta_total || 0), 0);
+      doc.autoTable({
+        startY: 32,
+        head: [['Indicador', 'Valor']],
+        body: [
+          ['Total Realizado', fmt(+_dashData.totais.total_realizado || 0)],
+          ['Meta do Mês', fmt(metaTotal)],
+          ['Eficiência Média', _dashData.totais.efic_media ? (+_dashData.totais.efic_media * 100).toFixed(1) + '%' : '—'],
+          ['Total Refugo', fmt(+_dashData.totais.total_refugo || 0)],
+        ],
+        theme: 'grid',
+        headStyles: { fillColor: [204, 0, 0], textColor: 255 },
+        columnStyles: { 1: { halign: 'right' } },
+      });
+
+      doc.autoTable({
+        startY: doc.lastAutoTable.finalY + 8,
+        head: [['Cód.', 'Descrição', 'Meta Total', 'Realizado', 'Saldo', '%']],
+        body: _dashData.prog.map(r => {
+          const mT = +r.meta_total || 0, rT = +r.realizado || 0;
+          return [r.cod, r.descricao, fmt(mT), fmt(rT), (rT >= mT ? '+' : '') + fmt(rT - mT), mT > 0 ? ((rT / mT) * 100).toFixed(1) + '%' : '—'];
+        }),
+        theme: 'grid',
+        headStyles: { fillColor: [204, 0, 0], textColor: 255 },
+        columnStyles: { 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' }, 5: { halign: 'right' } },
+      });
+
+      doc.save(`dashboard_${mes}.pdf`);
+    }
+
+    function exportOpExcel() {
+      if (!_opData) { alert('Carregue os dados antes de exportar.'); return; }
+      const { rows, mes } = _opData;
+      const wb = XLSX.utils.book_new();
+      const data = [['#', 'Matrícula', 'Nome', 'Total Realizado', 'Lançamentos', 'Efic. Média', 'Realiz. T1', 'Realiz. T2', 'Refugo']];
+      rows.forEach((r, i) => {
+        const ef = +r.efic_media || 0;
+        data.push([i + 1, r.operador, r.nome_usuario || '', +r.total_realizado, +r.total_lancamentos, ef > 0 ? (ef * 100).toFixed(1) + '%' : '—', +r.real_t1, +r.real_t2, +r.total_refugo]);
+      });
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(data), 'Operadores');
+      XLSX.writeFile(wb, `operadores_${mes}.xlsx`);
+    }
+
+    function exportOpPDF() {
+      if (!_opData) { alert('Carregue os dados antes de exportar.'); return; }
+      const { rows, mes } = _opData;
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ orientation: 'landscape' });
+
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text('SuperPro — Eficiência por Operador', 14, 18);
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Mês: ' + mesL(mes), 14, 26);
+
+      doc.autoTable({
+        startY: 32,
+        head: [['#', 'Matrícula', 'Nome', 'Total Realizado', 'Lançamentos', 'Efic. Média', 'Realiz. T1', 'Realiz. T2', 'Refugo']],
+        body: rows.map((r, i) => {
+          const ef = +r.efic_media || 0;
+          return [i + 1, r.operador, r.nome_usuario || '—', fmt(r.total_realizado), r.total_lancamentos, ef > 0 ? (ef * 100).toFixed(1) + '%' : '—', fmt(r.real_t1), fmt(r.real_t2), fmt(r.total_refugo)];
+        }),
+        theme: 'grid',
+        headStyles: { fillColor: [204, 0, 0], textColor: 255 },
+        columnStyles: { 3: { halign: 'right' }, 6: { halign: 'right' }, 7: { halign: 'right' }, 8: { halign: 'right' } },
+      });
+
+      doc.save(`operadores_${mes}.pdf`);
+    }
+
+    // ═══════════════════════════════════════
+    // INIT
+    // ═══════════════════════════════════════
+    async function init() {
+      if (TOKEN) {
+        try {
+          USER = await GET('me');
+          showApp();
+        } catch { TOKEN = null; localStorage.removeItem('sp_token'); }
+      }
+    }
+
+    window.addEventListener('focus', async () => {
+      const updated = localStorage.getItem('sp_refs_updated');
+      if (updated && updated !== lastRefsUpdate) {
+        lastRefsUpdate = updated;
+        await loadRefs();
+        if (document.getElementById('sec-referencias')?.classList.contains('active')) {
+          renderRefs();
+        }
+      }
+    });
+
+    init();
+  </script>
 </body>
+
 </html>
