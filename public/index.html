@@ -6,6 +6,7 @@
 <title>Superpro — Sistema de Produção</title>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/style.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
 
@@ -34,6 +35,7 @@
       <div class="ni" onclick="goTo('programa')"><span class="ic">☰</span>Programa do Mês</div>
       <div class="ni" onclick="goTo('lancamento')"><span class="ic">⊕</span>Lançar Produção</div>
       <div class="ni" onclick="goTo('historico')"><span class="ic">⊞</span>Histórico</div>
+      <div class="ni" onclick="goTo('graficos')"><span class="ic">◎</span>Gráficos</div>
       <div class="snl" id="snl-admin" style="display:none">Admin</div>
       <div class="ni" id="ni-refs" onclick="goTo('referencias')" style="display:none"><span class="ic">◉</span>Referências</div>
       <div class="ni" id="ni-users" onclick="goTo('usuarios')" style="display:none"><span class="ic">◎</span>Usuários</div>
@@ -236,6 +238,70 @@
         </div>
       </div>
 
+      <!-- GRÁFICOS -->
+      <div class="ps" id="sec-graficos">
+        <div class="filtbar" style="margin-bottom:18px">
+          <div class="fi"><label>Mês</label>
+            <select id="graf-mes" onchange="renderGraficos()" style="min-width:160px">
+              <option value="">Mês atual</option>
+            </select>
+          </div>
+          <button class="btn bs bsm" onclick="renderGraficos()">↻ Atualizar</button>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:18px" id="graf-grid">
+          <!-- Celular de Alumínio -->
+          <div class="kc" style="padding:24px;text-align:center">
+            <div style="font:700 11px/1 var(--fh);letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:18px">Celular de Alumínio</div>
+            <div style="position:relative;width:150px;height:150px;margin:0 auto"><canvas id="chart-Aluminio"></canvas></div>
+            <div style="margin-top:16px;display:flex;flex-direction:column;gap:6px;text-align:left">
+              <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Meta Total</span><span id="gm-Aluminio" style="font:600 12px var(--fb)">—</span></div>
+              <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Realizado</span><span id="gr-Aluminio" style="font:600 12px var(--fb)">—</span></div>
+              <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Efic. Média</span><span id="ge-Aluminio" style="font:600 12px var(--fb)">—</span></div>
+            </div>
+          </div>
+          <!-- Máquina de Panos -->
+          <div class="kc" style="padding:24px;text-align:center">
+            <div style="font:700 11px/1 var(--fh);letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:18px">Máquina de Panos</div>
+            <div style="position:relative;width:150px;height:150px;margin:0 auto"><canvas id="chart-Panos"></canvas></div>
+            <div style="margin-top:16px;display:flex;flex-direction:column;gap:6px;text-align:left">
+              <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Meta Total</span><span id="gm-Panos" style="font:600 12px var(--fb)">—</span></div>
+              <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Realizado</span><span id="gr-Panos" style="font:600 12px var(--fb)">—</span></div>
+              <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Efic. Média</span><span id="ge-Panos" style="font:600 12px var(--fb)">—</span></div>
+            </div>
+          </div>
+          <!-- Máquina de Placas -->
+          <div class="kc" style="padding:24px;text-align:center">
+            <div style="font:700 11px/1 var(--fh);letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:18px">Máquina de Placas</div>
+            <div style="position:relative;width:150px;height:150px;margin:0 auto"><canvas id="chart-Placas"></canvas></div>
+            <div style="margin-top:16px;display:flex;flex-direction:column;gap:6px;text-align:left">
+              <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Meta Total</span><span id="gm-Placas" style="font:600 12px var(--fb)">—</span></div>
+              <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Realizado</span><span id="gr-Placas" style="font:600 12px var(--fb)">—</span></div>
+              <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Efic. Média</span><span id="ge-Placas" style="font:600 12px var(--fb)">—</span></div>
+            </div>
+          </div>
+          <!-- Máquina de Rodos -->
+          <div class="kc" style="padding:24px;text-align:center">
+            <div style="font:700 11px/1 var(--fh);letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:18px">Máquina de Rodos</div>
+            <div style="position:relative;width:150px;height:150px;margin:0 auto"><canvas id="chart-Rodos"></canvas></div>
+            <div style="margin-top:16px;display:flex;flex-direction:column;gap:6px;text-align:left">
+              <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Meta Total</span><span id="gm-Rodos" style="font:600 12px var(--fb)">—</span></div>
+              <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Realizado</span><span id="gr-Rodos" style="font:600 12px var(--fb)">—</span></div>
+              <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Efic. Média</span><span id="ge-Rodos" style="font:600 12px var(--fb)">—</span></div>
+            </div>
+          </div>
+          <!-- Trabalho Manual -->
+          <div class="kc" style="padding:24px;text-align:center">
+            <div style="font:700 11px/1 var(--fh);letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:18px">Trabalho Manual</div>
+            <div style="position:relative;width:150px;height:150px;margin:0 auto"><canvas id="chart-Manual"></canvas></div>
+            <div style="margin-top:16px;display:flex;flex-direction:column;gap:6px;text-align:left">
+              <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Meta Total</span><span id="gm-Manual" style="font:600 12px var(--fb)">—</span></div>
+              <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Realizado</span><span id="gr-Manual" style="font:600 12px var(--fb)">—</span></div>
+              <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Efic. Média</span><span id="ge-Manual" style="font:600 12px var(--fb)">—</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- USUÁRIOS (admin) -->
       <div class="ps" id="sec-usuarios">
         <div class="fc">
@@ -386,7 +452,7 @@ async function loadMeses() {
   try {
     _meses = await GET('meses');
     const cur = curMes();
-    ['dash-mes','prog-mes'].forEach(id => {
+    ['dash-mes','prog-mes','graf-mes'].forEach(id => {
       const sel = document.getElementById(id);
       if (!sel) return;
       const old = sel.value;
@@ -419,7 +485,7 @@ function populateSelects() {
 // ═══════════════════════════════════════
 // NAVEGAÇÃO
 // ═══════════════════════════════════════
-const TITLES = { dashboard:'Dashboard', programa:'Programa do Mês', lancamento:'Lançar Produção', historico:'Histórico', referencias:'Referências', usuarios:'Usuários' };
+const TITLES = { dashboard:'Dashboard', programa:'Programa do Mês', lancamento:'Lançar Produção', historico:'Histórico', graficos:'Gráficos por Célula', referencias:'Referências', usuarios:'Usuários' };
 function goTo(p) {
   document.querySelectorAll('.ps').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.ni').forEach(n => n.classList.remove('active'));
@@ -430,6 +496,7 @@ function goTo(p) {
   if (p === 'programa')   renderPrograma();
   if (p === 'lancamento') { document.getElementById('ldata').value = today(); atualizaRefSel(); }
   if (p === 'historico')  { document.getElementById('hist-mes').value = curMes(); renderHist(); }
+  if (p === 'graficos')   renderGraficos();
   if (p === 'referencias') renderRefs();
   if (p === 'usuarios')   renderUsers();
 }
@@ -840,6 +907,84 @@ async function delUser(login) {
   if (!confirm(`Desativar usuário ${login}?`)) return;
   try { await DELETE('usuarios', { login }); renderUsers(); }
   catch(e) { alert('Erro: ' + e.message); }
+}
+
+// ═══════════════════════════════════════
+// GRÁFICOS
+// ═══════════════════════════════════════
+const CELULAS_GRAF = [
+  { value: 'Aluminio', label: 'Celular de Alumínio' },
+  { value: 'Panos',    label: 'Máquina de Panos' },
+  { value: 'Placas',   label: 'Máquina de Placas' },
+  { value: 'Rodos',    label: 'Máquina de Rodos' },
+  { value: 'Manual',   label: 'Trabalho Manual' },
+];
+const _chartInstances = {};
+
+const centerTextPlugin = {
+  id: 'centerText',
+  afterDraw(chart) {
+    if (!chart.config._pct) return;
+    const { ctx, chartArea: { left, top, width, height } } = chart;
+    const cx = left + width / 2, cy = top + height / 2;
+    ctx.save();
+    ctx.font = '700 22px "Barlow Condensed", sans-serif';
+    ctx.fillStyle = chart.config._color || '#f0f0f0';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(chart.config._pct, cx, cy);
+    ctx.restore();
+  }
+};
+Chart.register(centerTextPlugin);
+
+async function renderGraficos() {
+  const mes = document.getElementById('graf-mes').value || curMes();
+
+  const results = await Promise.all(
+    CELULAS_GRAF.map(c => GET('dashboard?mes=' + mes + '&celula=' + c.value).catch(() => null))
+  );
+
+  CELULAS_GRAF.forEach((c, i) => {
+    const d = results[i];
+    const totais   = d?.totais || {};
+    const prog     = d?.prog   || [];
+    const metaTotal  = prog.reduce((s, r) => s + (+r.meta_total || 0), 0);
+    const realizado  = +totais.total_realizado || 0;
+    const eficMedia  = totais.efic_media;
+    const pct        = metaTotal > 0 ? realizado / metaTotal : 0;
+    const restante   = Math.max(metaTotal - realizado, 0);
+    const pctLabel   = metaTotal > 0 ? (pct * 100).toFixed(1) + '%' : '—';
+    const cor        = pct >= 1 ? '#10b981' : pct >= 0.8 ? '#f97316' : '#CC0000';
+
+    document.getElementById('gm-' + c.value).textContent = fmt(metaTotal) || '—';
+    document.getElementById('gr-' + c.value).textContent = fmt(realizado) || '—';
+    document.getElementById('ge-' + c.value).textContent = eficMedia ? (eficMedia * 100).toFixed(1) + '%' : '—';
+
+    const canvas = document.getElementById('chart-' + c.value);
+    if (!canvas) return;
+
+    if (_chartInstances[c.value]) _chartInstances[c.value].destroy();
+
+    const cfg = {
+      type: 'doughnut',
+      _pct: pctLabel,
+      _color: cor,
+      data: {
+        datasets: [{
+          data: metaTotal > 0 ? [realizado, restante] : [1, 0],
+          backgroundColor: metaTotal > 0 ? [cor, '#2a2f3d'] : ['#2a2f3d', '#1e222d'],
+          borderWidth: 0,
+        }]
+      },
+      options: {
+        cutout: '72%',
+        plugins: { legend: { display: false }, tooltip: { enabled: false } },
+        animation: { animateRotate: true, duration: 800 }
+      }
+    };
+    _chartInstances[c.value] = new Chart(canvas.getContext('2d'), cfg);
+  });
 }
 
 // ═══════════════════════════════════════
