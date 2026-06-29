@@ -158,3 +158,73 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 @media (max-width: 1200px) {
   .kg { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* ── HAMBURGER ── */
+.btn-menu {
+  display: none;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+  width: 36px;
+  height: 36px;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all .15s;
+  flex-shrink: 0;
+  padding: 0;
+}
+.btn-menu:hover { border-color: var(--accent); color: var(--accent); }
+
+#overlay-sb {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.55);
+  z-index: 150;
+}
+
+/* ── MOBILE ── */
+@media (max-width: 768px) {
+  .btn-menu { display: flex; }
+
+  .sidebar {
+    transform: translateX(-220px);
+    transition: transform .25s ease;
+    z-index: 200;
+  }
+  .sidebar.open {
+    transform: translateX(0);
+    box-shadow: 4px 0 28px rgba(0,0,0,.7);
+  }
+  #overlay-sb.open { display: block; }
+
+  .main { margin-left: 0; }
+  .topbar { padding: 0 14px; }
+  .content { padding: 14px; }
+
+  .kg { grid-template-columns: repeat(2, 1fr); }
+  .sr { flex-direction: column; }
+  .dash-aside { width: 100% !important; }
+
+  .fgrid.c2, .fgrid.c3, .fgrid.c4 { grid-template-columns: 1fr !important; }
+
+  .filtbar { flex-direction: column; align-items: stretch; }
+  .filtbar .fi select,
+  .filtbar .fi input { min-width: unset !important; width: 100%; }
+  .filtbar .btn { width: 100%; justify-content: center; }
+
+  .brow { flex-direction: column; }
+  .brow .btn { width: 100%; justify-content: center; }
+
+  .lbox { width: 94vw; padding: 32px 24px; }
+}
+
+@media (max-width: 480px) {
+  .kg { grid-template-columns: 1fr; }
+  .kv { font-size: 26px !important; }
+  .tpt { font-size: 16px; }
+}

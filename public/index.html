@@ -53,7 +53,10 @@
 
   <div class="main">
     <div class="topbar">
-      <div class="tpt" id="tp-title">Dashboard</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <button class="btn-menu" onclick="toggleSidebar()">☰</button>
+        <div class="tpt" id="tp-title">Dashboard</div>
+      </div>
       <div class="tpr">
         <span id="tp-badge" class="badge"></span>
         <span style="font-size:11px;color:var(--muted)" id="tp-date"></span>
@@ -91,7 +94,7 @@
               <th>Cód.</th><th>Descrição</th><th>Turnos</th><th>Meta Total</th><th>Realizado</th><th>Saldo</th><th>%</th>
             </tr></thead><tbody id="dash-ref-body"></tbody></table></div>
           </div>
-          <div style="width:270px;display:flex;flex-direction:column;gap:14px">
+          <div class="dash-aside" style="width:270px;display:flex;flex-direction:column;gap:14px">
             <div class="tw"><div class="th"><div class="tt">POR TURNO</div></div>
               <table><thead><tr><th>Turno</th><th>Realiz.</th><th>Efic.</th></tr></thead>
               <tbody id="dash-turno"></tbody></table>
@@ -375,6 +378,8 @@
   </div>
 </div>
 
+<div id="overlay-sb" onclick="closeSidebar()"></div>
+
 <!-- MODAL PROGRAMA -->
 <div id="modal-prog" style="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:none;align-items:center;justify-content:center">
   <div style="background:var(--surface);border:1px solid var(--border);border-top:3px solid var(--accent);width:480px;max-width:95vw;padding:26px">
@@ -531,6 +536,18 @@ function populateSelects() {
 }
 
 // ═══════════════════════════════════════
+// SIDEBAR MOBILE
+// ═══════════════════════════════════════
+function toggleSidebar() {
+  document.querySelector('.sidebar').classList.toggle('open');
+  document.getElementById('overlay-sb').classList.toggle('open');
+}
+function closeSidebar() {
+  document.querySelector('.sidebar').classList.remove('open');
+  document.getElementById('overlay-sb').classList.remove('open');
+}
+
+// ═══════════════════════════════════════
 // NAVEGAÇÃO
 // ═══════════════════════════════════════
 const TITLES = { dashboard:'Dashboard', programa:'Programa do Mês', lancamento:'Lançar Produção', historico:'Histórico', graficos:'Gráficos por Célula', operadores:'Operadores', referencias:'Referências', usuarios:'Usuários' };
@@ -540,6 +557,7 @@ function goTo(p) {
   document.getElementById('sec-' + p)?.classList.add('active');
   document.querySelectorAll('.ni').forEach(n => { if (n.getAttribute('onclick')?.includes("'" + p + "'")) n.classList.add('active'); });
   document.getElementById('tp-title').textContent = TITLES[p] || p;
+  if (window.innerWidth <= 768) closeSidebar();
   if (p === 'dashboard')  renderDashboard();
   if (p === 'programa')   renderPrograma();
   if (p === 'lancamento') { document.getElementById('ldata').value = today(); atualizaRefSel(); }
