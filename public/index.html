@@ -162,7 +162,7 @@
             </div>
           </div>
           <div class="fgrid c3" style="margin-top:12px">
-            <div class="fi"><label>Operador</label><input type="text" id="lop" placeholder="Nome do operador"></div>
+            <div class="fi"><label>Operador <span style="color:var(--muted);font-weight:400;letter-spacing:0">(usuário logado)</span></label><input type="text" id="lop" placeholder="—"></div>
             <div class="fi"><label>Referência</label>
               <select id="lref" onchange="preencheRef()"><option value="">Selecione...</option></select>
               <div class="fnote" id="lref-note"></div>
@@ -492,6 +492,13 @@ async function showApp() {
     document.getElementById('th-prog-ac').style.display = '';
   }
 
+  // Preenche operador com o usuário logado e bloqueia edição
+  const lopEl = document.getElementById('lop');
+  lopEl.value    = USER.nome;
+  lopEl.readOnly = true;
+  lopEl.style.opacity = '.6';
+  lopEl.style.cursor  = 'not-allowed';
+
   // Carrega dados base
   await Promise.all([loadMeses(), loadRefs()]);
   populateSelects();
@@ -818,8 +825,9 @@ async function salvarLanc() {
 }
 
 function limparForm(keepDate) {
-  ['lturno','lref','ldesc','lmeta','lhi','lhf','lreal','lrefugo','lobs','lefic','lop']
+  ['lturno','lref','ldesc','lmeta','lhi','lhf','lreal','lrefugo','lobs','lefic']
     .forEach(id => document.getElementById(id).value='');
+  document.getElementById('lop').value = USER?.nome || '';
   if (!keepDate) document.getElementById('ldata').value = today();
 }
 
