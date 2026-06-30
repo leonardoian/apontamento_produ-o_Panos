@@ -41,8 +41,10 @@ export default async function handler(req, res) {
           ROUND(AVG(CASE WHEN l.meta > 0 THEN l.eficiencia END)::numeric, 4)         AS efic_media,
           COALESCE(SUM(CASE WHEN l.turno='T1' THEN l.realizado ELSE 0 END),0)::int   AS real_t1,
           COALESCE(SUM(CASE WHEN l.turno='T2' THEN l.realizado ELSE 0 END),0)::int   AS real_t2,
+          COALESCE(SUM(CASE WHEN l.turno='ADM' THEN l.realizado ELSE 0 END),0)::int  AS real_adm,
           COUNT(CASE WHEN l.turno='T1' THEN 1 END)::int                              AS lanc_t1,
-          COUNT(CASE WHEN l.turno='T2' THEN 1 END)::int                              AS lanc_t2
+          COUNT(CASE WHEN l.turno='T2' THEN 1 END)::int                              AS lanc_t2,
+          COUNT(CASE WHEN l.turno='ADM' THEN 1 END)::int                             AS lanc_adm
         FROM lancamentos l
         LEFT JOIN ultimo_usuario uu ON uu.operador = l.operador
         LEFT JOIN usuarios u ON u.login = uu.usuario_login
@@ -73,8 +75,10 @@ export default async function handler(req, res) {
           ROUND(AVG(CASE WHEN l.meta > 0 THEN l.eficiencia END)::numeric, 4)         AS efic_media,
           COALESCE(SUM(CASE WHEN l.turno='T1' THEN l.realizado ELSE 0 END),0)::int   AS real_t1,
           COALESCE(SUM(CASE WHEN l.turno='T2' THEN l.realizado ELSE 0 END),0)::int   AS real_t2,
+          COALESCE(SUM(CASE WHEN l.turno='ADM' THEN l.realizado ELSE 0 END),0)::int  AS real_adm,
           COUNT(CASE WHEN l.turno='T1' THEN 1 END)::int                              AS lanc_t1,
-          COUNT(CASE WHEN l.turno='T2' THEN 1 END)::int                              AS lanc_t2
+          COUNT(CASE WHEN l.turno='T2' THEN 1 END)::int                              AS lanc_t2,
+          COUNT(CASE WHEN l.turno='ADM' THEN 1 END)::int                             AS lanc_adm
         FROM lancamentos l
         LEFT JOIN ultimo_usuario uu ON uu.operador = l.operador
         LEFT JOIN usuarios u ON u.login = uu.usuario_login

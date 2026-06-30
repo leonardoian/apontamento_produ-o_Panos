@@ -161,6 +161,7 @@
                 <option value="">Selecione...</option>
                 <option value="T1">T1 — Turno 1</option>
                 <option value="T2">T2 — Turno 2</option>
+                <option value="ADM">ADM — Administrativo</option>
               </select>
             </div>
           </div>
@@ -206,7 +207,7 @@
           </div>
           <div class="fi"><label>Mês</label><input type="month" id="hist-mes" onchange="renderHist()" style="min-width:150px"></div>
           <div class="fi"><label>Turno</label>
-            <select id="hist-turno" onchange="renderHist()"><option value="">Todos</option><option>T1</option><option>T2</option></select>
+            <select id="hist-turno" onchange="renderHist()"><option value="">Todos</option><option>T1</option><option>T2</option><option>ADM</option></select>
           </div>
           <div class="fi"><label>Referência</label>
             <select id="hist-ref" onchange="renderHist()" style="min-width:170px"><option value="">Todas</option></select>
@@ -349,7 +350,7 @@
           <div style="overflow-x:auto"><table><thead><tr>
             <th>#</th><th>Matrícula</th><th>Nome</th><th>Total Realizado</th><th>Lançamentos</th>
             <th>Efic. Média</th><th style="color:var(--accent)">Realiz. T1</th>
-            <th style="color:var(--blue)">Realiz. T2</th><th style="color:var(--red)">Refugo</th>
+            <th style="color:var(--blue)">Realiz. T2</th><th style="color:var(--green)">Realiz. ADM</th><th style="color:var(--red)">Refugo</th>
           </tr></thead><tbody id="op-body">
             <tr><td colspan="8" class="empty">Selecione um período.</td></tr>
           </tbody></table></div>
@@ -622,7 +623,7 @@ async function renderDashboard() {
         }).join('');
 
     // Turnos
-    document.getElementById('dash-turno').innerHTML = ['T1','T2'].map(t => {
+    document.getElementById('dash-turno').innerHTML = ['T1','T2','ADM'].map(t => {
       const row = d.turnos.find(x => x.turno === t);
       const r = row ? +row.realizado : 0;
       const ef = row?.efic_media ? +row.efic_media : null;
@@ -1085,7 +1086,7 @@ async function renderOperadores() {
     _opData = { rows, mes, celula };
     document.getElementById('op-count').textContent = rows.length + ' operador(es)';
     tbody.innerHTML = !rows.length
-      ? `<tr><td colspan="9" class="empty"><div class="ei">◈</div>Nenhum lançamento encontrado para este período.</td></tr>`
+      ? `<tr><td colspan="10" class="empty"><div class="ei">◈</div>Nenhum lançamento encontrado para este período.</td></tr>`
       : rows.map((r, i) => {
           const ef = +r.efic_media || 0;
           return `<tr>
@@ -1097,6 +1098,7 @@ async function renderOperadores() {
             <td class="${ef > 0 ? eClass(ef) : ''}">${ef > 0 ? (ef * 100).toFixed(1) + '%' : '—'}</td>
             <td style="color:var(--accent)">${fmt(r.real_t1)}</td>
             <td style="color:var(--blue)">${fmt(r.real_t2)}</td>
+            <td style="color:var(--green)">${fmt(r.real_adm)}</td>
             <td style="color:var(--red)">${fmt(r.total_refugo)}</td>
           </tr>`;
         }).join('');
@@ -1195,10 +1197,10 @@ function exportOpExcel() {
   if (!_opData) { alert('Carregue os dados antes de exportar.'); return; }
   const { rows, mes } = _opData;
   const wb  = XLSX.utils.book_new();
-  const data = [['#', 'Matrícula', 'Nome', 'Total Realizado', 'Lançamentos', 'Efic. Média', 'Realiz. T1', 'Realiz. T2', 'Refugo']];
+  const data = [['#', 'Matrícula', 'Nome', 'Total Realizado', 'Lançamentos', 'Efic. Média', 'Realiz. T1', 'Realiz. T2', 'Realiz. ADM', 'Refugo']];
   rows.forEach((r, i) => {
     const ef = +r.efic_media || 0;
-    data.push([i + 1, r.operador, r.nome_usuario || '', +r.total_realizado, +r.total_lancamentos, ef > 0 ? (ef * 100).toFixed(1) + '%' : '—', +r.real_t1, +r.real_t2, +r.total_refugo]);
+    data.push([i + 1, r.operador, r.nome_usuario || '', +r.total_realizado, +r.total_lancamentos, ef > 0 ? (ef * 100).toFixed(1) + '%' : '—', +r.real_t1, +r.real_t2, +r.real_adm, +r.total_refugo]);
   });
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(data), 'Operadores');
   XLSX.writeFile(wb, `operadores_${mes}.xlsx`);
@@ -1219,10 +1221,10 @@ function exportOpPDF() {
 
   doc.autoTable({
     startY: 32,
-    head: [['#', 'Matrícula', 'Nome', 'Total Realizado', 'Lançamentos', 'Efic. Média', 'Realiz. T1', 'Realiz. T2', 'Refugo']],
+    head: [['#', 'Matrícula', 'Nome', 'Total Realizado', 'Lançamentos', 'Efic. Média', 'Realiz. T1', 'Realiz. T2', 'Realiz. ADM', 'Refugo']],
     body: rows.map((r, i) => {
       const ef = +r.efic_media || 0;
-      return [i + 1, r.operador, r.nome_usuario || '—', fmt(r.total_realizado), r.total_lancamentos, ef > 0 ? (ef * 100).toFixed(1) + '%' : '—', fmt(r.real_t1), fmt(r.real_t2), fmt(r.total_refugo)];
+      return [i + 1, r.operador, r.nome_usuario || '—', fmt(r.total_realizado), r.total_lancamentos, ef > 0 ? (ef * 100).toFixed(1) + '%' : '—', fmt(r.real_t1), fmt(r.real_t2), fmt(r.real_adm), fmt(r.total_refugo)];
     }),
     theme: 'grid',
     headStyles: { fillColor: [204, 0, 0], textColor: 255 },
