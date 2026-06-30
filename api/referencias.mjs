@@ -13,7 +13,14 @@ export default async function handler(req, res) {
 
   if (req.method === "GET") {
     try {
-      const rows = await sql`SELECT cod, descricao, meta_hora FROM referencias WHERE ativo = true ORDER BY cod`;
+      const rows = await sql`
+        SELECT r.cod, r.descricao, r.meta_hora,
+          COALESCE(STRING_AGG(DISTINCT p.celula, ', ' ORDER BY p.celula), '') AS celulas
+        FROM referencias r
+        LEFT JOIN programa p ON p.ref_cod = r.cod AND p.ativo = true
+        WHERE r.ativo = true
+        GROUP BY r.cod, r.descricao, r.meta_hora
+        ORDER BY r.cod`;
       return res.status(200).json(rows);
     } catch (e) {
       return res.status(500).json({ error: e.message });

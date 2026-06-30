@@ -251,7 +251,7 @@
           </div>
           <div style="overflow-x:auto"><table><thead><tr>
             <th style="width:36px"><input type="checkbox" id="refs-all" onchange="toggleAllRefs(this.checked)" style="accent-color:var(--accent);width:15px;height:15px;cursor:pointer"></th>
-            <th>#</th><th>Código</th><th>Descrição</th><th>Meta Hora</th><th>Ação</th>
+            <th>#</th><th>Código</th><th>Descrição</th><th>Célula(s)</th><th>Meta Hora</th><th>Ação</th>
           </tr></thead><tbody id="refs-body"></tbody></table></div>
         </div>
       </div>
@@ -892,18 +892,27 @@ async function delLanc(id) {
 // ═══════════════════════════════════════
 // REFERÊNCIAS
 // ═══════════════════════════════════════
+const CELULA_LABELS = { Aluminio:'Alumínio', Panos:'Panos', Placas:'Placas', Rodos:'Rodos', Manual:'Manual' };
+const CELULA_COLORS = { Aluminio:'var(--blue)', Panos:'var(--accent)', Placas:'var(--green)', Rodos:'var(--orange)', Manual:'var(--muted)' };
+
 function renderRefsTable(rows) {
   const tbody = document.getElementById('refs-body');
   tbody.innerHTML = !rows.length
-    ? `<tr><td colspan="6" class="empty">Nenhuma referência encontrada.</td></tr>`
-    : rows.map((r,i) => `<tr>
-        <td><input type="checkbox" class="ref-chk" data-cod="${r.cod}" onchange="updateRefSelection()" style="accent-color:var(--accent);width:15px;height:15px;cursor:pointer"></td>
-        <td>${i+1}</td>
-        <td style="font-family:monospace;font-size:11px">${r.cod}</td>
-        <td>${r.descricao}</td>
-        <td style="cursor:pointer;color:var(--blue)" onclick="editMetaHora('${r.cod}', '${r.descricao}', ${r.meta_hora || 0})">${r.meta_hora ? r.meta_hora + ' pçs/h' : '—'} <span style="font-size:12px">✎</span></td>
-        <td><button class="btn bd bsm" onclick="delRef('${r.cod}')">✕</button></td>
-      </tr>`).join('');
+    ? `<tr><td colspan="7" class="empty">Nenhuma referência encontrada.</td></tr>`
+    : rows.map((r,i) => {
+        const celulasHtml = r.celulas
+          ? r.celulas.split(', ').map(c => `<span style="display:inline-block;margin:1px 2px;padding:1px 6px;border-radius:2px;font:700 10px var(--fh);letter-spacing:1px;background:rgba(0,0,0,.3);border:1px solid ${CELULA_COLORS[c]||'var(--border)'};color:${CELULA_COLORS[c]||'var(--muted)'}">${CELULA_LABELS[c]||c}</span>`).join('')
+          : '<span style="color:var(--muted);font-size:11px">—</span>';
+        return `<tr>
+          <td><input type="checkbox" class="ref-chk" data-cod="${r.cod}" onchange="updateRefSelection()" style="accent-color:var(--accent);width:15px;height:15px;cursor:pointer"></td>
+          <td>${i+1}</td>
+          <td style="font-family:monospace;font-size:11px">${r.cod}</td>
+          <td>${r.descricao}</td>
+          <td>${celulasHtml}</td>
+          <td style="cursor:pointer;color:var(--blue)" onclick="editMetaHora('${r.cod}', '${r.descricao}', ${r.meta_hora || 0})">${r.meta_hora ? r.meta_hora + ' pçs/h' : '—'} <span style="font-size:12px">✎</span></td>
+          <td><button class="btn bd bsm" onclick="delRef('${r.cod}')">✕</button></td>
+        </tr>`;
+      }).join('');
   updateRefSelection();
 }
 
@@ -949,7 +958,7 @@ function filterRefs() {
 
 async function renderRefs() {
   const tbody = document.getElementById('refs-body');
-  tbody.innerHTML = `<tr><td colspan="6" class="empty"><span class="loading"></span></td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="7" class="empty"><span class="loading"></span></td></tr>`;
   const selAll = document.getElementById('refs-all');
   if (selAll) { selAll.checked = false; selAll.indeterminate = false; }
   try {
@@ -958,7 +967,7 @@ async function renderRefs() {
     document.getElementById('refs-busca').value = '';
     renderRefsTable(rows);
   } catch(e) {
-    tbody.innerHTML = `<tr><td colspan="6" class="empty" style="color:var(--red)">${e.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" class="empty" style="color:var(--red)">${e.message}</td></tr>`;
   }
 }
 
@@ -967,9 +976,14 @@ async function salvarRef() {
   const desc= document.getElementById('r-desc').value.trim();
   const metaHora = document.getElementById('r-meta-hora').value.trim();
   if (!cod||!desc) { alert('Código e Descrição são obrigatórios.'); return; }
+  const existente = _refs.find(r => r.cod === cod);
+  if (existente) {
+    const ok = confirm(`A referência "${cod}" já existe (${existente.descricao}).\nDeseja atualizar os dados dela?`);
+    if (!ok) return;
+  }
   try {
-    await POST('referencias', { 
-      cod, 
+    await POST('referencias', {
+      cod,
       descricao: desc,
       meta_hora: metaHora ? parseInt(metaHora) : null
     });
