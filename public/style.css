@@ -45,7 +45,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--fb); min-he
 /* ── LAYOUT ── */
 #app { display: none; }
 .sidebar { position: fixed; left: 0; top: 0; bottom: 0; width: 220px; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; z-index: 100; }
-.slogo { padding: 20px; border-bottom: 1px solid var(--border); }
+.slogo { padding: 16px 12px; border-bottom: 1px solid var(--border); }
 .slogo .tag { font: 700 9px/1 var(--fh); letter-spacing: 3px; color: var(--accent); text-transform: uppercase; }
 .slogo .name { font: 900 20px/1.1 var(--fh); margin-top: 3px; }
 .slogo .name span { color: var(--accent); }
