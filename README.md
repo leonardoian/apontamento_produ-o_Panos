@@ -96,14 +96,14 @@ O sistema suporta múltiplas células independentes, cada uma com programa e ref
 
 - KPIs do mês: total realizado, meta, refugo, eficiência média
 - Gráficos de atingimento por referência (donut Chart.js)
-- Comparativo meta vs. realizado por turno
+- Comparativo meta vs. realizado por turno (T1, T2, ADM)
 - Últimos lançamentos
 - **Exportação para Excel** (4 abas: Resumo, Meta vs Realizado, Por Turno, Últimos Lançamentos)
 - **Exportação para PDF** com tabelas formatadas
 
 ### Apontamento de produção
 
-- Formulário por turno (T1/T2) com referência, realizado, meta, refugo e horário
+- Formulário com três turnos: **T1**, **T2** e **ADM** (todos tratados como turnos de produção normais)
 - O campo **Operador** é preenchido automaticamente com o nome do usuário logado (readonly) — garante consistência no relatório de eficiência
 - Eficiência calculada automaticamente com base nas horas trabalhadas
 
@@ -111,8 +111,15 @@ O sistema suporta múltiplas células independentes, cada uma com programa e ref
 
 - Aba dedicada com ranking de produção por operador no mês
 - Filtro por célula
-- Colunas: Matrícula, Nome, Total Realizado, Lançamentos, Eficiência Média, Realizado T1, Realizado T2, Refugo
+- Colunas: Matrícula, Nome, Total Realizado, Lançamentos, Eficiência Média, Realizado T1, Realizado T2, Realizado ADM, Refugo
 - **Exportação para Excel e PDF**
+
+### Referências
+
+- Cadastro e listagem de referências de produtos
+- **Exclusão em lote**: seleção múltipla via checkbox (com "Selecionar Todos") e botão "Apagar selecionadas"
+- Edição inline da Meta Hora por referência
+- Busca por código ou descrição
 
 ### Importação de planilha
 
@@ -120,9 +127,12 @@ Acesse `/importar.html` para importar programas mensais via `.xlsx`.
 
 A planilha deve conter as colunas: `MÊS/ANO`, `CELULA`, `COD_REF`, meta por turno e número de turnos.
 
+> Para meses com apenas turno ADM, use `Nº DE TURNOS = 1` — a meta total será `Meta/Turno × 1`.
+
 ### Interface
 
 - Dark theme com variáveis CSS customizadas
+- Crédito de desenvolvimento visível na tela de login (canto inferior direito)
 - **Responsivo para mobile**: sidebar colapsável com botão hamburguer, formulários em coluna única em telas pequenas
 - Sidebar se fecha automaticamente ao navegar em dispositivos móveis
 
@@ -134,7 +144,7 @@ A planilha deve conter as colunas: `MÊS/ANO`, `CELULA`, `COD_REF`, meta por tur
 Eficiência = Realizado ÷ (Meta/hora × Horas trabalhadas)
 ```
 
-Se `hora_inicio` e `hora_fim` não forem preenchidos, o sistema usa a meta do turno como fallback.
+Se `hora_inicio` e `hora_fim` não forem preenchidos, o sistema usa a meta do turno como fallback. O turno ADM entra no cálculo exatamente como T1 e T2.
 
 ---
 
@@ -170,7 +180,7 @@ Se `hora_inicio` e `hora_fim` não forem preenchidos, o sistema usa a meta do tu
 | `ref_cod` | VARCHAR | Código da referência |
 | `celula` | VARCHAR | Célula/Setor (default: `Panos`) |
 | `meta_turno` | INT | Meta de peças por turno |
-| `num_turnos` | INT | Número de turnos no mês |
+| `num_turnos` | INT | Número de turnos planejados no mês |
 | `ativo` | BOOLEAN | |
 
 > Constraint única: `(mes_ano, ref_cod, celula)`
@@ -181,7 +191,7 @@ Se `hora_inicio` e `hora_fim` não forem preenchidos, o sistema usa a meta do tu
 |-------|------|-----------|
 | `id` | SERIAL PK | |
 | `data` | DATE | Data do apontamento |
-| `turno` | VARCHAR | `T1` ou `T2` |
+| `turno` | VARCHAR | `T1`, `T2` ou `ADM` |
 | `ref_cod` | VARCHAR | Referência |
 | `operador` | VARCHAR | Nome do operador (usuário logado) |
 | `realizado` | INT | Peças realizadas |
@@ -216,9 +226,11 @@ GET /api/me
 ### Referências
 
 ```
-GET  /api/referencias
-POST /api/referencias
-Body: { "cod": "SP2745LR", "descricao": "...", "meta_hora": 80 }
+GET    /api/referencias
+POST   /api/referencias
+Body:  { "cod": "SP2745LR", "descricao": "...", "meta_hora": 80 }
+DELETE /api/referencias
+Body:  { "cod": "SP2745LR" }
 ```
 
 ### Programa mensal
