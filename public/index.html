@@ -398,6 +398,30 @@
 
 <div id="overlay-sb" onclick="closeSidebar()"></div>
 
+<!-- MODAL EDITAR REFERÊNCIA -->
+<div id="modal-ref" style="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:none;align-items:center;justify-content:center">
+  <div style="background:var(--surface);border:1px solid var(--border);border-top:3px solid var(--accent);width:480px;max-width:95vw;padding:26px">
+    <div style="font:700 20px/1 var(--fh);margin-bottom:18px">EDITAR REFERÊNCIA — <span id="ref-edit-cod" style="color:var(--accent)"></span></div>
+    <div class="fgrid c2">
+      <div class="fi" style="grid-column:1/-1"><label>Descrição</label><input type="text" id="ref-edit-desc"></div>
+      <div class="fi"><label>Célula</label>
+        <select id="ref-edit-celula">
+          <option value="Aluminio">Celular de Alumínio</option>
+          <option value="Panos">Máquina de Panos</option>
+          <option value="Placas">Máquina de Placas</option>
+          <option value="Rodos">Máquina de Rodos</option>
+          <option value="Manual">Trabalho Manual</option>
+        </select>
+      </div>
+      <div class="fi"><label>Meta Hora (pçs/h)</label><input type="number" id="ref-edit-meta" min="0" placeholder="Opcional"></div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:20px">
+      <button class="btn bs bsm" onclick="document.getElementById('modal-ref').style.display='none'">Cancelar</button>
+      <button class="btn bp bsm" onclick="salvarEditRef()">SALVAR</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL PROGRAMA -->
 <div id="modal-prog" style="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:none;align-items:center;justify-content:center">
   <div style="background:var(--surface);border:1px solid var(--border);border-top:3px solid var(--accent);width:480px;max-width:95vw;padding:26px">
@@ -917,7 +941,7 @@ function renderRefsTable(rows) {
           <td style="font-family:monospace;font-size:11px">${r.cod}</td>
           <td>${r.descricao}</td>
           <td>${celulasHtml}</td>
-          <td style="cursor:pointer;color:var(--blue)" onclick="editMetaHora('${r.cod}', '${r.descricao}', ${r.meta_hora || 0})">${r.meta_hora ? r.meta_hora + ' pçs/h' : '—'} <span style="font-size:12px">✎</span></td>
+          <td style="cursor:pointer;color:var(--blue)" onclick="openEditRef('${r.cod}')">${r.meta_hora ? r.meta_hora + ' pçs/h' : '—'} <span style="font-size:12px">✎</span></td>
           <td><button class="btn bd bsm" onclick="delRef('${r.cod}')">✕</button></td>
         </tr>`;
       }).join('');
@@ -1012,16 +1036,30 @@ async function delRef(cod) {
   catch(e) { alert('Erro: ' + e.message); }
 }
 
-async function editMetaHora(cod, descricao, metaAtual) {
-  const novaMetaStr = prompt(`Editar Meta Hora para ${cod}:\n(Digite o número de peças/hora)`, metaAtual || '');
-  if (novaMetaStr === null) return;
-  const novaMeta = novaMetaStr.trim() ? parseInt(novaMetaStr) : null;
-  if (novaMetaStr.trim() && isNaN(novaMeta)) { alert('Valor inválido. Use apenas números.'); return; }
+function openEditRef(cod) {
+  const r = _refs.find(x => x.cod === cod);
+  if (!r) return;
+  document.getElementById('ref-edit-cod').textContent = cod;
+  document.getElementById('ref-edit-desc').value = r.descricao || '';
+  document.getElementById('ref-edit-celula').value = r.celula || 'Panos';
+  document.getElementById('ref-edit-meta').value = r.meta_hora || '';
+  document.getElementById('modal-ref').style.display = 'flex';
+}
+
+async function salvarEditRef() {
+  const cod     = document.getElementById('ref-edit-cod').textContent;
+  const desc    = document.getElementById('ref-edit-desc').value.trim();
+  const celula  = document.getElementById('ref-edit-celula').value;
+  const metaStr = document.getElementById('ref-edit-meta').value.trim();
+  if (!desc) { alert('Descrição é obrigatória.'); return; }
+  const meta_hora = metaStr ? parseInt(metaStr) : null;
+  if (metaStr && isNaN(meta_hora)) { alert('Meta Hora inválida.'); return; }
   try {
-    await POST('referencias', { cod, descricao, meta_hora: novaMeta });
+    await POST('referencias', { cod, descricao: desc, celula, meta_hora });
+    document.getElementById('modal-ref').style.display = 'none';
     renderRefs();
     loadRefs();
-  } catch(e) { alert('Erro ao atualizar: ' + e.message); }
+  } catch(e) { alert('Erro ao salvar: ' + e.message); }
 }
 
 // ═══════════════════════════════════════
