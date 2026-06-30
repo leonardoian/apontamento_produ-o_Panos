@@ -212,6 +212,9 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 
   .fgrid.c2, .fgrid.c3, .fgrid.c4 { grid-template-columns: 1fr !important; }
 
+  .fc { padding: 14px; }
+  .fi select, .fi input, .fi textarea { min-width: unset !important; width: 100%; box-sizing: border-box; }
+
   .filtbar { flex-direction: column; align-items: stretch; }
   .filtbar .fi select,
   .filtbar .fi input { min-width: unset !important; width: 100%; }
