@@ -232,6 +232,15 @@
           <div class="fgrid c2">
             <div class="fi"><label>Código</label><input type="text" id="r-cod" placeholder="Ex: SP2745LR"></div>
             <div class="fi"><label>Descrição</label><input type="text" id="r-desc" placeholder="Nome do produto"></div>
+            <div class="fi"><label>Célula</label>
+              <select id="r-celula">
+                <option value="Aluminio">Celular de Alumínio</option>
+                <option value="Panos" selected>Máquina de Panos</option>
+                <option value="Placas">Máquina de Placas</option>
+                <option value="Rodos">Máquina de Rodos</option>
+                <option value="Manual">Trabalho Manual</option>
+              </select>
+            </div>
             <div class="fi"><label>Meta Hora</label><input type="number" id="r-meta-hora" placeholder="Ex: 80" min="0"></div>
           </div>
           <div class="brow"><button class="btn bp bsm" onclick="salvarRef()">+ ADICIONAR</button></div>
@@ -900,9 +909,8 @@ function renderRefsTable(rows) {
   tbody.innerHTML = !rows.length
     ? `<tr><td colspan="7" class="empty">Nenhuma referência encontrada.</td></tr>`
     : rows.map((r,i) => {
-        const celulasHtml = r.celulas
-          ? r.celulas.split(', ').map(c => `<span style="display:inline-block;margin:1px 2px;padding:1px 6px;border-radius:2px;font:700 10px var(--fh);letter-spacing:1px;background:rgba(0,0,0,.3);border:1px solid ${CELULA_COLORS[c]||'var(--border)'};color:${CELULA_COLORS[c]||'var(--muted)'}">${CELULA_LABELS[c]||c}</span>`).join('')
-          : '<span style="color:var(--muted);font-size:11px">—</span>';
+        const c = r.celula || 'Panos';
+        const celulasHtml = `<span style="display:inline-block;padding:1px 6px;border-radius:2px;font:700 10px var(--fh);letter-spacing:1px;background:rgba(0,0,0,.3);border:1px solid ${CELULA_COLORS[c]||'var(--border)'};color:${CELULA_COLORS[c]||'var(--muted)'}">${CELULA_LABELS[c]||c}</span>`;
         return `<tr>
           <td><input type="checkbox" class="ref-chk" data-cod="${r.cod}" onchange="updateRefSelection()" style="accent-color:var(--accent);width:15px;height:15px;cursor:pointer"></td>
           <td>${i+1}</td>
@@ -972,9 +980,10 @@ async function renderRefs() {
 }
 
 async function salvarRef() {
-  const cod = document.getElementById('r-cod').value.trim().toUpperCase();
-  const desc= document.getElementById('r-desc').value.trim();
-  const metaHora = document.getElementById('r-meta-hora').value.trim();
+  const cod     = document.getElementById('r-cod').value.trim().toUpperCase();
+  const desc    = document.getElementById('r-desc').value.trim();
+  const celula  = document.getElementById('r-celula').value;
+  const metaHora= document.getElementById('r-meta-hora').value.trim();
   if (!cod||!desc) { alert('Código e Descrição são obrigatórios.'); return; }
   const existente = _refs.find(r => r.cod === cod);
   if (existente) {
@@ -985,10 +994,12 @@ async function salvarRef() {
     await POST('referencias', {
       cod,
       descricao: desc,
+      celula,
       meta_hora: metaHora ? parseInt(metaHora) : null
     });
     document.getElementById('r-cod').value = '';
     document.getElementById('r-desc').value = '';
+    document.getElementById('r-celula').value = 'Panos';
     document.getElementById('r-meta-hora').value = '';
     renderRefs();
     loadRefs();

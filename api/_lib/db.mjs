@@ -53,8 +53,10 @@ export async function initDB(sql) {
     cod VARCHAR(30) UNIQUE NOT NULL,
     descricao VARCHAR(200) NOT NULL,
     meta_hora INT DEFAULT NULL,
+    celula VARCHAR(30) DEFAULT 'Panos',
     ativo BOOLEAN DEFAULT true
   )`;
+  await sql`ALTER TABLE referencias ADD COLUMN IF NOT EXISTS celula VARCHAR(30) DEFAULT 'Panos'`;
   await sql`CREATE TABLE IF NOT EXISTS programa (
     id SERIAL PRIMARY KEY,
     mes_ano VARCHAR(7) NOT NULL,
