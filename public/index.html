@@ -237,7 +237,10 @@
         </div>
         <div class="tw">
           <div class="th">
-            <div class="tt">REFERÊNCIAS CADASTRADAS</div>
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+              <div class="tt">REFERÊNCIAS CADASTRADAS</div>
+              <button class="btn bd bsm" id="btn-del-refs" style="display:none" onclick="delRefsSelected()">✕ Apagar selecionadas (<span id="refs-sel-count">0</span>)</button>
+            </div>
             <div style="display:flex;align-items:center;gap:8px">
               <input id="refs-busca" type="text" placeholder="Buscar por código ou descrição..." oninput="filterRefs()"
                 style="background:var(--surface);border:1px solid var(--border);color:var(--text);padding:5px 10px;font:13px var(--fb);outline:none;width:280px;transition:border-color .2s"
@@ -246,6 +249,7 @@
             </div>
           </div>
           <div style="overflow-x:auto"><table><thead><tr>
+            <th style="width:36px"><input type="checkbox" id="refs-all" onchange="toggleAllRefs(this.checked)" style="accent-color:var(--accent);width:15px;height:15px;cursor:pointer"></th>
             <th>#</th><th>Código</th><th>Descrição</th><th>Meta Hora</th><th>Ação</th>
           </tr></thead><tbody id="refs-body"></tbody></table></div>
         </div>
@@ -890,14 +894,48 @@ async function delLanc(id) {
 function renderRefsTable(rows) {
   const tbody = document.getElementById('refs-body');
   tbody.innerHTML = !rows.length
-    ? `<tr><td colspan="5" class="empty">Nenhuma referência encontrada.</td></tr>`
+    ? `<tr><td colspan="6" class="empty">Nenhuma referência encontrada.</td></tr>`
     : rows.map((r,i) => `<tr>
+        <td><input type="checkbox" class="ref-chk" data-cod="${r.cod}" onchange="updateRefSelection()" style="accent-color:var(--accent);width:15px;height:15px;cursor:pointer"></td>
         <td>${i+1}</td>
         <td style="font-family:monospace;font-size:11px">${r.cod}</td>
         <td>${r.descricao}</td>
         <td style="cursor:pointer;color:var(--blue)" onclick="editMetaHora('${r.cod}', '${r.descricao}', ${r.meta_hora || 0})">${r.meta_hora ? r.meta_hora + ' pçs/h' : '—'} <span style="font-size:12px">✎</span></td>
         <td><button class="btn bd bsm" onclick="delRef('${r.cod}')">✕</button></td>
       </tr>`).join('');
+  updateRefSelection();
+}
+
+function updateRefSelection() {
+  const all = [...document.querySelectorAll('.ref-chk')];
+  const checked = all.filter(c => c.checked);
+  const count = checked.length;
+  const btn = document.getElementById('btn-del-refs');
+  const selAll = document.getElementById('refs-all');
+  if (btn) { btn.style.display = count > 0 ? '' : 'none'; }
+  document.getElementById('refs-sel-count').textContent = count;
+  if (selAll) {
+    selAll.checked = all.length > 0 && count === all.length;
+    selAll.indeterminate = count > 0 && count < all.length;
+  }
+}
+
+function toggleAllRefs(checked) {
+  document.querySelectorAll('.ref-chk').forEach(c => c.checked = checked);
+  updateRefSelection();
+}
+
+async function delRefsSelected() {
+  const selecionados = [...document.querySelectorAll('.ref-chk:checked')].map(c => c.dataset.cod);
+  if (!selecionados.length) return;
+  if (!confirm(`Desativar ${selecionados.length} referência(s) selecionada(s)?`)) return;
+  let erros = 0;
+  for (const cod of selecionados) {
+    try { await DELETE('referencias', { cod }); }
+    catch(e) { erros++; }
+  }
+  if (erros) alert(`${erros} erro(s) ao apagar.`);
+  renderRefs(); loadRefs();
 }
 
 function filterRefs() {
@@ -910,14 +948,16 @@ function filterRefs() {
 
 async function renderRefs() {
   const tbody = document.getElementById('refs-body');
-  tbody.innerHTML = `<tr><td colspan="5" class="empty"><span class="loading"></span></td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="6" class="empty"><span class="loading"></span></td></tr>`;
+  const selAll = document.getElementById('refs-all');
+  if (selAll) { selAll.checked = false; selAll.indeterminate = false; }
   try {
     const rows = await GET('referencias');
     _refs = rows;
     document.getElementById('refs-busca').value = '';
     renderRefsTable(rows);
   } catch(e) {
-    tbody.innerHTML = `<tr><td colspan="5" class="empty" style="color:var(--red)">${e.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" class="empty" style="color:var(--red)">${e.message}</td></tr>`;
   }
 }
 
