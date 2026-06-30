@@ -1197,8 +1197,8 @@ async function renderOperadores() {
           const ef = +r.efic_media || 0;
           return `<tr>
             <td>${i + 1}</td>
-            <td style="font-family:monospace;font-size:12px">${r.operador || '—'}</td>
-            <td style="font-weight:600">${r.nome_usuario || '<span style="color:var(--muted);font-size:11px">—</span>'}</td>
+            <td style="font-family:monospace;font-size:12px">${r.usuario_login || r.operador || '—'}</td>
+            <td style="font-weight:600">${r.nome_usuario || r.operador || '<span style="color:var(--muted);font-size:11px">—</span>'}</td>
             <td><strong>${fmt(r.total_realizado)}</strong></td>
             <td>${r.total_lancamentos}</td>
             <td class="${ef > 0 ? eClass(ef) : ''}">${ef > 0 ? (ef * 100).toFixed(1) + '%' : '—'}</td>
@@ -1306,7 +1306,7 @@ function exportOpExcel() {
   const data = [['#', 'Matrícula', 'Nome', 'Total Realizado', 'Lançamentos', 'Efic. Média', 'Realiz. T1', 'Realiz. T2', 'Realiz. ADM', 'Refugo']];
   rows.forEach((r, i) => {
     const ef = +r.efic_media || 0;
-    data.push([i + 1, r.operador, r.nome_usuario || '', +r.total_realizado, +r.total_lancamentos, ef > 0 ? (ef * 100).toFixed(1) + '%' : '—', +r.real_t1, +r.real_t2, +r.real_adm, +r.total_refugo]);
+    data.push([i + 1, r.usuario_login || r.operador, r.nome_usuario || r.operador || '', +r.total_realizado, +r.total_lancamentos, ef > 0 ? (ef * 100).toFixed(1) + '%' : '—', +r.real_t1, +r.real_t2, +r.real_adm, +r.total_refugo]);
   });
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(data), 'Operadores');
   XLSX.writeFile(wb, `operadores_${mes}.xlsx`);
@@ -1330,7 +1330,7 @@ function exportOpPDF() {
     head: [['#', 'Matrícula', 'Nome', 'Total Realizado', 'Lançamentos', 'Efic. Média', 'Realiz. T1', 'Realiz. T2', 'Realiz. ADM', 'Refugo']],
     body: rows.map((r, i) => {
       const ef = +r.efic_media || 0;
-      return [i + 1, r.operador, r.nome_usuario || '—', fmt(r.total_realizado), r.total_lancamentos, ef > 0 ? (ef * 100).toFixed(1) + '%' : '—', fmt(r.real_t1), fmt(r.real_t2), fmt(r.real_adm), fmt(r.total_refugo)];
+      return [i + 1, r.usuario_login || r.operador, r.nome_usuario || r.operador || '—', fmt(r.total_realizado), r.total_lancamentos, ef > 0 ? (ef * 100).toFixed(1) + '%' : '—', fmt(r.real_t1), fmt(r.real_t2), fmt(r.real_adm), fmt(r.total_refugo)];
     }),
     theme: 'grid',
     headStyles: { fillColor: [204, 0, 0], textColor: 255 },
