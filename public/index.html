@@ -852,7 +852,16 @@ function preencheRef() {
   document.getElementById('lmeta').value = meta || '';
   document.getElementById('lmeta-hora').value = metaHora || '';
   const info = document.getElementById('lref-note');
-  if (r) { info.textContent = `${r.num_turnos} turno(s) — meta ${fmt(meta)} pçs/turno${metaHora ? ` (${metaHora} pçs/h)` : ''}`; info.style.display='block'; info.style.color='var(--muted)'; }
+  if (r) {
+    if (metaHora > 0) {
+      info.innerHTML = `Meta hora: <strong>${metaHora} pçs/h</strong> — preencha <strong>Hora Início</strong> e <strong>Hora Fim</strong> para calcular a eficiência`;
+      info.style.color = 'var(--orange)';
+    } else {
+      info.textContent = `${r.num_turnos} turno(s) — meta ${fmt(meta)} pçs/turno`;
+      info.style.color = 'var(--muted)';
+    }
+    info.style.display = 'block';
+  }
   calcEfic();
 }
 
@@ -1074,6 +1083,7 @@ async function salvarRef() {
       celula,
       meta_hora: metaHora ? parseInt(metaHora) : null
     });
+    _progCache = {};
     document.getElementById('r-cod').value = '';
     document.getElementById('r-desc').value = '';
     document.getElementById('r-celula').value = 'Panos';
@@ -1109,6 +1119,7 @@ async function salvarEditRef() {
   if (metaStr && isNaN(meta_hora)) { alert('Meta Hora inválida.'); return; }
   try {
     await POST('referencias', { cod, descricao: desc, celula, meta_hora });
+    _progCache = {};
     document.getElementById('modal-ref').style.display = 'none';
     renderRefs();
     loadRefs();
