@@ -47,6 +47,7 @@
       <div class="snl" id="snl-admin" style="display:none">Admin</div>
       <div class="ni" id="ni-refs" onclick="goTo('referencias')" style="display:none"><span class="ic">◉</span>Referências</div>
       <div class="ni" id="ni-users" onclick="goTo('usuarios')" style="display:none"><span class="ic">◎</span>Usuários</div>
+      <div class="ni" id="ni-importar" onclick="window.open('/importar.html','_blank')" style="display:none"><span class="ic">⬆</span>Importar Programa</div>
     </div>
     <div class="sfoot">
       <div class="un" id="sb-nome">—</div>
@@ -130,6 +131,7 @@
           </div>
           <button class="btn bs bsm" onclick="renderPrograma()">↻ Atualizar</button>
           <button class="btn bp bsm" id="btn-add-prog" style="display:none" onclick="openModalProg()">+ Adicionar Referência</button>
+          <button class="btn bs bsm" id="btn-importar-prog" style="display:none" onclick="window.open('/importar.html','_blank')">⬆ Importar Planilha</button>
         </div>
         <div class="tw">
           <div class="th"><div class="tt">PROGRAMA DO MÊS</div><span id="prog-count" style="font-size:12px;color:var(--muted)"></span></div>
@@ -533,9 +535,10 @@ async function showApp() {
   document.getElementById('tp-date').textContent = new Date().toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'short'});
 
   if (USER.perfil === 'admin') {
-    ['snl-admin','ni-refs','ni-users'].forEach(id => document.getElementById(id).style.display = '');
+    ['snl-admin','ni-refs','ni-users','ni-importar'].forEach(id => document.getElementById(id).style.display = '');
     document.getElementById('hist-del-col').style.display = '';
     document.getElementById('btn-add-prog').style.display = '';
+    document.getElementById('btn-importar-prog').style.display = '';
     document.getElementById('th-prog-ac').style.display = '';
   }
 
