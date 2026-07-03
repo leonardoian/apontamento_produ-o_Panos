@@ -156,6 +156,7 @@
                 <option value="Placas">Máquina de Placas</option>
                 <option value="Rodos">Máquina de Rodos</option>
                 <option value="Manual">Trabalho Manual</option>
+                <option value="Importacao">Importação</option>
               </select>
             </div>
             <div class="fi"><label>Data</label><input type="date" id="ldata" onchange="atualizaRefSel()"></div>
@@ -246,6 +247,7 @@
                 <option value="Placas">Máquina de Placas</option>
                 <option value="Rodos">Máquina de Rodos</option>
                 <option value="Manual">Trabalho Manual</option>
+                <option value="Importacao">Importação</option>
               </select>
             </div>
             <div class="fi"><label>Meta Hora</label><input type="number" id="r-meta-hora" placeholder="Ex: 80" min="0"></div>
@@ -336,6 +338,17 @@
               <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Realizado</span><span id="gr-Manual" style="font:600 12px var(--fb)">—</span></div>
               <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Efic. Média</span><span id="ge-Manual" style="font:600 12px var(--fb)">—</span></div>
               <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:8px;margin-top:2px"><span style="font:700 11px/1 var(--fh);letter-spacing:1px;color:var(--muted);text-transform:uppercase">Atingimento</span><span id="ga-Manual" style="font:900 16px/1 var(--fh)">—</span></div>
+            </div>
+          </div>
+          <!-- Importação -->
+          <div class="kc" style="padding:24px;text-align:center">
+            <div style="font:700 11px/1 var(--fh);letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:18px">Importação</div>
+            <div style="position:relative;width:150px;height:150px;margin:0 auto"><canvas id="chart-Importacao"></canvas></div>
+            <div style="margin-top:16px;display:flex;flex-direction:column;gap:6px;text-align:left">
+              <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Meta Total</span><span id="gm-Importacao" style="font:600 12px var(--fb)">—</span></div>
+              <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Realizado</span><span id="gr-Importacao" style="font:600 12px var(--fb)">—</span></div>
+              <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Efic. Média</span><span id="ge-Importacao" style="font:600 12px var(--fb)">—</span></div>
+              <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:8px;margin-top:2px"><span style="font:700 11px/1 var(--fh);letter-spacing:1px;color:var(--muted);text-transform:uppercase">Atingimento</span><span id="ga-Importacao" style="font:900 16px/1 var(--fh)">—</span></div>
             </div>
           </div>
         </div>
@@ -990,8 +1003,8 @@ async function delLanc(id) {
 // ═══════════════════════════════════════
 // REFERÊNCIAS
 // ═══════════════════════════════════════
-const CELULA_LABELS = { Aluminio:'Alumínio', Panos:'Panos', Placas:'Placas', Rodos:'Rodos', Manual:'Manual' };
-const CELULA_COLORS = { Aluminio:'var(--blue)', Panos:'var(--accent)', Placas:'var(--green)', Rodos:'var(--orange)', Manual:'var(--muted)' };
+const CELULA_LABELS = { Aluminio:'Alumínio', Panos:'Panos', Placas:'Placas', Rodos:'Rodos', Manual:'Manual', Importacao:'Importação' };
+const CELULA_COLORS = { Aluminio:'var(--blue)', Panos:'var(--accent)', Placas:'var(--green)', Rodos:'var(--orange)', Manual:'var(--muted)', Importacao:'#a855f7' };
 
 function renderRefsTable(rows) {
   const tbody = document.getElementById('refs-body');
@@ -1169,11 +1182,12 @@ async function delUser(login) {
 // GRÁFICOS
 // ═══════════════════════════════════════
 const CELULAS_GRAF = [
-  { value: 'Aluminio', label: 'Celular de Alumínio' },
-  { value: 'Panos',    label: 'Máquina de Panos' },
-  { value: 'Placas',   label: 'Máquina de Placas' },
-  { value: 'Rodos',    label: 'Máquina de Rodos' },
-  { value: 'Manual',   label: 'Trabalho Manual' },
+  { value: 'Aluminio',   label: 'Celular de Alumínio' },
+  { value: 'Panos',      label: 'Máquina de Panos' },
+  { value: 'Placas',     label: 'Máquina de Placas' },
+  { value: 'Rodos',      label: 'Máquina de Rodos' },
+  { value: 'Manual',     label: 'Trabalho Manual' },
+  { value: 'Importacao', label: 'Importação' },
 ];
 const _chartInstances = {};
 
