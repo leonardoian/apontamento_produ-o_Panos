@@ -168,8 +168,13 @@
           </div>
           <div class="fgrid c3" style="margin-top:12px">
             <div class="fi"><label>Operador <span style="color:var(--muted);font-weight:400;letter-spacing:0">(usuário logado)</span></label><input type="text" id="lop" placeholder="—"></div>
-            <div class="fi"><label>Referência</label>
-              <select id="lref" onchange="preencheRef()"><option value="">Selecione...</option></select>
+            <div class="fi" style="position:relative">
+              <label>Referência</label>
+              <input type="text" id="lref-search" placeholder="Digite o código ou descrição..." autocomplete="off"
+                oninput="filterRefDropdown()" onfocus="openRefDropdown()"
+                style="width:100%">
+              <input type="hidden" id="lref">
+              <div id="lref-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--accent);z-index:300;max-height:220px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.6)"></div>
               <div class="fnote" id="lref-note"></div>
             </div>
             <div class="fi"><label>Descrição</label><input type="text" id="ldesc" readonly></div>
@@ -765,27 +770,74 @@ async function deleteProg(ref_cod, mes_ano, celula) {
 // ═══════════════════════════════════════
 // LANÇAMENTO
 // ═══════════════════════════════════════
+let _lrefOptions = [];
+
 async function atualizaRefSel() {
-  const mes = (document.getElementById('ldata')?.value || today()).slice(0,7);
+  const mes    = (document.getElementById('ldata')?.value || today()).slice(0,7);
   const celula = document.getElementById('lcelula').value;
-  const sel = document.getElementById('lref');
-  const note = document.getElementById('lref-note');
+  const note   = document.getElementById('lref-note');
   try {
     const cacheKey = mes + '_' + celula;
     const rows = _progCache[cacheKey] || await GET('programa?mes=' + mes + '&celula=' + celula);
     _progCache[cacheKey] = rows;
+    _lrefOptions = rows;
     if (!rows.length) {
-      sel.innerHTML = '<option value="">— Sem programa para este mês —</option>';
       note.textContent = '⚠ Nenhuma referência no programa de ' + mesL(mes) + '.';
       note.style.display = 'block';
     } else {
-      sel.innerHTML = '<option value="">Selecione a referência...</option>' +
-        rows.map(r => `<option value="${r.ref_cod}">${r.ref_cod} — ${r.descricao} (${r.num_turnos}T · ${fmt(+r.meta_turno||0)} pçs/turno)</option>`).join('');
       note.style.display = 'none';
     }
-  } catch(e) { sel.innerHTML = '<option value="">Erro ao carregar</option>'; }
+  } catch(e) { _lrefOptions = []; }
   preencheRef();
 }
+
+function buildRefItems(rows) {
+  const dd = document.getElementById('lref-dropdown');
+  if (!rows.length) {
+    dd.innerHTML = '<div style="padding:10px 14px;color:var(--muted);font-size:12px">Nenhuma referência encontrada.</div>';
+    return;
+  }
+  dd.innerHTML = rows.map(r =>
+    `<div onclick="selectRef('${r.ref_cod}')"
+      style="padding:9px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);transition:background .1s"
+      onmouseenter="this.style.background='rgba(204,0,0,.12)'" onmouseleave="this.style.background=''">
+      <span style="font-family:monospace;color:var(--accent);font-size:11px">${r.ref_cod}</span>
+      <span style="margin-left:8px">${r.descricao}</span>
+      <span style="float:right;font-size:10px;color:var(--muted)">${r.num_turnos}T · ${fmt(+r.meta_turno||0)} pçs</span>
+    </div>`
+  ).join('');
+}
+
+function openRefDropdown() {
+  buildRefItems(_lrefOptions);
+  document.getElementById('lref-dropdown').style.display = 'block';
+}
+
+function filterRefDropdown() {
+  const termo = document.getElementById('lref-search').value.toLowerCase();
+  const filtradas = !termo ? _lrefOptions : _lrefOptions.filter(r =>
+    r.ref_cod.toLowerCase().includes(termo) || r.descricao.toLowerCase().includes(termo)
+  );
+  buildRefItems(filtradas);
+  document.getElementById('lref-dropdown').style.display = 'block';
+  if (!termo) { document.getElementById('lref').value = ''; preencheRef(); }
+}
+
+function selectRef(cod) {
+  const r = _lrefOptions.find(x => x.ref_cod === cod);
+  if (!r) return;
+  document.getElementById('lref').value = cod;
+  document.getElementById('lref-search').value = r.ref_cod + ' — ' + r.descricao;
+  document.getElementById('lref-dropdown').style.display = 'none';
+  preencheRef();
+}
+
+document.addEventListener('click', e => {
+  const wrap = document.getElementById('lref-search')?.closest('.fi');
+  if (wrap && !wrap.contains(e.target)) {
+    document.getElementById('lref-dropdown').style.display = 'none';
+  }
+});
 
 function preencheRef() {
   const mes = (document.getElementById('ldata')?.value || today()).slice(0,7);
@@ -871,6 +923,7 @@ async function salvarLanc() {
 function limparForm(keepDate) {
   ['lturno','lref','ldesc','lmeta','lhi','lhf','lreal','lrefugo','lobs','lefic']
     .forEach(id => document.getElementById(id).value='');
+  document.getElementById('lref-search').value = '';
   document.getElementById('lop').value = USER?.nome || '';
   if (!keepDate) document.getElementById('ldata').value = today();
 }
