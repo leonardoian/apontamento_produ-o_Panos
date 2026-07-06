@@ -675,9 +675,10 @@ async function renderDashboard() {
 
     // Refs
     const rb = document.getElementById('dash-ref-body');
-    rb.innerHTML = !d.prog.length
+    const _progVis = d.prog.filter(r => (+r.meta_total||0) > 0);
+    rb.innerHTML = !_progVis.length
       ? `<tr><td colspan="7" class="empty"><div class="ei">☰</div>Nenhuma referência no programa deste mês.</td></tr>`
-      : d.prog.map(r => {
+      : _progVis.map(r => {
           const mT = +r.meta_total||0, rT = +r.realizado||0, sl = rT-mT;
           const p = mT>0?rT/mT:0; const bc = p>=1?'pg':p>=.8?'py':'pr';
           return `<tr>
@@ -729,11 +730,12 @@ async function renderPrograma() {
     const lancs = await GET('lancamentos?mes=' + mes + '&celula=' + celula);
     const cacheKey = mes + '_' + celula;
     _progCache[cacheKey] = rows;
-    document.getElementById('prog-count').textContent = rows.length + ' referências';
+    const rowsVis = rows.filter(r => (+r.meta_total||0) > 0);
+    document.getElementById('prog-count').textContent = rowsVis.length + ' referências';
     const isAdmin = USER?.perfil === 'admin';
-    tbody.innerHTML = !rows.length
+    tbody.innerHTML = !rowsVis.length
       ? `<tr><td colspan="10" class="empty"><div class="ei">☰</div>Nenhuma referência no programa. ${isAdmin?'Clique em "+ Adicionar Referência".':''}</td></tr>`
-      : rows.map(r => {
+      : rowsVis.map(r => {
           const mT = +r.meta_total||0;
           const rT1  = lancs.filter(l=>l.ref_cod===r.ref_cod&&l.turno==='T1').reduce((s,l)=>s+(+l.realizado||0),0);
           const rT2  = lancs.filter(l=>l.ref_cod===r.ref_cod&&l.turno==='T2').reduce((s,l)=>s+(+l.realizado||0),0);
