@@ -662,9 +662,14 @@ async function renderDashboard() {
     const celulaLbl = celula ? ` · ${document.getElementById('dash-celula').options[document.getElementById('dash-celula').selectedIndex].text}` : '';
     document.getElementById('dash-mes-lbl').textContent = mesL(mes) + celulaLbl;
 
+    const _metaMes = d.prog.reduce((s,r)=>s+ +r.meta_total,0);
+    const _realMes = +t.total_realizado||0;
+    const _ating = _metaMes > 0 ? (_realMes / _metaMes * 100) : null;
+    const _atingCor = _ating === null ? 'var(--muted)' : _ating >= 100 ? 'var(--green)' : _ating >= 80 ? 'var(--orange)' : 'var(--red)';
     document.getElementById('kpi-grid').innerHTML = `
       <div class="kc y"><div class="kl">Total Realizado</div><div class="kv">${fmt(t.total_realizado)}</div><div class="ks">peças — ${mesL(mes)}</div></div>
-      <div class="kc b"><div class="kl">Meta do Mês</div><div class="kv">${fmt(d.prog.reduce((s,r)=>s+ +r.meta_total,0))}</div><div class="ks">peças programadas</div></div>
+      <div class="kc b"><div class="kl">Meta do Mês</div><div class="kv">${fmt(_metaMes)}</div><div class="ks">peças programadas</div></div>
+      <div class="kc" style="border-top:3px solid ${_atingCor}"><div class="kl">Atingimento</div><div class="kv" style="color:${_atingCor}">${_ating !== null ? _ating.toFixed(1)+'%' : '—'}</div><div class="ks">${_ating !== null ? (_ating>=100?'meta atingida':fmt(_metaMes-_realMes)+' peças restantes') : 'sem programa'}</div></div>
       <div class="kc g"><div class="kl">Eficiência Média</div><div class="kv">${t.efic_media ? (t.efic_media*100).toFixed(1)+'%' : '—'}</div><div class="ks">todos os turnos</div></div>
       <div class="kc r"><div class="kl">Total Refugo</div><div class="kv">${fmt(t.total_refugo)}</div><div class="ks">peças rejeitadas</div></div>`;
 
