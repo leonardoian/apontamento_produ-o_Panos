@@ -755,6 +755,12 @@ async function renderPrograma() {
     const rowsVis = rows.filter(r => (+r.meta_total||0) > 0);
     document.getElementById('prog-count').textContent = rowsVis.length + ' referências';
     const isAdmin = USER?.perfil === 'admin';
+    // dias restantes até o fim do mês selecionado
+    const [anoM, mesM] = mes.split('-').map(Number);
+    const ultimoDia = new Date(anoM, mesM, 0);
+    const hoje = new Date(); hoje.setHours(0,0,0,0);
+    const diasRestantes = Math.ceil((ultimoDia - hoje) / 86400000);
+    const mesAtual = mes === curMes();
     tbody.innerHTML = !rowsVis.length
       ? `<tr><td colspan="10" class="empty"><div class="ei">☰</div>Nenhuma referência no programa. ${isAdmin?'Clique em "+ Adicionar Referência".':''}</td></tr>`
       : rowsVis.map(r => {
@@ -763,9 +769,10 @@ async function renderPrograma() {
           const rT2  = lancs.filter(l=>l.ref_cod===r.ref_cod&&l.turno==='T2').reduce((s,l)=>s+(+l.realizado||0),0);
           const rADM = lancs.filter(l=>l.ref_cod===r.ref_cod&&l.turno==='ADM').reduce((s,l)=>s+(+l.realizado||0),0);
           const rT = rT1+rT2+rADM; const p = mT>0?rT/mT:0;
-          return `<tr>
+          const alerta = mesAtual && diasRestantes <= 10 && diasRestantes >= 0 && p < 0.6;
+          return `<tr style="${alerta?'background:rgba(204,0,0,.08);outline:1px solid rgba(204,0,0,.3)':''}">
             <td style="font-family:monospace;font-size:11px">${r.ref_cod}</td>
-            <td style="max-width:220px;font-size:12px">${r.descricao}</td>
+            <td style="max-width:220px;font-size:12px">${alerta?`<span title="Abaixo de 60% com ${diasRestantes} dia(s) restantes" style="color:var(--red);margin-right:4px">⚠</span>`:''}${r.descricao}</td>
             <td>${fmt(+r.meta_turno||0)}</td>
             <td><span class="bt" style="background:rgba(204,0,0,.15);color:var(--accent)">${r.num_turnos}T</span></td>
             <td><strong>${fmt(mT)}</strong></td>
