@@ -202,6 +202,20 @@
             <button class="btn bs" onclick="limparForm()">✕ LIMPAR</button>
           </div>
         </div>
+
+        <!-- ÚLTIMOS LANÇAMENTOS DO DIA -->
+        <div id="lanc-recentes" style="display:none;margin-top:14px">
+          <div style="font:700 10px/1 var(--fh);letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:8px">Seus lançamentos de hoje</div>
+          <div style="overflow-x:auto">
+            <table style="font-size:12px">
+              <thead><tr>
+                <th>Turno</th><th>Referência</th><th>Descrição</th>
+                <th>Realizado</th><th>Refugo</th><th>Eficiência</th>
+              </tr></thead>
+              <tbody id="lanc-recentes-body"></tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
       <!-- HISTÓRICO -->
@@ -998,6 +1012,7 @@ async function salvarLanc() {
     });
     toast('Lançamento salvo com sucesso!');
     limparForm(true);
+    renderLancRecentes(data, celula);
   } catch(e) { toast('Erro ao salvar: ' + e.message, 'err'); }
 }
 
@@ -1006,7 +1021,35 @@ function limparForm(keepDate) {
     .forEach(id => document.getElementById(id).value='');
   document.getElementById('lref-search').value = '';
   document.getElementById('lop').value = USER?.nome || '';
-  if (!keepDate) document.getElementById('ldata').value = today();
+  if (!keepDate) {
+    document.getElementById('ldata').value = today();
+    document.getElementById('lanc-recentes').style.display = 'none';
+  }
+}
+
+async function renderLancRecentes(data, celula) {
+  const painel = document.getElementById('lanc-recentes');
+  const tbody  = document.getElementById('lanc-recentes-body');
+  try {
+    const mes = data.slice(0, 7);
+    const todos = await GET('lancamentos?mes=' + mes + '&celula=' + celula);
+    const meus = todos
+      .filter(l => String(l.data).slice(0,10) === data && (l.usuario_login === USER?.login || l.operador === USER?.nome))
+      .slice(0, 3);
+    if (!meus.length) { painel.style.display = 'none'; return; }
+    tbody.innerHTML = meus.map(l => {
+      const ef = +l.eficiencia;
+      return `<tr>
+        <td><span class="bt ${l.turno?.toLowerCase()}">${l.turno}</span></td>
+        <td style="font-family:monospace;font-size:11px">${l.ref_cod}</td>
+        <td style="font-size:11px;color:var(--muted)">${l.descricao||''}</td>
+        <td><strong>${fmt(+l.realizado||0)}</strong></td>
+        <td style="color:var(--red)">${fmt(+l.refugo||0)}</td>
+        <td class="${ef>0?eClass(ef):''}">${ef>0?(ef*100).toFixed(1)+'%':'—'}</td>
+      </tr>`;
+    }).join('');
+    painel.style.display = 'block';
+  } catch { painel.style.display = 'none'; }
 }
 
 // ═══════════════════════════════════════
