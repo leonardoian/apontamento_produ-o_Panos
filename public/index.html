@@ -447,6 +447,28 @@
   </div>
 </div>
 
+<!-- MODAL EDITAR LANÇAMENTO -->
+<div id="modal-lanc" style="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:none;align-items:center;justify-content:center">
+  <div style="background:var(--surface);border:1px solid var(--border);border-top:3px solid var(--blue);width:520px;max-width:95vw;padding:26px">
+    <div style="font:700 20px/1 var(--fh);margin-bottom:4px">EDITAR LANÇAMENTO</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:18px" id="lanc-edit-info"></div>
+    <div class="fgrid c2">
+      <div class="fi"><label>Data</label><input type="date" id="lanc-edit-data"></div>
+      <div class="fi"><label>Turno</label>
+        <select id="lanc-edit-turno"><option>T1</option><option>T2</option><option>ADM</option></select></div>
+      <div class="fi"><label>Realizado (pçs)</label><input type="number" id="lanc-edit-real" min="0"></div>
+      <div class="fi"><label>Refugo (pçs)</label><input type="number" id="lanc-edit-refugo" min="0"></div>
+      <div class="fi"><label>Hora Início</label><input type="time" id="lanc-edit-hi"></div>
+      <div class="fi"><label>Hora Fim</label><input type="time" id="lanc-edit-hf"></div>
+      <div class="fi" style="grid-column:1/-1"><label>Observação</label><input type="text" id="lanc-edit-obs"></div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:20px">
+      <button class="btn bs bsm" onclick="document.getElementById('modal-lanc').style.display='none'">Cancelar</button>
+      <button class="btn bp bsm" onclick="salvarEditLanc()">SALVAR</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL PROGRAMA -->
 <div id="modal-prog" style="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:none;align-items:center;justify-content:center">
   <div style="background:var(--surface);border:1px solid var(--border);border-top:3px solid var(--accent);width:480px;max-width:95vw;padding:26px">
@@ -998,7 +1020,10 @@ async function renderHist() {
             <td style="font-size:10px">${l.hora_inicio||'—'}</td>
             <td style="font-size:10px">${l.hora_fim||'—'}</td>
             <td style="max-width:130px;font-size:10px;color:var(--muted)">${l.obs||''}</td>
-            ${isAdmin?`<td><button class="btn bd bsm" onclick="delLanc(${l.id})">✕</button></td>`:''}
+            ${isAdmin?`<td style="white-space:nowrap;display:flex;gap:4px">
+              <button class="btn bsm" style="background:rgba(59,130,246,.15);color:var(--blue);border:1px solid rgba(59,130,246,.3)" onclick="openEditLanc(${l.id},'${String(l.data).slice(0,10)}','${l.turno}',${+l.realizado||0},${+l.refugo||0},'${l.hora_inicio||''}','${l.hora_fim||''}','${(l.obs||'').replace(/'/g,"\\'")}','${l.ref_cod}','${(l.descricao||'').replace(/'/g,"\\'")}')">✎</button>
+              <button class="btn bd bsm" onclick="delLanc(${l.id})">✕</button>
+            </td>`:''}
           </tr>`;
         }).join('');
   } catch(e) {
@@ -1010,6 +1035,50 @@ async function delLanc(id) {
   if (!confirm('Excluir este lançamento?')) return;
   try { await DELETE('lancamentos', { id }); renderHist(); }
   catch(e) { alert('Erro: ' + e.message); }
+}
+
+let _editLancId = null;
+function openEditLanc(id, data, turno, real, refugo, hi, hf, obs, ref_cod, descricao) {
+  _editLancId = id;
+  document.getElementById('lanc-edit-info').textContent = `Ref: ${ref_cod} — ${descricao}`;
+  document.getElementById('lanc-edit-data').value = data;
+  document.getElementById('lanc-edit-turno').value = turno;
+  document.getElementById('lanc-edit-real').value = real;
+  document.getElementById('lanc-edit-refugo').value = refugo;
+  document.getElementById('lanc-edit-hi').value = hi;
+  document.getElementById('lanc-edit-hf').value = hf;
+  document.getElementById('lanc-edit-obs').value = obs;
+  document.getElementById('modal-lanc').style.display = 'flex';
+}
+
+async function salvarEditLanc() {
+  const hi = document.getElementById('lanc-edit-hi').value;
+  const hf = document.getElementById('lanc-edit-hf').value;
+  const real = +document.getElementById('lanc-edit-real').value || 0;
+  let efic = null;
+  if (hi && hf) {
+    const [hhi, mhi] = hi.split(':').map(Number), [hhf, mhf] = hf.split(':').map(Number);
+    let mins = (hhf*60+mhf) - (hhi*60+mhi);
+    if (mins > 0) {
+      const refCod = document.getElementById('lanc-edit-info').textContent.split(' — ')[0].replace('Ref: ','');
+      const refDat = (_refs||[]).find(r=>r.cod===refCod);
+      if (refDat?.meta_hora > 0) { const metaCalc = Math.round(refDat.meta_hora * mins / 60); efic = metaCalc > 0 ? real / metaCalc : null; }
+    }
+  }
+  try {
+    await PUT('lancamentos', {
+      id: _editLancId,
+      data: document.getElementById('lanc-edit-data').value,
+      turno: document.getElementById('lanc-edit-turno').value,
+      realizado: real,
+      refugo: +document.getElementById('lanc-edit-refugo').value || 0,
+      hora_inicio: hi, hora_fim: hf,
+      obs: document.getElementById('lanc-edit-obs').value,
+      eficiencia: efic
+    });
+    document.getElementById('modal-lanc').style.display = 'none';
+    renderHist();
+  } catch(e) { alert('Erro ao salvar: ' + e.message); }
 }
 
 // ═══════════════════════════════════════
