@@ -40,6 +40,7 @@
       <div class="snl">Principal</div>
       <div class="ni active" onclick="goTo('dashboard')"><span class="ic">◈</span>Dashboard</div>
       <div class="ni" onclick="goTo('programa')"><span class="ic">☰</span>Programa do Mês</div>
+      <div class="ni" onclick="goTo('ordens')"><span class="ic">⊟</span>Ordens</div>
       <div class="ni" onclick="goTo('lancamento')"><span class="ic">⊕</span>Lançar Produção</div>
       <div class="ni" onclick="goTo('historico')"><span class="ic">⊞</span>Histórico</div>
       <div class="ni" onclick="goTo('graficos')"><span class="ic">◎</span>Gráficos</div>
@@ -144,6 +145,89 @@
             <th>Total Real.</th><th>Falta</th><th>%</th><th id="th-prog-ac" style="display:none">Ações</th>
           </tr></thead><tbody id="prog-body"></tbody></table></div>
         </div>
+      </div>
+
+      <!-- ORDENS DE PRODUÇÃO -->
+      <div class="ps" id="sec-ordens">
+        <!-- Form admin (oculto para operadores) -->
+        <div id="ordem-form-block" style="display:none;margin-bottom:18px">
+          <div class="fc">
+            <div class="fct">NOVA ORDEM DE PRODUÇÃO</div>
+            <div class="fgrid c3">
+              <div class="fi"><label>Célula</label>
+                <select id="ord-celula" onchange="atualizaRefsOrdem()">
+                  <option value="Aluminio">Celular de Alumínio</option>
+                  <option value="Panos" selected>Máquina de Panos</option>
+                  <option value="Placas">Máquina de Placas</option>
+                  <option value="Rodos">Máquina de Rodos</option>
+                  <option value="Manual">Trabalho Manual</option>
+                  <option value="Importacao">Importação</option>
+                </select>
+              </div>
+              <div class="fi"><label>Referência</label>
+                <select id="ord-ref" onchange="preencheMetaOrdem()">
+                  <option value="">Selecione a célula primeiro...</option>
+                </select>
+              </div>
+              <div class="fi"><label>Quantidade (peças)</label>
+                <input type="number" id="ord-qtd" min="1" placeholder="0" oninput="calcOrdem()">
+              </div>
+              <div class="fi"><label>Meta Hora (pçs/h)</label>
+                <input type="number" id="ord-meta-hora" min="1" placeholder="preenchido automaticamente" oninput="calcOrdem()">
+              </div>
+              <div class="fi"><label>Horas por Turno</label>
+                <input type="number" id="ord-hpt" min="1" max="24" value="8" step="0.5" oninput="calcOrdem()">
+              </div>
+              <div class="fi"><label>Data Prevista <span style="color:var(--muted);font-weight:400;letter-spacing:0">(opcional)</span></label>
+                <input type="date" id="ord-data">
+              </div>
+              <div class="fi" style="grid-column:1/-1"><label>Observação</label>
+                <input type="text" id="ord-obs" placeholder="Prioridade, instruções especiais...">
+              </div>
+            </div>
+            <!-- Preview do cálculo -->
+            <div id="ord-calc" style="display:none;margin-top:14px;background:rgba(59,130,246,.07);border:1px solid rgba(59,130,246,.25);border-left:3px solid var(--blue);padding:14px 18px">
+              <div style="font:700 9px/1 var(--fh);letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:10px">Estimativa</div>
+              <div style="display:flex;gap:32px;flex-wrap:wrap">
+                <div>
+                  <div style="font:700 9px/1 var(--fh);letter-spacing:1px;color:var(--muted);text-transform:uppercase;margin-bottom:3px">Horas Necessárias</div>
+                  <div style="font:900 28px/1 var(--fh);color:var(--blue)" id="ord-calc-horas">—</div>
+                </div>
+                <div>
+                  <div style="font:700 9px/1 var(--fh);letter-spacing:1px;color:var(--muted);text-transform:uppercase;margin-bottom:3px">Dias de Turno</div>
+                  <div style="font:900 28px/1 var(--fh);color:var(--blue)" id="ord-calc-dias">—</div>
+                </div>
+              </div>
+            </div>
+            <div class="brow">
+              <button class="btn bp" onclick="salvarOrdem()">+ CRIAR ORDEM</button>
+            </div>
+          </div>
+        </div>
+        <!-- Filtros -->
+        <div class="filtbar" style="margin-bottom:14px">
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="btn bsm bs ordem-fb" data-status="" onclick="filtrarOrdens(this)">Todas</button>
+            <button class="btn bsm bs ordem-fb" data-status="pendente" onclick="filtrarOrdens(this)">Pendentes</button>
+            <button class="btn bsm bs ordem-fb" data-status="em_andamento" onclick="filtrarOrdens(this)">Em Andamento</button>
+            <button class="btn bsm bs ordem-fb" data-status="concluida" onclick="filtrarOrdens(this)">Concluídas</button>
+          </div>
+          <div class="fi"><label>Célula</label>
+            <select id="ord-filtro-celula" onchange="_ordemFiltroCelula=this.value;renderOrdens()" style="min-width:160px">
+              <option value="">Todas as Células</option>
+              <option value="Aluminio">Celular de Alumínio</option>
+              <option value="Panos">Máquina de Panos</option>
+              <option value="Placas">Máquina de Placas</option>
+              <option value="Rodos">Máquina de Rodos</option>
+              <option value="Manual">Trabalho Manual</option>
+              <option value="Importacao">Importação</option>
+            </select>
+          </div>
+          <button class="btn bs bsm" onclick="renderOrdens()">↻ Atualizar</button>
+          <span id="ordens-count" style="font-size:12px;color:var(--muted);align-self:center"></span>
+        </div>
+        <!-- Cards -->
+        <div id="ordens-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px"></div>
       </div>
 
       <!-- LANÇAMENTO -->
@@ -709,7 +793,7 @@ function closeSidebar() {
 // ═══════════════════════════════════════
 // NAVEGAÇÃO
 // ═══════════════════════════════════════
-const TITLES = { dashboard:'Dashboard', programa:'Programa do Mês', lancamento:'Lançar Produção', historico:'Histórico', graficos:'Gráficos por Célula', operadores:'Operadores', referencias:'Referências', usuarios:'Usuários' };
+const TITLES = { dashboard:'Dashboard', programa:'Programa do Mês', ordens:'Ordens de Produção', lancamento:'Lançar Produção', historico:'Histórico', graficos:'Gráficos por Célula', operadores:'Operadores', referencias:'Referências', usuarios:'Usuários' };
 function goTo(p) {
   document.querySelectorAll('.ps').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.ni').forEach(n => n.classList.remove('active'));
@@ -719,6 +803,7 @@ function goTo(p) {
   if (window.innerWidth <= 768) closeSidebar();
   if (p === 'dashboard')  renderDashboard();
   if (p === 'programa')   renderPrograma();
+  if (p === 'ordens')     renderOrdens();
   if (p === 'lancamento') { document.getElementById('ldata').value = today(); atualizaRefSel(); }
   if (p === 'historico')  { document.getElementById('hist-mes').value = curMes(); renderHist(); }
   if (p === 'graficos')   renderGraficos();
@@ -1615,6 +1700,162 @@ function exportOpPDF() {
   });
 
   doc.save(`operadores_${mes}.pdf`);
+}
+
+// ═══════════════════════════════════════
+// ORDENS DE PRODUÇÃO
+// ═══════════════════════════════════════
+let _ordemFiltroStatus = '';
+let _ordemFiltroCelula = '';
+const _CELULA_LABEL = { Aluminio:'Alumínio', Panos:'Panos', Placas:'Placas', Rodos:'Rodos', Manual:'Manual', Importacao:'Importação' };
+const _STATUS_LABEL  = { pendente:'PENDENTE', em_andamento:'EM ANDAMENTO', concluida:'CONCLUÍDA' };
+const _STATUS_COR    = { pendente:'var(--muted)', em_andamento:'var(--orange)', concluida:'var(--green)' };
+const _STATUS_BG     = { pendente:'rgba(136,136,136,.1)', em_andamento:'rgba(249,115,22,.1)', concluida:'rgba(16,185,129,.1)' };
+
+function filtrarOrdens(btn) {
+  _ordemFiltroStatus = btn.dataset.status;
+  document.querySelectorAll('.ordem-fb').forEach(b => {
+    const on = b === btn;
+    b.style.background   = on ? 'rgba(204,0,0,.15)' : 'transparent';
+    b.style.color        = on ? 'var(--accent)' : 'var(--text)';
+    b.style.borderColor  = on ? 'rgba(204,0,0,.3)' : 'var(--border)';
+  });
+  renderOrdens();
+}
+
+async function renderOrdens() {
+  const isAdmin = USER?.perfil === 'admin';
+  document.getElementById('ordem-form-block').style.display = isAdmin ? '' : 'none';
+  if (isAdmin) atualizaRefsOrdem();
+
+  // Highlight "Todas" button on first load if no active filter button
+  const btns = document.querySelectorAll('.ordem-fb');
+  if (![...btns].some(b => b.style.background.includes('204'))) {
+    btns[0] && filtrarOrdens(btns[0]);
+    return; // filtrarOrdens chama renderOrdens de novo
+  }
+
+  const grid = document.getElementById('ordens-grid');
+  grid.innerHTML = `<div style="grid-column:1/-1;padding:24px;color:var(--muted)"><span class="loading"></span></div>`;
+  try {
+    let rows = await GET('ordens');
+    if (_ordemFiltroStatus) rows = rows.filter(o => o.status === _ordemFiltroStatus);
+    if (_ordemFiltroCelula) rows = rows.filter(o => o.celula === _ordemFiltroCelula);
+    document.getElementById('ordens-count').textContent = rows.length + ' ordem(ns)';
+    if (!rows.length) {
+      grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:48px;color:var(--muted)">
+        <div style="font-size:36px;margin-bottom:10px">⊟</div>Nenhuma ordem encontrada.</div>`;
+      return;
+    }
+    grid.innerHTML = rows.map(o => renderOrdemCard(o, isAdmin)).join('');
+  } catch(e) {
+    if (!e.sessionExpired) grid.innerHTML = `<div style="grid-column:1/-1;color:var(--red);padding:24px">${e.message}</div>`;
+  }
+}
+
+function renderOrdemCard(o, isAdmin) {
+  const cor     = _STATUS_COR[o.status]  || 'var(--muted)';
+  const bg      = _STATUS_BG[o.status]   || 'rgba(136,136,136,.1)';
+  const label   = _STATUS_LABEL[o.status]|| o.status;
+  const p       = o.quantidade > 0 ? Math.min(+o.total_realizado / +o.quantidade, 1) : 0;
+  const pct     = (p * 100).toFixed(1);
+  const horas   = o.meta_hora > 0 ? (+o.quantidade / +o.meta_hora).toFixed(1) : '—';
+  const hpt     = +o.horas_por_turno || 8;
+  const dias    = o.meta_hora > 0 ? (+o.quantidade / +o.meta_hora / hpt).toFixed(1) : '—';
+  const progCor = p >= 1 ? 'var(--green)' : p >= 0.6 ? 'var(--orange)' : 'var(--accent)';
+  const dataPrev= o.data_prevista ? String(o.data_prevista).slice(0,10).split('-').reverse().join('/') : null;
+  const criadoEm= String(o.criado_em).slice(0,10).split('-').reverse().join('/');
+  return `<div style="background:var(--card);border:1px solid var(--border);border-top:3px solid ${cor};padding:18px 20px;display:flex;flex-direction:column;gap:0">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <span style="font:700 10px/1 var(--fh);letter-spacing:2px;padding:3px 9px;background:${bg};color:${cor};text-transform:uppercase">${label}</span>
+      <span style="font:700 10px/1 var(--fh);letter-spacing:1px;color:var(--muted)">#${o.id} · ${_CELULA_LABEL[o.celula]||o.celula}</span>
+    </div>
+    <div style="font-family:monospace;font-size:11px;color:var(--accent)">${o.ref_cod}</div>
+    <div style="font:600 14px/1.4 var(--fb);margin-bottom:14px;margin-top:2px">${o.descricao}</div>
+    <div style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:5px">
+        <span>${fmt(+o.total_realizado)} / ${fmt(+o.quantidade)} peças</span>
+        <span style="font-weight:700;color:${progCor}">${pct}%</span>
+      </div>
+      <div class="pw" style="height:6px"><div class="pf" style="width:${Math.min(p*100,100)}%;background:${progCor};border-radius:1px"></div></div>
+    </div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-bottom:${o.obs?'8px':'10px'}">
+      <span>⏱ ${horas}h necessárias</span>
+      <span>📅 ~${dias} dias (${hpt}h/turno)</span>
+    </div>
+    ${o.obs ? `<div style="font-size:11px;color:var(--muted);padding:7px 10px;background:rgba(255,255,255,.03);border-left:2px solid var(--border);margin-bottom:10px">${o.obs}</div>` : ''}
+    <div style="display:flex;justify-content:space-between;align-items:center;font-size:10px;color:var(--muted);padding-top:10px;border-top:1px solid var(--border)">
+      <div>${dataPrev ? `Previsto: <strong style="color:var(--text)">${dataPrev}</strong> · ` : ''}Por ${o.criado_por} em ${criadoEm}</div>
+      ${isAdmin ? `<button class="btn bd bsm" onclick="deletarOrdem(${o.id})" title="Remover ordem">✕</button>` : ''}
+    </div>
+  </div>`;
+}
+
+function atualizaRefsOrdem() {
+  const celula = document.getElementById('ord-celula')?.value;
+  if (!celula) return;
+  const refsComMeta = _refs.filter(r => r.celula === celula && (+r.meta_hora || 0) > 0);
+  const refSel = document.getElementById('ord-ref');
+  if (!refsComMeta.length) {
+    refSel.innerHTML = '<option value="">Nenhuma referência com Meta Hora nesta célula</option>';
+    document.getElementById('ord-meta-hora').value = '';
+  } else {
+    refSel.innerHTML = '<option value="">Selecione a referência...</option>' +
+      refsComMeta.map(r => `<option value="${r.cod}">${r.cod} — ${r.descricao} (${r.meta_hora} pçs/h)</option>`).join('');
+  }
+  calcOrdem();
+}
+
+function preencheMetaOrdem() {
+  const cod = document.getElementById('ord-ref').value;
+  const r = _refs.find(x => x.cod === cod);
+  document.getElementById('ord-meta-hora').value = r?.meta_hora || '';
+  calcOrdem();
+}
+
+function calcOrdem() {
+  const qtd  = +document.getElementById('ord-qtd').value || 0;
+  const mh   = +document.getElementById('ord-meta-hora').value || 0;
+  const hpt  = +document.getElementById('ord-hpt').value || 8;
+  const calc = document.getElementById('ord-calc');
+  if (qtd > 0 && mh > 0 && hpt > 0) {
+    const horas = qtd / mh;
+    const dias  = horas / hpt;
+    document.getElementById('ord-calc-horas').textContent = horas.toFixed(1) + 'h';
+    document.getElementById('ord-calc-dias').textContent  = dias.toFixed(1) + ' dias';
+    calc.style.display = 'block';
+  } else {
+    calc.style.display = 'none';
+  }
+}
+
+async function salvarOrdem() {
+  const celula       = document.getElementById('ord-celula').value;
+  const ref_cod      = document.getElementById('ord-ref').value;
+  const quantidade   = +document.getElementById('ord-qtd').value || 0;
+  const meta_hora    = +document.getElementById('ord-meta-hora').value || 0;
+  const horas_por_turno = +document.getElementById('ord-hpt').value || 8;
+  const data_prevista   = document.getElementById('ord-data').value || null;
+  const obs          = document.getElementById('ord-obs').value.trim();
+  if (!ref_cod)          { toast('Selecione a referência.', 'err'); return; }
+  if (quantidade <= 0)   { toast('Informe a quantidade a produzir.', 'err'); return; }
+  if (meta_hora <= 0)    { toast('Meta hora inválida.', 'err'); return; }
+  try {
+    await POST('ordens', { celula, ref_cod, quantidade, meta_hora, horas_por_turno, data_prevista, obs });
+    toast('Ordem de produção criada!');
+    ['ord-qtd','ord-ref','ord-meta-hora','ord-data','ord-obs'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('ord-calc').style.display = 'none';
+    renderOrdens();
+  } catch(e) { if (!e.sessionExpired) toast('Erro: ' + e.message, 'err'); }
+}
+
+async function deletarOrdem(id) {
+  if (!confirm('Remover esta ordem de produção?')) return;
+  try {
+    await DELETE('ordens', { id });
+    toast('Ordem removida.', 'info');
+    renderOrdens();
+  } catch(e) { if (!e.sessionExpired) toast('Erro: ' + e.message, 'err'); }
 }
 
 // ═══════════════════════════════════════

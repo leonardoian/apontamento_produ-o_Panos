@@ -84,6 +84,19 @@ export async function initDB(sql) {
     usuario_login VARCHAR(50),
     criado_em TIMESTAMP DEFAULT NOW()
   )`;
+  await sql`CREATE TABLE IF NOT EXISTS ordens_producao (
+    id SERIAL PRIMARY KEY,
+    celula VARCHAR(30) NOT NULL,
+    ref_cod VARCHAR(30) NOT NULL,
+    quantidade INT NOT NULL,
+    meta_hora INT NOT NULL,
+    horas_por_turno DECIMAL(4,1) NOT NULL DEFAULT 8,
+    data_prevista DATE,
+    obs TEXT,
+    criado_por VARCHAR(50),
+    criado_em TIMESTAMP DEFAULT NOW(),
+    ativo BOOLEAN DEFAULT true
+  )`;
   const existe = await sql`SELECT id FROM usuarios WHERE login = 'admin' LIMIT 1`;
   if (!existe.length) {
     const hash = await bcrypt.hash("admin123", 10);
