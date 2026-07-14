@@ -147,7 +147,6 @@
 
       <!-- LANÇAMENTO -->
       <div class="ps" id="sec-lancamento">
-        <div id="alrt-lanc"></div>
         <div class="fc">
           <div class="fct">LANÇAR PRODUÇÃO</div>
           <div class="fgrid c3">
@@ -544,12 +543,6 @@ const eClass= v => v>=1?'ok':v>=.8?'warn':'bad';
 const mesL  = m => { if(!m)return''; const[y,mo]=m.split('-'); return ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][+mo-1]+'/'+y; };
 const today = () => new Date().toISOString().slice(0,10);
 const curMes= () => new Date().toISOString().slice(0,7);
-
-function showAlert(id, type, msg, ms=4000) {
-  const el = document.getElementById(id);
-  el.innerHTML = `<div class="alert ${type}">${msg}</div>`;
-  if (ms) setTimeout(() => el.innerHTML='', ms);
-}
 
 function toast(msg, type='ok', ms=3500) {
   const icons = { ok:'✔', err:'✕', info:'ℹ' };
@@ -1071,6 +1064,14 @@ async function renderHist() {
     const rows = await GET(q);
     document.getElementById('hist-count').textContent = rows.length + ' registro(s)';
     const isAdmin = USER?.perfil === 'admin';
+    if (isAdmin) rows.forEach(l => {
+      _editLancMap[l.id] = {
+        ref_cod: l.ref_cod, descricao: l.descricao||'',
+        data: String(l.data).slice(0,10), turno: l.turno,
+        real: +l.realizado||0, refugo: +l.refugo||0,
+        hi: l.hora_inicio||'', hf: l.hora_fim||'', obs: l.obs||''
+      };
+    });
     tbody.innerHTML = !rows.length
       ? `<tr><td colspan="13" class="empty"><div class="ei">⊞</div>Nenhum lançamento encontrado.</td></tr>`
       : rows.map(l => {
@@ -1088,7 +1089,7 @@ async function renderHist() {
             <td style="font-size:10px">${l.hora_fim||'—'}</td>
             <td style="max-width:130px;font-size:10px;color:var(--muted)">${l.obs||''}</td>
             ${isAdmin?`<td style="white-space:nowrap;display:flex;gap:4px">
-              <button class="btn bsm" style="background:rgba(59,130,246,.15);color:var(--blue);border:1px solid rgba(59,130,246,.3)" onclick="openEditLanc(${l.id},'${String(l.data).slice(0,10)}','${l.turno}',${+l.realizado||0},${+l.refugo||0},'${l.hora_inicio||''}','${l.hora_fim||''}','${(l.obs||'').replace(/'/g,"\\'")}','${l.ref_cod}','${(l.descricao||'').replace(/'/g,"\\'")}')">✎</button>
+              <button class="btn bsm" style="background:rgba(59,130,246,.15);color:var(--blue);border:1px solid rgba(59,130,246,.3)" onclick="openEditLanc(${l.id})">✎</button>
               <button class="btn bd bsm" onclick="delLanc(${l.id})">✕</button>
             </td>`:''}
           </tr>`;
@@ -1105,16 +1106,19 @@ async function delLanc(id) {
 }
 
 let _editLancId = null;
-function openEditLanc(id, data, turno, real, refugo, hi, hf, obs, ref_cod, descricao) {
+const _editLancMap = {};
+function openEditLanc(id) {
+  const d = _editLancMap[id];
+  if (!d) return;
   _editLancId = id;
-  document.getElementById('lanc-edit-info').textContent = `Ref: ${ref_cod} — ${descricao}`;
-  document.getElementById('lanc-edit-data').value = data;
-  document.getElementById('lanc-edit-turno').value = turno;
-  document.getElementById('lanc-edit-real').value = real;
-  document.getElementById('lanc-edit-refugo').value = refugo;
-  document.getElementById('lanc-edit-hi').value = hi;
-  document.getElementById('lanc-edit-hf').value = hf;
-  document.getElementById('lanc-edit-obs').value = obs;
+  document.getElementById('lanc-edit-info').textContent = `Ref: ${d.ref_cod} — ${d.descricao}`;
+  document.getElementById('lanc-edit-data').value = d.data;
+  document.getElementById('lanc-edit-turno').value = d.turno;
+  document.getElementById('lanc-edit-real').value = d.real;
+  document.getElementById('lanc-edit-refugo').value = d.refugo;
+  document.getElementById('lanc-edit-hi').value = d.hi;
+  document.getElementById('lanc-edit-hf').value = d.hf;
+  document.getElementById('lanc-edit-obs').value = d.obs;
   document.getElementById('modal-lanc').style.display = 'flex';
 }
 
@@ -1414,7 +1418,7 @@ async function renderOperadores() {
   const mes    = document.getElementById('op-mes').value || curMes();
   const celula = document.getElementById('op-celula').value;
   const tbody  = document.getElementById('op-body');
-  tbody.innerHTML = `<tr><td colspan="8" class="empty"><span class="loading"></span></td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="10" class="empty"><span class="loading"></span></td></tr>`;
   try {
     let q = 'operadores?mes=' + mes;
     if (celula) q += '&celula=' + celula;
@@ -1439,7 +1443,7 @@ async function renderOperadores() {
           </tr>`;
         }).join('');
   } catch (e) {
-    tbody.innerHTML = `<tr><td colspan="8" class="empty" style="color:var(--red)">${e.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" class="empty" style="color:var(--red)">${e.message}</td></tr>`;
   }
 }
 

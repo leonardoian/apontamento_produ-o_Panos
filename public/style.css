@@ -99,8 +99,9 @@ td { padding: 9px 12px; border-bottom: 1px solid var(--border); vertical-align: 
 tr:last-child td { border-bottom: none; }
 tbody tr:hover { background: rgba(255,255,255,.02); }
 .bt { display: inline-block; padding: 2px 7px; font: 700 10px/1.4 var(--fh); border-radius: 2px; }
-.t1 { background: rgba(204,0,0,.15); color: var(--accent); }
-.t2 { background: rgba(59,130,246,.15); color: var(--blue); }
+.t1  { background: rgba(204,0,0,.15);    color: var(--accent); }
+.t2  { background: rgba(59,130,246,.15); color: var(--blue); }
+.adm { background: rgba(16,185,129,.15); color: var(--green); }
 .ok { color: var(--green); font-weight: 600; }
 .warn { color: var(--orange); font-weight: 600; }
 .bad { color: var(--red); font-weight: 600; }
