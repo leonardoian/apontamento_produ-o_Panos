@@ -52,6 +52,7 @@
     <div class="sfoot">
       <div class="un" id="sb-nome">—</div>
       <div class="ur" id="sb-role">—</div>
+      <button class="btn-out" style="margin-top:6px" onclick="openModalSenha()">🔑 Alterar Senha</button>
       <button class="btn-out" onclick="doLogout()">Sair</button>
     </div>
   </nav>
@@ -497,6 +498,38 @@
     <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:20px">
       <button class="btn bs bsm" onclick="closeModal()">Cancelar</button>
       <button class="btn bp bsm" onclick="salvarProg()">SALVAR</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ALTERAR SENHA (própria) -->
+<div id="modal-senha" style="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:none;align-items:center;justify-content:center">
+  <div style="background:var(--surface);border:1px solid var(--border);border-top:3px solid var(--blue);width:400px;max-width:95vw;padding:26px">
+    <div style="font:700 20px/1 var(--fh);margin-bottom:18px">ALTERAR SENHA</div>
+    <div class="fgrid" style="gap:13px">
+      <div class="fi"><label>Senha Atual</label><input type="password" id="s-atual" placeholder="••••••••" autocomplete="current-password"></div>
+      <div class="fi"><label>Nova Senha</label><input type="password" id="s-nova" placeholder="mínimo 6 caracteres" autocomplete="new-password"></div>
+      <div class="fi"><label>Confirmar Nova Senha</label><input type="password" id="s-conf" placeholder="repita a nova senha" autocomplete="new-password"></div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:20px">
+      <button class="btn bs bsm" onclick="document.getElementById('modal-senha').style.display='none'">Cancelar</button>
+      <button class="btn bp bsm" onclick="salvarSenha()">SALVAR</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL REDEFINIR SENHA (admin) -->
+<div id="modal-reset-senha" style="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:none;align-items:center;justify-content:center">
+  <div style="background:var(--surface);border:1px solid var(--border);border-top:3px solid var(--accent);width:400px;max-width:95vw;padding:26px">
+    <div style="font:700 20px/1 var(--fh);margin-bottom:4px">REDEFINIR SENHA</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:18px" id="reset-senha-info"></div>
+    <div class="fgrid" style="gap:13px">
+      <div class="fi"><label>Nova Senha</label><input type="password" id="rs-nova" placeholder="mínimo 6 caracteres" autocomplete="new-password"></div>
+      <div class="fi"><label>Confirmar Nova Senha</label><input type="password" id="rs-conf" placeholder="repita a nova senha" autocomplete="new-password"></div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:20px">
+      <button class="btn bs bsm" onclick="document.getElementById('modal-reset-senha').style.display='none'">Cancelar</button>
+      <button class="btn bp bsm" onclick="salvarResetSenha()">REDEFINIR</button>
     </div>
   </div>
 </div>
@@ -1314,7 +1347,10 @@ async function renderUsers() {
       <td style="font-family:monospace">${u.login}</td>
       <td>${u.nome}</td>
       <td><span class="badge ${u.perfil==='admin'?'ba':'bu'}">${u.perfil}</span></td>
-      <td>${u.login!=='admin'?`<button class="btn bd bsm" onclick="delUser('${u.login}')">✕</button>`:'—'}</td>
+      <td style="white-space:nowrap;display:flex;gap:4px">
+        <button class="btn bsm" style="background:rgba(59,130,246,.15);color:var(--blue);border:1px solid rgba(59,130,246,.3)" onclick="openModalResetSenha('${u.login}','${u.nome}')">🔑</button>
+        ${u.login!=='admin'?`<button class="btn bd bsm" onclick="delUser('${u.login}')">✕</button>`:''}
+      </td>
     </tr>`).join('');
   } catch(e) { tbody.innerHTML = `<tr><td colspan="5" class="empty" style="color:var(--red)">${e.message}</td></tr>`; }
 }
@@ -1579,6 +1615,49 @@ function exportOpPDF() {
   });
 
   doc.save(`operadores_${mes}.pdf`);
+}
+
+// ═══════════════════════════════════════
+// SENHA
+// ═══════════════════════════════════════
+function openModalSenha() {
+  ['s-atual','s-nova','s-conf'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('modal-senha').style.display = 'flex';
+}
+
+async function salvarSenha() {
+  const atual = document.getElementById('s-atual').value;
+  const nova  = document.getElementById('s-nova').value;
+  const conf  = document.getElementById('s-conf').value;
+  if (!atual || !nova) { toast('Preencha todos os campos.', 'err'); return; }
+  if (nova.length < 6) { toast('A nova senha deve ter pelo menos 6 caracteres.', 'err'); return; }
+  if (nova !== conf) { toast('As senhas não coincidem.', 'err'); return; }
+  try {
+    await POST('senha', { senha_atual: atual, nova_senha: nova });
+    document.getElementById('modal-senha').style.display = 'none';
+    toast('Senha alterada com sucesso!');
+  } catch(e) { if (!e.sessionExpired) toast('Erro: ' + e.message, 'err'); }
+}
+
+let _resetSenhaLogin = null;
+function openModalResetSenha(login, nome) {
+  _resetSenhaLogin = login;
+  document.getElementById('reset-senha-info').textContent = `Usuário: ${nome} (${login})`;
+  ['rs-nova','rs-conf'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('modal-reset-senha').style.display = 'flex';
+}
+
+async function salvarResetSenha() {
+  const nova = document.getElementById('rs-nova').value;
+  const conf = document.getElementById('rs-conf').value;
+  if (!nova) { toast('Informe a nova senha.', 'err'); return; }
+  if (nova.length < 6) { toast('A senha deve ter pelo menos 6 caracteres.', 'err'); return; }
+  if (nova !== conf) { toast('As senhas não coincidem.', 'err'); return; }
+  try {
+    await POST('senha', { login: _resetSenhaLogin, nova_senha: nova });
+    document.getElementById('modal-reset-senha').style.display = 'none';
+    toast('Senha de ' + _resetSenhaLogin + ' redefinida com sucesso!');
+  } catch(e) { if (!e.sessionExpired) toast('Erro: ' + e.message, 'err'); }
 }
 
 // ═══════════════════════════════════════
