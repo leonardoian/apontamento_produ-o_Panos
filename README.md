@@ -10,7 +10,8 @@ Sistema web para controle de produção da **SuperPro**. Registra apontamentos p
 | Backend | Vercel Serverless Functions (ES Modules) |
 | Banco de dados | Neon (PostgreSQL serverless) |
 | Autenticação | JWT + bcryptjs |
-| Exportação | SheetJS (xlsx) + jsPDF + jspdf-autotable |
+| Gráficos | Chart.js 4.4.0 |
+| Exportação | SheetJS (xlsx@0.18.5) + jsPDF@2.5.1 + jspdf-autotable |
 | Deploy | Vercel |
 
 ---
@@ -62,20 +63,21 @@ Acesse `http://localhost:3000`.
 ├── .env.example
 ├── api/
 │   ├── _lib/
-│   │   └── db.mjs           # Conexão Neon, helpers de auth e CORS
-│   ├── login.mjs            # Autenticação (POST /api/login)
-│   ├── me.mjs               # Usuário autenticado (GET /api/me)
+│   │   └── db.mjs           # Conexão Neon, helpers de auth, CORS e initDB
+│   ├── login.mjs            # POST /api/login
+│   ├── me.mjs               # GET /api/me
 │   ├── usuarios.mjs         # CRUD de usuários
 │   ├── referencias.mjs      # CRUD de referências de produtos
 │   ├── programa.mjs         # Programa mensal por célula
-│   ├── lancamentos.mjs      # Apontamentos de produção
+│   ├── lancamentos.mjs      # Apontamentos (GET / POST / PUT / DELETE)
 │   ├── dashboard.mjs        # KPIs e dados consolidados
 │   ├── operadores.mjs       # Eficiência por operador
-│   └── meses.mjs            # Meses com lançamentos
+│   └── meses.mjs            # Meses com programa ativo
 └── public/
     ├── index.html           # Aplicação principal (SPA)
     ├── style.css            # Estilos (dark theme, responsivo)
-    └── importar.html        # Importação de programa via planilha Excel
+    ├── importar.html        # Importação de programa via planilha Excel
+    └── favicon.svg
 ```
 
 ---
@@ -91,35 +93,65 @@ O sistema suporta múltiplas células independentes, cada uma com programa e ref
 - Máquina de Placas
 - Máquina de Rodos
 - Trabalho Manual
+- Importação
 
 ### Dashboard
 
-- KPIs do mês: total realizado, meta, refugo, eficiência média
-- Gráficos de atingimento por referência (donut Chart.js)
-- Comparativo meta vs. realizado por turno (T1, T2, ADM)
+- **5 KPI cards**: Total Realizado, Meta do Mês, Atingimento (%), Eficiência Média, Total Refugo
+- Comparativo meta vs. realizado por referência com barra de progresso
+- Resumo por turno (T1, T2, ADM)
 - Últimos lançamentos
+- Referências com `meta = 0` são ocultadas automaticamente
 - **Exportação para Excel** (4 abas: Resumo, Meta vs Realizado, Por Turno, Últimos Lançamentos)
 - **Exportação para PDF** com tabelas formatadas
 
-### Apontamento de produção
+### Programa do Mês
 
-- Formulário com três turnos: **T1**, **T2** e **ADM** (todos tratados como turnos de produção normais)
-- O campo **Operador** é preenchido automaticamente com o nome do usuário logado (readonly) — garante consistência no relatório de eficiência
-- Eficiência calculada automaticamente com base nas horas trabalhadas
+- Listagem das referências do mês com meta, realizado por turno, total, **quantidade que falta** e percentual
+- Referências com `meta = 0` são ocultadas
+- **Alerta visual**: linhas com menos de 60% de atingimento nos últimos 10 dias do mês ficam em destaque vermelho com ícone ⚠
+- Exclusão de referência do programa (admin)
+- Adição de referência ao programa (admin)
+
+### Lançamento de Produção
+
+- Formulário com busca de referência por código ou descrição (dropdown filtrado)
+- Turno: **T1**, **T2** ou **ADM**
+- Campo **Operador** preenchido automaticamente com o usuário logado (readonly)
+- Eficiência calculada automaticamente com base nas horas trabalhadas e meta/hora
+- **Toast de confirmação** ao salvar (verde) ou erro (vermelho)
+- **Painel "Seus lançamentos de hoje"**: exibe os últimos lançamentos do dia do usuário abaixo do formulário após cada salvamento
+
+### Histórico
+
+- Filtros por célula, mês, turno e referência
+- Listagem com data, turno, referência, operador, realizado, meta, refugo, eficiência, horários e obs
+- **Admin**: botão de edição (✎) que abre modal para corrigir qualquer campo do lançamento
+- **Admin**: botão de exclusão (✕) com confirmação
+
+### Gráficos por Célula
+
+- Gráfico de rosca (doughnut) por célula mostrando atingimento do mês
+- Exibe: Meta Total, Realizado, Eficiência Média e percentual de Atingimento
 
 ### Relatório de Operadores
 
-- Aba dedicada com ranking de produção por operador no mês
+- Ranking de produção por operador no mês
 - Filtro por célula
-- Colunas: Matrícula, Nome, Total Realizado, Lançamentos, Eficiência Média, Realizado T1, Realizado T2, Realizado ADM, Refugo
+- Colunas: Matrícula, Nome, Total Realizado, Lançamentos, Eficiência Média, Realizado T1/T2/ADM, Refugo
 - **Exportação para Excel e PDF**
 
-### Referências
+### Referências (admin)
 
-- Cadastro e listagem de referências de produtos
-- **Exclusão em lote**: seleção múltipla via checkbox (com "Selecionar Todos") e botão "Apagar selecionadas"
-- Edição inline da Meta Hora por referência
-- Busca por código ou descrição
+- Cadastro de novas referências com código, descrição, célula e meta hora
+- Listagem com busca por código ou descrição
+- Edição inline de meta hora e célula
+- **Exclusão em lote**: seleção múltipla via checkbox com botão "Apagar selecionadas"
+
+### Usuários (admin)
+
+- Cadastro de usuários com login, senha, nome e perfil (operador/admin)
+- Listagem e exclusão (exceto o usuário `admin`)
 
 ### Importação de planilha
 
@@ -133,8 +165,9 @@ A planilha deve conter as colunas: `MÊS/ANO`, `CELULA`, `COD_REF`, meta por tur
 
 - Dark theme com variáveis CSS customizadas
 - Crédito de desenvolvimento visível na tela de login (canto inferior direito)
-- **Responsivo para mobile**: sidebar colapsável com botão hamburguer, formulários em coluna única em telas pequenas
-- Sidebar se fecha automaticamente ao navegar em dispositivos móveis
+- **Responsivo para mobile**: sidebar colapsável com botão hamburguer, formulários em coluna única
+- Sidebar fecha automaticamente ao navegar em dispositivos móveis
+- **Toasts**: notificações animadas de sucesso, erro e informação no canto inferior direito
 
 ---
 
@@ -150,6 +183,8 @@ Se `hora_inicio` e `hora_fim` não forem preenchidos, o sistema usa a meta do tu
 
 ## Banco de dados
 
+As tabelas são criadas automaticamente na primeira requisição via `initDB()`.
+
 ### `usuarios`
 
 | Campo | Tipo | Descrição |
@@ -158,18 +193,19 @@ Se `hora_inicio` e `hora_fim` não forem preenchidos, o sistema usa a meta do tu
 | `login` | VARCHAR | Login único |
 | `nome` | VARCHAR | Nome completo |
 | `senha_hash` | TEXT | Senha com bcrypt |
-| `role` | VARCHAR | `admin` ou `operador` |
-| `ativo` | BOOLEAN | |
+| `perfil` | VARCHAR | `admin` ou `operador` |
+| `ativo` | BOOLEAN | Soft-delete |
 
 ### `referencias`
 
 | Campo | Tipo | Descrição |
 |-------|------|-----------|
 | `id` | SERIAL PK | |
-| `cod` | VARCHAR | Código (ex: SP2745LR) |
+| `cod` | VARCHAR | Código único (ex: SP2745LR) |
 | `descricao` | TEXT | Descrição do produto |
-| `meta_hora` | INT | Meta de peças/hora |
-| `ativo` | BOOLEAN | |
+| `meta_hora` | INT | Meta de peças/hora (opcional) |
+| `celula` | VARCHAR | Célula padrão (default: `Panos`) |
+| `ativo` | BOOLEAN | Soft-delete |
 
 ### `programa`
 
@@ -178,10 +214,10 @@ Se `hora_inicio` e `hora_fim` não forem preenchidos, o sistema usa a meta do tu
 | `id` | SERIAL PK | |
 | `mes_ano` | VARCHAR | Formato `YYYY-MM` |
 | `ref_cod` | VARCHAR | Código da referência |
-| `celula` | VARCHAR | Célula/Setor (default: `Panos`) |
+| `celula` | VARCHAR | Célula/Setor |
 | `meta_turno` | INT | Meta de peças por turno |
 | `num_turnos` | INT | Número de turnos planejados no mês |
-| `ativo` | BOOLEAN | |
+| `ativo` | BOOLEAN | Soft-delete |
 
 > Constraint única: `(mes_ano, ref_cod, celula)`
 
@@ -193,13 +229,14 @@ Se `hora_inicio` e `hora_fim` não forem preenchidos, o sistema usa a meta do tu
 | `data` | DATE | Data do apontamento |
 | `turno` | VARCHAR | `T1`, `T2` ou `ADM` |
 | `ref_cod` | VARCHAR | Referência |
-| `operador` | VARCHAR | Nome do operador (usuário logado) |
+| `descricao` | VARCHAR | Descrição (desnormalizada para histórico) |
+| `operador` | VARCHAR | Nome do operador |
 | `realizado` | INT | Peças realizadas |
-| `meta` | INT | Meta de peças |
+| `meta` | INT | Meta de peças no momento do lançamento |
 | `refugo` | INT | Peças refugadas |
-| `eficiencia` | FLOAT | Eficiência (0.0 – 1.0+) |
-| `hora_inicio` | TIME | |
-| `hora_fim` | TIME | |
+| `eficiencia` | NUMERIC(6,4) | Eficiência calculada (0.0 – 1.0+) |
+| `hora_inicio` | VARCHAR | Hora de início |
+| `hora_fim` | VARCHAR | Hora de fim |
 | `obs` | TEXT | Observações |
 | `usuario_login` | VARCHAR | Login de quem registrou |
 | `criado_em` | TIMESTAMP | Timestamp automático |
@@ -215,6 +252,7 @@ Todos os endpoints requerem o header `Authorization: Bearer <token>`, exceto `/a
 ```
 POST /api/login
 Body: { "login": "user", "senha": "pass" }
+Response: { "token": "...", "usuario": { "login", "nome", "perfil" } }
 ```
 
 ### Usuário logado
@@ -228,7 +266,7 @@ GET /api/me
 ```
 GET    /api/referencias
 POST   /api/referencias
-Body:  { "cod": "SP2745LR", "descricao": "...", "meta_hora": 80 }
+Body:  { "cod": "SP2745LR", "descricao": "...", "celula": "Panos", "meta_hora": 80 }
 DELETE /api/referencias
 Body:  { "cod": "SP2745LR" }
 ```
@@ -236,46 +274,44 @@ Body:  { "cod": "SP2745LR" }
 ### Programa mensal
 
 ```
-GET  /api/programa?mes=2026-06&celula=Panos
-POST /api/programa
-Body: { "mes_ano": "2026-06", "ref_cod": "SP2745LR", "celula": "Panos", "meta_turno": 80, "num_turnos": 2 }
+GET    /api/programa?mes=2026-06&celula=Panos
+POST   /api/programa          (admin)
+Body:  { "mes_ano": "2026-06", "ref_cod": "SP2745LR", "celula": "Panos", "meta_turno": 80, "num_turnos": 2 }
+DELETE /api/programa          (admin)
+Body:  { "mes_ano": "2026-06", "ref_cod": "SP2745LR", "celula": "Panos" }
 ```
 
 ### Lançamentos
 
 ```
-GET    /api/lancamentos?mes=2026-06&celula=Panos&turno=T1&ref=SP2745LR
+GET    /api/lancamentos?mes=2026-06&celula=Panos[&turno=T1][&ref=SP2745LR]
 POST   /api/lancamentos
-Body: {
-  "data": "2026-06-24",
-  "turno": "T1",
-  "ref_cod": "SP2745LR",
-  "operador": "João Silva",
-  "realizado": 80,
-  "meta": 80,
-  "refugo": 0,
-  "hora_inicio": "08:00",
-  "hora_fim": "09:00",
-  "obs": "",
-  "eficiencia": 1.0
-}
-DELETE /api/lancamentos?id=123
+Body:  { "data": "2026-06-24", "turno": "T1", "ref_cod": "SP2745LR",
+         "operador": "João Silva", "realizado": 80, "meta": 80, "refugo": 0,
+         "hora_inicio": "08:00", "hora_fim": "09:00", "obs": "", "eficiencia": 1.0 }
+PUT    /api/lancamentos       (admin)
+Body:  { "id": 123, "data": "2026-06-24", "turno": "T1", "realizado": 80,
+         "refugo": 0, "hora_inicio": "08:00", "hora_fim": "09:00", "obs": "", "eficiencia": 1.0 }
+DELETE /api/lancamentos       (admin)
+Body:  { "id": 123 }
 ```
 
 ### Dashboard
 
 ```
-GET /api/dashboard?mes=2026-06&celula=Panos
+GET /api/dashboard?mes=2026-06[&celula=Panos]
+Response: { totais, prog, turnos, recentes }
 ```
 
 ### Operadores
 
 ```
-GET /api/operadores?mes=2026-06&celula=Panos
+GET /api/operadores?mes=2026-06[&celula=Panos]
 ```
 
 ### Meses disponíveis
 
 ```
 GET /api/meses
+Response: ["2026-07", "2026-06", ...]
 ```
