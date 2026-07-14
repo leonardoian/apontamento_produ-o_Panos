@@ -140,7 +140,7 @@
           <div style="overflow-x:auto"><table><thead><tr>
             <th>Cód.</th><th>Descrição</th><th>Meta/Turno</th><th>Nº Turnos</th><th>Meta Total</th>
             <th style="color:var(--accent)">Real. T1</th><th style="color:var(--blue)">Real. T2</th><th style="color:var(--green)">Real. ADM</th>
-            <th>Total Real.</th><th>%</th><th id="th-prog-ac" style="display:none">Ações</th>
+            <th>Total Real.</th><th>Falta</th><th>%</th><th id="th-prog-ac" style="display:none">Ações</th>
           </tr></thead><tbody id="prog-body"></tbody></table></div>
         </div>
       </div>
@@ -774,8 +774,8 @@ async function renderPrograma() {
   const mes = document.getElementById('prog-mes').value;
   const celula = document.getElementById('prog-celula').value;
   const tbody = document.getElementById('prog-body');
-  if (!mes) { tbody.innerHTML = `<tr><td colspan="10" class="empty">Selecione um mês.</td></tr>`; return; }
-  tbody.innerHTML = `<tr><td colspan="10" class="empty"><span class="loading"></span></td></tr>`;
+  if (!mes) { tbody.innerHTML = `<tr><td colspan="11" class="empty">Selecione um mês.</td></tr>`; return; }
+  tbody.innerHTML = `<tr><td colspan="11" class="empty"><span class="loading"></span></td></tr>`;
   try {
     const rows = await GET('programa?mes=' + mes + '&celula=' + celula);
     const lancs = await GET('lancamentos?mes=' + mes + '&celula=' + celula);
@@ -791,7 +791,7 @@ async function renderPrograma() {
     const diasRestantes = Math.ceil((ultimoDia - hoje) / 86400000);
     const mesAtual = mes === curMes();
     tbody.innerHTML = !rowsVis.length
-      ? `<tr><td colspan="10" class="empty"><div class="ei">☰</div>Nenhuma referência no programa. ${isAdmin?'Clique em "+ Adicionar Referência".':''}</td></tr>`
+      ? `<tr><td colspan="11" class="empty"><div class="ei">☰</div>Nenhuma referência no programa. ${isAdmin?'Clique em "+ Adicionar Referência".':''}</td></tr>`
       : rowsVis.map(r => {
           const mT = +r.meta_total||0;
           const rT1  = lancs.filter(l=>l.ref_cod===r.ref_cod&&l.turno==='T1').reduce((s,l)=>s+(+l.realizado||0),0);
@@ -809,6 +809,7 @@ async function renderPrograma() {
             <td style="color:var(--blue)">${fmt(rT2)}</td>
             <td style="color:var(--green)">${fmt(rADM)}</td>
             <td><strong>${fmt(rT)}</strong></td>
+            <td style="color:${mT-rT<=0?'var(--green)':'var(--red)'}">${mT-rT>0?fmt(mT-rT):'✓'}</td>
             <td class="${p>=1?'ok':p>=.8?'warn':'bad'}">${pct(rT,mT)}</td>
             ${isAdmin?`<td>
               <button class="btn bd bsm" onclick="deleteProg('${r.ref_cod}','${mes}','${celula}')">✕</button>
@@ -816,7 +817,7 @@ async function renderPrograma() {
           </tr>`;
         }).join('');
   } catch(e) {
-    tbody.innerHTML = `<tr><td colspan="10" class="empty" style="color:var(--red)">${e.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="11" class="empty" style="color:var(--red)">${e.message}</td></tr>`;
   }
 }
 
