@@ -164,10 +164,11 @@
                   <option value="Importacao">Importação</option>
                 </select>
               </div>
-              <div class="fi"><label>Referência</label>
-                <select id="ord-ref" onchange="preencheMetaOrdem()">
-                  <option value="">Selecione a célula primeiro...</option>
-                </select>
+              <div class="fi" style="position:relative"><label>Referência</label>
+                <input type="text" id="ord-ref-search" placeholder="Digite o código ou descrição..." autocomplete="off"
+                  oninput="filterOrdRefDropdown()" onfocus="openOrdRefDropdown()" style="width:100%">
+                <input type="hidden" id="ord-ref">
+                <div id="ord-ref-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--accent);z-index:300;max-height:220px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.6)"></div>
               </div>
               <div class="fi"><label>Quantidade (peças)</label>
                 <input type="number" id="ord-qtd" min="1" placeholder="0" oninput="calcOrdem()">
@@ -1041,6 +1042,10 @@ document.addEventListener('click', e => {
   if (wrap && !wrap.contains(e.target)) {
     document.getElementById('lref-dropdown').style.display = 'none';
   }
+  const wrapOrd = document.getElementById('ord-ref-search')?.closest('.fi');
+  if (wrapOrd && !wrapOrd.contains(e.target)) {
+    document.getElementById('ord-ref-dropdown').style.display = 'none';
+  }
 });
 
 function preencheRef() {
@@ -1790,18 +1795,57 @@ function renderOrdemCard(o, isAdmin) {
   </div>`;
 }
 
+let _ordRefOptions = [];
+
 function atualizaRefsOrdem() {
   const celula = document.getElementById('ord-celula')?.value;
-  if (!celula) return;
-  const refsComMeta = _refs.filter(r => r.celula === celula && (+r.meta_hora || 0) > 0);
-  const refSel = document.getElementById('ord-ref');
-  if (!refsComMeta.length) {
-    refSel.innerHTML = '<option value="">Nenhuma referência com Meta Hora nesta célula</option>';
-    document.getElementById('ord-meta-hora').value = '';
-  } else {
-    refSel.innerHTML = '<option value="">Selecione a referência...</option>' +
-      refsComMeta.map(r => `<option value="${r.cod}">${r.cod} — ${r.descricao} (${r.meta_hora} pçs/h)</option>`).join('');
+  _ordRefOptions = celula ? _refs.filter(r => r.celula === celula && (+r.meta_hora || 0) > 0) : [];
+  document.getElementById('ord-ref').value = '';
+  document.getElementById('ord-ref-search').value = '';
+  document.getElementById('ord-meta-hora').value = '';
+  document.getElementById('ord-ref-dropdown').style.display = 'none';
+  calcOrdem();
+}
+
+function _buildOrdRefItems(rows) {
+  const dd = document.getElementById('ord-ref-dropdown');
+  if (!rows.length) {
+    dd.innerHTML = '<div style="padding:10px 14px;color:var(--muted);font-size:12px">Nenhuma referência com Meta Hora nesta célula.</div>';
+    return;
   }
+  dd.innerHTML = rows.map(r =>
+    `<div onclick="selectOrdRef('${r.cod}')"
+      style="padding:9px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);transition:background .1s"
+      onmouseenter="this.style.background='rgba(204,0,0,.12)'" onmouseleave="this.style.background=''">
+      <span style="font-family:monospace;color:var(--accent);font-size:11px">${r.cod}</span>
+      <span style="margin-left:8px">${r.descricao}</span>
+      <span style="float:right;font-size:10px;color:var(--muted)">${r.meta_hora} pçs/h</span>
+    </div>`
+  ).join('');
+}
+
+function openOrdRefDropdown() {
+  _buildOrdRefItems(_ordRefOptions);
+  document.getElementById('ord-ref-dropdown').style.display = 'block';
+}
+
+function filterOrdRefDropdown() {
+  const termo = document.getElementById('ord-ref-search').value.toLowerCase();
+  const filtradas = !termo ? _ordRefOptions : _ordRefOptions.filter(r =>
+    r.cod.toLowerCase().includes(termo) || (r.descricao||'').toLowerCase().includes(termo)
+  );
+  _buildOrdRefItems(filtradas);
+  document.getElementById('ord-ref-dropdown').style.display = 'block';
+  if (!termo) { document.getElementById('ord-ref').value = ''; document.getElementById('ord-meta-hora').value = ''; calcOrdem(); }
+}
+
+function selectOrdRef(cod) {
+  const r = _ordRefOptions.find(x => x.cod === cod);
+  if (!r) return;
+  document.getElementById('ord-ref').value = cod;
+  document.getElementById('ord-ref-search').value = r.cod + ' — ' + r.descricao;
+  document.getElementById('ord-ref-dropdown').style.display = 'none';
+  document.getElementById('ord-meta-hora').value = r.meta_hora || '';
   calcOrdem();
 }
 
@@ -1842,7 +1886,7 @@ async function salvarOrdem() {
   try {
     await POST('ordens', { celula, ref_cod, quantidade, meta_hora, horas_por_turno, data_prevista, obs });
     toast('Ordem de produção criada!');
-    ['ord-qtd','ord-ref','ord-meta-hora','ord-data','ord-obs'].forEach(id => document.getElementById(id).value = '');
+    ['ord-qtd','ord-ref','ord-ref-search','ord-meta-hora','ord-data','ord-obs'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('ord-calc').style.display = 'none';
     renderOrdens();
   } catch(e) { if (!e.sessionExpired) toast('Erro: ' + e.message, 'err'); }
