@@ -70,6 +70,8 @@ Acesse `http://localhost:3000`.
 │   ├── referencias.mjs      # CRUD de referências de produtos
 │   ├── programa.mjs         # Programa mensal por célula
 │   ├── lancamentos.mjs      # Apontamentos (GET / POST / PUT / DELETE)
+│   ├── ordens.mjs           # Ordens de produção (GET / POST / DELETE)
+│   ├── senha.mjs            # Alteração de senha (POST)
 │   ├── dashboard.mjs        # KPIs e dados consolidados
 │   ├── operadores.mjs       # Eficiência por operador
 │   └── meses.mjs            # Meses com programa ativo
@@ -113,6 +115,23 @@ O sistema suporta múltiplas células independentes, cada uma com programa e ref
 - Exclusão de referência do programa (admin)
 - Adição de referência ao programa (admin)
 
+### Ordens de Produção
+
+Aba visível a todos os usuários. Admin cria as ordens; operadores visualizam e acompanham o progresso.
+
+**Criação (admin):**
+- Seleciona célula → carrega automaticamente as referências com `meta_hora` cadastrada
+- Seleciona referência → `meta_hora` preenchida automaticamente (editável)
+- Informa a quantidade e as horas por turno (padrão 8h, configurável por ordem)
+- O sistema calcula e exibe em tempo real: **Horas necessárias** e **Dias estimados**
+- Campo de data prevista e observação opcionais
+
+**Cards de acompanhamento (todos):**
+- Status automático: `pendente` → `em andamento` → `concluída` (baseado nos lançamentos registrados após a criação da ordem)
+- Barra de progresso com peças realizadas vs. quantidade da ordem
+- Filtros por status e por célula
+- Admin pode remover uma ordem com o botão ✕
+
 ### Lançamento de Produção
 
 - Formulário com busca de referência por código ou descrição (dropdown filtrado)
@@ -152,6 +171,14 @@ O sistema suporta múltiplas células independentes, cada uma com programa e ref
 
 - Cadastro de usuários com login, senha, nome e perfil (operador/admin)
 - Listagem e exclusão (exceto o usuário `admin`)
+- Botão 🔑 em cada linha para redefinir a senha do usuário sem precisar da senha atual
+
+### Alteração de Senha
+
+- Qualquer usuário logado pode alterar a própria senha pelo botão **🔑 Alterar Senha** na sidebar
+- Exige a senha atual para confirmar a identidade
+- Admin pode redefinir a senha de qualquer usuário pela tabela de Usuários (sem exigir senha atual)
+- Senha mínima de 6 caracteres; confirmação obrigatória
 
 ### Importação de planilha
 
@@ -220,6 +247,24 @@ As tabelas são criadas automaticamente na primeira requisição via `initDB()`.
 | `ativo` | BOOLEAN | Soft-delete |
 
 > Constraint única: `(mes_ano, ref_cod, celula)`
+
+### `ordens_producao`
+
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| `id` | SERIAL PK | |
+| `celula` | VARCHAR | Célula/máquina alvo |
+| `ref_cod` | VARCHAR | Referência a produzir |
+| `quantidade` | INT | Peças a produzir |
+| `meta_hora` | INT | Meta de peças/hora usada no cálculo |
+| `horas_por_turno` | DECIMAL | Horas por turno (configurável, default: 8) |
+| `data_prevista` | DATE | Data alvo (opcional) |
+| `obs` | TEXT | Observação do admin |
+| `criado_por` | VARCHAR | Login do admin que criou |
+| `criado_em` | TIMESTAMP | Timestamp automático |
+| `ativo` | BOOLEAN | Soft-delete |
+
+> O status (`pendente` / `em_andamento` / `concluida`) é calculado dinamicamente via `SUM(lancamentos.realizado)` após a data de criação da ordem — não é armazenado.
 
 ### `lancamentos`
 
@@ -307,6 +352,31 @@ Response: { totais, prog, turnos, recentes }
 
 ```
 GET /api/operadores?mes=2026-06[&celula=Panos]
+```
+
+### Ordens de produção
+
+```
+GET    /api/ordens
+Response: [{ id, celula, ref_cod, quantidade, meta_hora, horas_por_turno,
+             data_prevista, obs, criado_por, criado_em, descricao,
+             total_realizado, status }]
+POST   /api/ordens        (admin)
+Body:  { "celula": "Panos", "ref_cod": "SP2745LR", "quantidade": 5000,
+         "meta_hora": 80, "horas_por_turno": 8,
+         "data_prevista": "2026-07-25", "obs": "Prioridade alta" }
+DELETE /api/ordens        (admin)
+Body:  { "id": 1 }
+```
+
+### Alteração de senha
+
+```
+POST /api/senha
+# Usuário alterando a própria senha:
+Body: { "senha_atual": "atual", "nova_senha": "nova123" }
+# Admin redefinindo senha de outro usuário:
+Body: { "login": "operador1", "nova_senha": "nova123" }
 ```
 
 ### Meses disponíveis
