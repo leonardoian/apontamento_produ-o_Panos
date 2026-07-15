@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel de Ordens — Superpro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800&family=Barlow+Condensed:wght@700;800;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#111111; --surface:#1c1c1c; --card:#242424; --border:#333333;
+  --accent:#CC0000; --blue:#3b82f6; --green:#10b981; --red:#ef4444; --orange:#f97316;
+  --text:#f0f0f0; --muted:#888888;
+  --fh:'Barlow Condensed',sans-serif; --fb:'Barlow',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--fb);min-height:100vh}
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+/* ── LOGIN ─────────────────────────── */
+#login-screen{
+  position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;
+  background-image:repeating-linear-gradient(0deg,transparent,transparent 39px,var(--border) 40px),
+                   repeating-linear-gradient(90deg,transparent,transparent 39px,var(--border) 40px);
+  z-index:999
+}
+.lbox{background:var(--surface);border:1px solid var(--border);border-top:3px solid var(--accent);padding:40px 36px;width:360px}
+.ltag{font:700 11px/1 var(--fh);letter-spacing:4px;color:var(--accent);text-transform:uppercase;margin-bottom:6px}
+.ltitle{font:900 32px/1 var(--fh);margin-bottom:24px}
+.ltitle span{color:var(--accent)}
+.fg{margin-bottom:14px}
+.fg label{display:block;font:700 10px/1 var(--fh);letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:5px}
+.fg input{width:100%;background:var(--card);border:1px solid var(--border);color:var(--text);padding:11px 13px;font:14px var(--fb);outline:none;transition:border-color .2s}
+.fg input:focus{border-color:var(--accent)}
+.btn-login{width:100%;background:var(--accent);color:#fff;border:none;padding:13px;font:700 16px var(--fh);letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:opacity .2s;margin-top:6px}
+.btn-login:hover{opacity:.88}
+.lerr{color:var(--red);font-size:12px;margin-top:8px;text-align:center;display:none}
+
+/* ── HEADER ─────────────────────────── */
+header{
+  background:var(--surface);border-bottom:1px solid var(--border);
+  padding:0 28px;height:56px;display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:50
+}
+.brand{display:flex;align-items:baseline;gap:10px}
+.brand-name{font:900 22px/1 var(--fh);letter-spacing:1px}
+.brand-name span{color:var(--accent)}
+.brand-sub{font:700 10px/1 var(--fh);letter-spacing:3px;color:var(--muted);text-transform:uppercase}
+.header-right{display:flex;align-items:center;gap:14px}
+.user-name{font:600 13px var(--fb);color:var(--muted)}
+#refresh-badge{font:700 10px/1 var(--fh);letter-spacing:1px;color:var(--muted);display:flex;align-items:center;gap:5px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--green);display:inline-block;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.btn-out{background:transparent;border:1px solid var(--border);color:var(--muted);padding:6px 12px;font:12px var(--fb);cursor:pointer;transition:all .15s}
+.btn-out:hover{border-color:var(--red);color:var(--red)}
+.btn-main{background:var(--surface);border:1px solid var(--border);color:var(--text);padding:6px 14px;font:700 12px var(--fh);letter-spacing:1px;cursor:pointer;transition:all .15s;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+.btn-main:hover{border-color:var(--accent);color:var(--accent)}
+
+/* ── FILTROS ─────────────────────────── */
+.toolbar{
+  background:var(--surface);border-bottom:1px solid var(--border);
+  padding:12px 28px;display:flex;align-items:center;gap:12px;flex-wrap:wrap
+}
+.fb{
+  background:transparent;border:1px solid var(--border);color:var(--text);
+  padding:6px 14px;font:700 11px/1 var(--fh);letter-spacing:1px;
+  text-transform:uppercase;cursor:pointer;transition:all .15s
+}
+.fb:hover{border-color:var(--accent)}
+.sep{width:1px;height:22px;background:var(--border)}
+select.filtro{
+  background:var(--card);border:1px solid var(--border);color:var(--text);
+  padding:6px 10px;font:13px var(--fb);outline:none;cursor:pointer
+}
+.count{font:600 12px var(--fb);color:var(--muted);margin-left:auto}
+
+/* ── GRID ─────────────────────────── */
+main{padding:24px 28px}
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(300px,1fr));
+  gap:14px
+}
+
+/* ── CARD ─────────────────────────── */
+.card{
+  background:var(--card);border:1px solid var(--border);
+  padding:18px 20px;display:flex;flex-direction:column;gap:0
+}
+.card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.status-badge{font:700 10px/1 var(--fh);letter-spacing:2px;padding:3px 9px;text-transform:uppercase}
+.card-id{font:700 10px/1 var(--fh);letter-spacing:1px;color:var(--muted)}
+.card-ref{font-family:monospace;font-size:11px;color:var(--accent);margin-bottom:2px}
+.card-desc{font:600 14px/1.4 var(--fb);margin-bottom:14px}
+.prog-row{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:5px}
+.prog-pct{font-weight:700}
+.pw{background:rgba(255,255,255,.06);border-radius:2px;height:6px;overflow:hidden;margin-bottom:10px}
+.pf{height:100%;border-radius:1px;transition:width .4s}
+.card-meta{display:flex;gap:16px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-bottom:8px}
+.card-obs{font-size:11px;color:var(--muted);padding:7px 10px;background:rgba(255,255,255,.03);border-left:2px solid var(--border);margin-bottom:10px}
+.card-foot{display:flex;justify-content:space-between;align-items:center;font-size:10px;color:var(--muted);padding-top:10px;border-top:1px solid var(--border)}
+
+/* ── ESTADOS ─────────────────────────── */
+.empty{grid-column:1/-1;text-align:center;padding:64px 24px;color:var(--muted)}
+.empty-icon{font-size:42px;margin-bottom:12px}
+.loading-wrap{grid-column:1/-1;display:flex;align-items:center;justify-content:center;padding:64px;gap:12px;color:var(--muted)}
+.spinner{width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── TOAST ─────────────────────────── */
+#toasts{position:fixed;bottom:20px;right:20px;display:flex;flex-direction:column;gap:8px;z-index:999}
+.toast{padding:12px 18px;font:600 13px var(--fb);border-radius:4px;animation:tin .25s;max-width:320px}
+.toast.ok{background:#0c2a20;color:#34d399;border-left:3px solid #34d399}
+.toast.err{background:#2a1212;color:#f87171;border-left:3px solid #f87171}
+.toast.info{background:#132036;color:var(--blue);border-left:3px solid var(--blue)}
+@keyframes tin{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="lbox">
+    <div class="ltag">Superpro</div>
+    <div class="ltitle">Painel de<br><span>Ordens</span></div>
+    <div class="fg"><label>Login</label><input type="text" id="l-login" autocomplete="username" placeholder="seu login"></div>
+    <div class="fg"><label>Senha</label><input type="password" id="l-senha" autocomplete="current-password" placeholder="••••••"></div>
+    <button class="btn-login" onclick="doLogin()">Entrar</button>
+    <div class="lerr" id="lerr">Login ou senha incorretos.</div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app" style="display:none">
+  <header>
+    <div class="brand">
+      <div class="brand-name">SUPER<span>PRO</span></div>
+      <div class="brand-sub">Painel de Ordens</div>
+    </div>
+    <div class="header-right">
+      <div id="refresh-badge"><span class="dot"></span><span id="refresh-txt">Atualizando...</span></div>
+      <span class="user-name" id="user-name-display"></span>
+      <a href="/" class="btn-main">← Sistema</a>
+      <button class="btn-out" onclick="doLogout()">Sair</button>
+    </div>
+  </header>
+
+  <div class="toolbar">
+    <button class="fb" data-status="" onclick="setFiltro(this)">Todas</button>
+    <button class="fb" data-status="pendente" onclick="setFiltro(this)">Pendentes</button>
+    <button class="fb" data-status="em_andamento" onclick="setFiltro(this)">Em Andamento</button>
+    <button class="fb" data-status="concluida" onclick="setFiltro(this)">Concluídas</button>
+    <div class="sep"></div>
+    <select class="filtro" id="filtro-celula" onchange="renderOrdens()">
+      <option value="">Todas as células</option>
+      <option value="Aluminio">Alumínio</option>
+      <option value="Panos">Panos</option>
+      <option value="Placas">Placas</option>
+      <option value="Rodos">Rodos</option>
+      <option value="Manual">Manual</option>
+      <option value="Importacao">Importação</option>
+    </select>
+    <span class="count" id="count-txt"></span>
+  </div>
+
+  <main>
+    <div class="grid" id="grid"></div>
+  </main>
+</div>
+
+<div id="toasts"></div>
+
+<script>
+const BASE = '/api';
+let TOKEN = localStorage.getItem('sp_token_painel') || localStorage.getItem('sp_token') || '';
+let USER  = null;
+let _filtroStatus = '';
+let _refreshTimer = null;
+const REFRESH_INTERVAL = 30; // segundos
+
+const CELULA_LABEL = { Aluminio:'Alumínio', Panos:'Panos', Placas:'Placas', Rodos:'Rodos', Manual:'Manual', Importacao:'Importação' };
+const STATUS_LABEL  = { pendente:'Pendente', em_andamento:'Em Andamento', concluida:'Concluída' };
+const STATUS_COR    = { pendente:'var(--muted)', em_andamento:'var(--orange)', concluida:'var(--green)' };
+const STATUS_BG     = { pendente:'rgba(136,136,136,.1)', em_andamento:'rgba(249,115,22,.1)', concluida:'rgba(16,185,129,.1)' };
+
+function fmt(n) { return (+n||0).toLocaleString('pt-BR'); }
+
+function toast(msg, type='ok', ms=3200) {
+  const t = document.createElement('div');
+  t.className = 'toast ' + type;
+  t.textContent = msg;
+  document.getElementById('toasts').appendChild(t);
+  setTimeout(() => t.remove(), ms);
+}
+
+async function api(path, opts={}) {
+  const r = await fetch(`${BASE}/${path}`, {
+    ...opts,
+    headers: { 'Content-Type':'application/json', 'Authorization':'Bearer '+TOKEN, ...(opts.headers||{}) }
+  });
+  if (r.status === 401) { doLogout(); return null; }
+  return r.json();
+}
+
+async function doLogin() {
+  const login = document.getElementById('l-login').value.trim();
+  const senha = document.getElementById('l-senha').value;
+  const err   = document.getElementById('lerr');
+  err.style.display = 'none';
+  if (!login || !senha) return;
+  try {
+    const data = await fetch(`${BASE}/login`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ login, senha })
+    }).then(r => r.json());
+    if (!data?.token) { err.style.display='block'; return; }
+    TOKEN = data.token;
+    USER  = data.usuario;
+    localStorage.setItem('sp_token_painel', TOKEN);
+    iniciarApp();
+  } catch { err.style.display='block'; }
+}
+
+function doLogout() {
+  TOKEN = '';
+  USER  = null;
+  localStorage.removeItem('sp_token_painel');
+  clearInterval(_refreshTimer);
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+}
+
+async function iniciarApp() {
+  // Verifica token existente
+  if (!USER && TOKEN) {
+    const me = await api('me');
+    if (!me?.login) { doLogout(); return; }
+    USER = me;
+  }
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('user-name-display').textContent = USER.nome || USER.login;
+
+  // Ativa filtro "Todas" por padrão
+  setFiltro(document.querySelector('.fb[data-status=""]'));
+
+  // Auto-refresh
+  iniciarRefresh();
+}
+
+function iniciarRefresh() {
+  clearInterval(_refreshTimer);
+  let seg = REFRESH_INTERVAL;
+  const txt = document.getElementById('refresh-txt');
+  const tick = () => {
+    txt.textContent = `Atualiza em ${seg}s`;
+    if (seg <= 0) { seg = REFRESH_INTERVAL; renderOrdens(); }
+    seg--;
+  };
+  tick();
+  _refreshTimer = setInterval(tick, 1000);
+}
+
+function setFiltro(btn) {
+  _filtroStatus = btn.dataset.status;
+  document.querySelectorAll('.fb').forEach(b => {
+    const on = b === btn;
+    b.style.background  = on ? 'rgba(204,0,0,.15)' : 'transparent';
+    b.style.color       = on ? 'var(--accent)' : 'var(--text)';
+    b.style.borderColor = on ? 'rgba(204,0,0,.3)' : 'var(--border)';
+  });
+  renderOrdens();
+}
+
+async function renderOrdens() {
+  const grid = document.getElementById('grid');
+  grid.innerHTML = `<div class="loading-wrap"><div class="spinner"></div>Carregando ordens...</div>`;
+
+  const data = await api('ordens');
+  if (!data) return; // sessão expirada
+
+  let rows = data;
+  if (_filtroStatus) rows = rows.filter(o => o.status === _filtroStatus);
+  const cel = document.getElementById('filtro-celula').value;
+  if (cel) rows = rows.filter(o => o.celula === cel);
+
+  document.getElementById('count-txt').textContent = rows.length + ' ordem(ns)';
+  document.getElementById('refresh-txt').textContent = `Atualiza em ${REFRESH_INTERVAL}s`;
+
+  if (!rows.length) {
+    grid.innerHTML = `<div class="empty"><div class="empty-icon">⊟</div>Nenhuma ordem encontrada.</div>`;
+    return;
+  }
+  grid.innerHTML = rows.map(renderCard).join('');
+}
+
+function renderCard(o) {
+  const cor    = STATUS_COR[o.status]  || 'var(--muted)';
+  const bg     = STATUS_BG[o.status]   || 'rgba(136,136,136,.1)';
+  const label  = STATUS_LABEL[o.status]|| o.status;
+  const total  = +o.total_realizado || 0;
+  const qtd    = +o.quantidade || 1;
+  const p      = Math.min(total / qtd, 1);
+  const pct    = (p * 100).toFixed(1);
+  const horas  = o.meta_hora > 0 ? (qtd / +o.meta_hora).toFixed(1) : '—';
+  const hpt    = +o.horas_por_turno || 8;
+  const dias   = o.meta_hora > 0 ? (qtd / +o.meta_hora / hpt).toFixed(1) : '—';
+  const progCor = p >= 1 ? 'var(--green)' : p >= 0.6 ? 'var(--orange)' : 'var(--accent)';
+  const dataPrev = o.data_prevista ? String(o.data_prevista).slice(0,10).split('-').reverse().join('/') : null;
+  const criadoEm = String(o.criado_em).slice(0,10).split('-').reverse().join('/');
+
+  return `<div class="card" style="border-top:3px solid ${cor}">
+    <div class="card-head">
+      <span class="status-badge" style="background:${bg};color:${cor}">${label}</span>
+      <span class="card-id">#${o.id} · ${CELULA_LABEL[o.celula]||o.celula}</span>
+    </div>
+    <div class="card-ref">${o.ref_cod}</div>
+    <div class="card-desc">${o.descricao}</div>
+    <div class="prog-row">
+      <span>${fmt(total)} / ${fmt(qtd)} peças</span>
+      <span class="prog-pct" style="color:${progCor}">${pct}%</span>
+    </div>
+    <div class="pw"><div class="pf" style="width:${Math.min(p*100,100)}%;background:${progCor}"></div></div>
+    <div class="card-meta">
+      <span>⏱ ${horas}h necessárias</span>
+      <span>📅 ~${dias} dias (${hpt}h/turno)</span>
+    </div>
+    ${o.obs ? `<div class="card-obs">${o.obs}</div>` : ''}
+    <div class="card-foot">
+      <div>${dataPrev ? `Previsto: <strong style="color:var(--text)">${dataPrev}</strong> · ` : ''}Por ${o.criado_por} em ${criadoEm}</div>
+    </div>
+  </div>`;
+}
+
+// Enter para login
+document.getElementById('l-senha').addEventListener('keydown', e => { if (e.key==='Enter') doLogin(); });
+document.getElementById('l-login').addEventListener('keydown', e => { if (e.key==='Enter') document.getElementById('l-senha').focus(); });
+
+// Inicializa com token salvo
+if (TOKEN) iniciarApp();
+</script>
+</body>
+</html>
