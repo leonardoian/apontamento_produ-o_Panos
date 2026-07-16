@@ -375,7 +375,7 @@
           </div>
           <div style="overflow-x:auto"><table><thead><tr>
             <th style="width:36px"><input type="checkbox" id="refs-all" onchange="toggleAllRefs(this.checked)" style="accent-color:var(--accent);width:15px;height:15px;cursor:pointer"></th>
-            <th>#</th><th>Código</th><th>Descrição</th><th>Célula(s)</th><th>Meta Hora</th><th>Ação</th>
+            <th>#</th><th>Código</th><th>Descrição</th><th>Célula(s)</th><th>Meta Hora</th><th>Peso (kg/pç)</th><th>Ação</th>
           </tr></thead><tbody id="refs-body"></tbody></table></div>
         </div>
       </div>
@@ -532,7 +532,7 @@
     <div class="fgrid c2">
       <div class="fi" style="grid-column:1/-1"><label>Descrição</label><input type="text" id="ref-edit-desc"></div>
       <div class="fi"><label>Célula</label>
-        <select id="ref-edit-celula">
+        <select id="ref-edit-celula" onchange="toggleEditRefPeso()">
           <option value="Aluminio">Celular de Alumínio</option>
           <option value="Panos">Máquina de Panos</option>
           <option value="Placas">Máquina de Placas</option>
@@ -542,6 +542,7 @@
         </select>
       </div>
       <div class="fi"><label>Meta Hora (pçs/h)</label><input type="number" id="ref-edit-meta" min="0" placeholder="Opcional"></div>
+      <div class="fi" id="ref-edit-peso-wrap"><label>Peso Unitário (kg/pç)</label><input type="number" id="ref-edit-peso" min="0" step="0.001" placeholder="Ex: 0.350"></div>
     </div>
     <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:20px">
       <button class="btn bs bsm" onclick="document.getElementById('modal-ref').style.display='none'">Cancelar</button>
@@ -1296,10 +1297,11 @@ const CELULA_COLORS = { Aluminio:'var(--blue)', Panos:'var(--accent)', Placas:'v
 function renderRefsTable(rows) {
   const tbody = document.getElementById('refs-body');
   tbody.innerHTML = !rows.length
-    ? `<tr><td colspan="7" class="empty">Nenhuma referência encontrada.</td></tr>`
+    ? `<tr><td colspan="8" class="empty">Nenhuma referência encontrada.</td></tr>`
     : rows.map((r,i) => {
         const c = r.celula || 'Panos';
         const celulasHtml = `<span style="display:inline-block;padding:1px 6px;border-radius:2px;font:700 10px var(--fh);letter-spacing:1px;background:rgba(0,0,0,.3);border:1px solid ${CELULA_COLORS[c]||'var(--border)'};color:${CELULA_COLORS[c]||'var(--muted)'}">${CELULA_LABELS[c]||c}</span>`;
+        const pesoHtml = (c === 'Panos' && r.peso_unitario) ? `<span style="color:var(--accent)">${(+r.peso_unitario).toFixed(3)}</span>` : '<span style="color:var(--muted)">—</span>';
         return `<tr>
           <td><input type="checkbox" class="ref-chk" data-cod="${r.cod}" onchange="updateRefSelection()" style="accent-color:var(--accent);width:15px;height:15px;cursor:pointer"></td>
           <td>${i+1}</td>
@@ -1307,6 +1309,7 @@ function renderRefsTable(rows) {
           <td>${r.descricao}</td>
           <td>${celulasHtml}</td>
           <td style="cursor:pointer;color:var(--blue)" onclick="openEditRef('${r.cod}')">${r.meta_hora ? r.meta_hora + ' pçs/h' : '—'} <span style="font-size:12px">✎</span></td>
+          <td>${pesoHtml}</td>
           <td><button class="btn bd bsm" onclick="delRef('${r.cod}')">✕</button></td>
         </tr>`;
       }).join('');
@@ -1412,6 +1415,12 @@ async function delRef(cod) {
   catch(e) { alert('Erro: ' + e.message); }
 }
 
+function toggleEditRefPeso() {
+  const isPanos = document.getElementById('ref-edit-celula').value === 'Panos';
+  document.getElementById('ref-edit-peso-wrap').style.display = isPanos ? '' : 'none';
+  if (!isPanos) document.getElementById('ref-edit-peso').value = '';
+}
+
 function openEditRef(cod) {
   const r = _refs.find(x => x.cod === cod);
   if (!r) return;
@@ -1419,19 +1428,23 @@ function openEditRef(cod) {
   document.getElementById('ref-edit-desc').value = r.descricao || '';
   document.getElementById('ref-edit-celula').value = r.celula || 'Panos';
   document.getElementById('ref-edit-meta').value = r.meta_hora || '';
+  document.getElementById('ref-edit-peso').value = r.peso_unitario || '';
   document.getElementById('modal-ref').style.display = 'flex';
+  toggleEditRefPeso();
 }
 
 async function salvarEditRef() {
-  const cod     = document.getElementById('ref-edit-cod').textContent;
-  const desc    = document.getElementById('ref-edit-desc').value.trim();
-  const celula  = document.getElementById('ref-edit-celula').value;
-  const metaStr = document.getElementById('ref-edit-meta').value.trim();
+  const cod      = document.getElementById('ref-edit-cod').textContent;
+  const desc     = document.getElementById('ref-edit-desc').value.trim();
+  const celula   = document.getElementById('ref-edit-celula').value;
+  const metaStr  = document.getElementById('ref-edit-meta').value.trim();
+  const pesoRaw  = document.getElementById('ref-edit-peso').value.trim();
   if (!desc) { alert('Descrição é obrigatória.'); return; }
   const meta_hora = metaStr ? parseInt(metaStr) : null;
   if (metaStr && isNaN(meta_hora)) { alert('Meta Hora inválida.'); return; }
+  const peso_unitario = (celula === 'Panos' && pesoRaw) ? parseFloat(pesoRaw) : null;
   try {
-    await POST('referencias', { cod, descricao: desc, celula, meta_hora });
+    await POST('referencias', { cod, descricao: desc, celula, meta_hora, ...(celula === 'Panos' ? { peso_unitario } : {}) });
     _progCache = {};
     document.getElementById('modal-ref').style.display = 'none';
     renderRefs();
