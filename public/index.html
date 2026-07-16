@@ -850,12 +850,22 @@ async function renderDashboard() {
 
     // Refs
     const rb = document.getElementById('dash-ref-body');
-    const _progVis = d.prog.filter(r => (+r.meta_total||0) > 0);
+    const _progVis = d.prog.filter(r => (+r.meta_total||0) > 0 || r.sem_programa);
     rb.innerHTML = !_progVis.length
       ? `<tr><td colspan="7" class="empty"><div class="ei">☰</div>Nenhuma referência no programa deste mês.</td></tr>`
       : _progVis.map(r => {
           const mT = +r.meta_total||0, rT = +r.realizado||0, sl = rT-mT;
           const p = mT>0?rT/mT:0; const bc = p>=1?'pg':p>=.8?'py':'pr';
+          if (r.sem_programa) {
+            return `<tr style="opacity:.75">
+              <td style="font-family:monospace;font-size:11px">${r.cod}</td>
+              <td style="max-width:200px;font-size:12px">${r.descricao} <span style="font:700 9px var(--fh);letter-spacing:1px;color:var(--muted);border:1px solid var(--border);padding:1px 5px">SEM PROGRAMA</span></td>
+              <td>—</td>
+              <td>—</td><td><strong>${fmt(rT)}</strong></td>
+              <td>—</td>
+              <td style="min-width:100px;color:var(--muted);font-size:11px">sem meta</td>
+            </tr>`;
+          }
           return `<tr>
             <td style="font-family:monospace;font-size:11px">${r.cod}</td>
             <td style="max-width:200px;font-size:12px">${r.descricao}</td>
@@ -906,40 +916,64 @@ async function renderPrograma() {
     const cacheKey = mes + '_' + celula;
     _progCache[cacheKey] = rows;
     const rowsVis = rows.filter(r => (+r.meta_total||0) > 0);
-    document.getElementById('prog-count').textContent = rowsVis.length + ' referências';
+    // Refs com lançamentos mas sem programa
+    const refsCodPrograma = new Set(rows.map(r => r.ref_cod));
+    const refsSemProg = [...new Map(
+      lancs.filter(l => !refsCodPrograma.has(l.ref_cod))
+           .map(l => [l.ref_cod, { ref_cod: l.ref_cod, descricao: l.descricao || l.ref_cod }])
+    ).values()];
+    document.getElementById('prog-count').textContent = (rowsVis.length + refsSemProg.length) + ' referências';
     const isAdmin = USER?.perfil === 'admin';
-    // dias restantes até o fim do mês selecionado
     const [anoM, mesM] = mes.split('-').map(Number);
     const ultimoDia = new Date(anoM, mesM, 0);
     const hoje = new Date(); hoje.setHours(0,0,0,0);
     const diasRestantes = Math.ceil((ultimoDia - hoje) / 86400000);
     const mesAtual = mes === curMes();
-    tbody.innerHTML = !rowsVis.length
+
+    const rowProgHtml = rowsVis.map(r => {
+      const mT = +r.meta_total||0;
+      const rT1  = lancs.filter(l=>l.ref_cod===r.ref_cod&&l.turno==='T1').reduce((s,l)=>s+(+l.realizado||0),0);
+      const rT2  = lancs.filter(l=>l.ref_cod===r.ref_cod&&l.turno==='T2').reduce((s,l)=>s+(+l.realizado||0),0);
+      const rADM = lancs.filter(l=>l.ref_cod===r.ref_cod&&l.turno==='ADM').reduce((s,l)=>s+(+l.realizado||0),0);
+      const rT = rT1+rT2+rADM; const p = mT>0?rT/mT:0;
+      const alerta = mesAtual && diasRestantes <= 10 && diasRestantes >= 0 && p < 0.6;
+      return `<tr style="${alerta?'background:rgba(204,0,0,.08);outline:1px solid rgba(204,0,0,.3)':''}">
+          <td style="font-family:monospace;font-size:11px">${r.ref_cod}</td>
+          <td style="max-width:220px;font-size:12px">${alerta?`<span title="Abaixo de 60% com ${diasRestantes} dia(s) restantes" style="color:var(--red);margin-right:4px">⚠</span>`:''}${r.descricao}</td>
+          <td>${fmt(+r.meta_turno||0)}</td>
+          <td><span class="bt" style="background:rgba(204,0,0,.15);color:var(--accent)">${r.num_turnos}T</span></td>
+          <td><strong>${fmt(mT)}</strong></td>
+          <td style="color:var(--accent)">${fmt(rT1)}</td>
+          <td style="color:var(--blue)">${fmt(rT2)}</td>
+          <td style="color:var(--green)">${fmt(rADM)}</td>
+          <td><strong>${fmt(rT)}</strong></td>
+          <td style="color:${mT-rT<=0?'var(--green)':'var(--red)'}">${mT-rT>0?fmt(mT-rT):'✓'}</td>
+          <td class="${p>=1?'ok':p>=.8?'warn':'bad'}">${pct(rT,mT)}</td>
+          ${isAdmin?`<td><button class="btn bd bsm" onclick="deleteProg('${r.ref_cod}','${mes}','${celula}')">✕</button></td>`:''}
+        </tr>`;
+    }).join('');
+
+    const rowSemProgHtml = refsSemProg.map(r => {
+      const rT1  = lancs.filter(l=>l.ref_cod===r.ref_cod&&l.turno==='T1').reduce((s,l)=>s+(+l.realizado||0),0);
+      const rT2  = lancs.filter(l=>l.ref_cod===r.ref_cod&&l.turno==='T2').reduce((s,l)=>s+(+l.realizado||0),0);
+      const rADM = lancs.filter(l=>l.ref_cod===r.ref_cod&&l.turno==='ADM').reduce((s,l)=>s+(+l.realizado||0),0);
+      const rT = rT1+rT2+rADM;
+      return `<tr style="opacity:.75">
+          <td style="font-family:monospace;font-size:11px">${r.ref_cod}</td>
+          <td style="max-width:220px;font-size:12px">${r.descricao} <span style="font:700 9px var(--fh);letter-spacing:1px;color:var(--muted);border:1px solid var(--border);padding:1px 5px">SEM PROGRAMA</span></td>
+          <td>—</td><td>—</td><td>—</td>
+          <td style="color:var(--accent)">${fmt(rT1)}</td>
+          <td style="color:var(--blue)">${fmt(rT2)}</td>
+          <td style="color:var(--green)">${fmt(rADM)}</td>
+          <td><strong>${fmt(rT)}</strong></td>
+          <td>—</td><td>—</td>
+          ${isAdmin?'<td></td>':''}
+        </tr>`;
+    }).join('');
+
+    tbody.innerHTML = !rowsVis.length && !refsSemProg.length
       ? `<tr><td colspan="11" class="empty"><div class="ei">☰</div>Nenhuma referência no programa. ${isAdmin?'Clique em "+ Adicionar Referência".':''}</td></tr>`
-      : rowsVis.map(r => {
-          const mT = +r.meta_total||0;
-          const rT1  = lancs.filter(l=>l.ref_cod===r.ref_cod&&l.turno==='T1').reduce((s,l)=>s+(+l.realizado||0),0);
-          const rT2  = lancs.filter(l=>l.ref_cod===r.ref_cod&&l.turno==='T2').reduce((s,l)=>s+(+l.realizado||0),0);
-          const rADM = lancs.filter(l=>l.ref_cod===r.ref_cod&&l.turno==='ADM').reduce((s,l)=>s+(+l.realizado||0),0);
-          const rT = rT1+rT2+rADM; const p = mT>0?rT/mT:0;
-          const alerta = mesAtual && diasRestantes <= 10 && diasRestantes >= 0 && p < 0.6;
-          return `<tr style="${alerta?'background:rgba(204,0,0,.08);outline:1px solid rgba(204,0,0,.3)':''}">
-            <td style="font-family:monospace;font-size:11px">${r.ref_cod}</td>
-            <td style="max-width:220px;font-size:12px">${alerta?`<span title="Abaixo de 60% com ${diasRestantes} dia(s) restantes" style="color:var(--red);margin-right:4px">⚠</span>`:''}${r.descricao}</td>
-            <td>${fmt(+r.meta_turno||0)}</td>
-            <td><span class="bt" style="background:rgba(204,0,0,.15);color:var(--accent)">${r.num_turnos}T</span></td>
-            <td><strong>${fmt(mT)}</strong></td>
-            <td style="color:var(--accent)">${fmt(rT1)}</td>
-            <td style="color:var(--blue)">${fmt(rT2)}</td>
-            <td style="color:var(--green)">${fmt(rADM)}</td>
-            <td><strong>${fmt(rT)}</strong></td>
-            <td style="color:${mT-rT<=0?'var(--green)':'var(--red)'}">${mT-rT>0?fmt(mT-rT):'✓'}</td>
-            <td class="${p>=1?'ok':p>=.8?'warn':'bad'}">${pct(rT,mT)}</td>
-            ${isAdmin?`<td>
-              <button class="btn bd bsm" onclick="deleteProg('${r.ref_cod}','${mes}','${celula}')">✕</button>
-            </td>`:''}
-          </tr>`;
-        }).join('');
+      : rowProgHtml + rowSemProgHtml;
   } catch(e) {
     tbody.innerHTML = `<tr><td colspan="11" class="empty" style="color:var(--red)">${e.message}</td></tr>`;
   }

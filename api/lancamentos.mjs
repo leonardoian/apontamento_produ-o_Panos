@@ -20,17 +20,17 @@ export default async function handler(req, res) {
       if (mes && turno && ref) {
         rows = await sql`SELECT l.* FROM lancamentos l 
           WHERE TO_CHAR(l.data,'YYYY-MM') = ${mes} AND l.turno = ${turno} AND l.ref_cod = ${ref} 
-          AND l.ref_cod IN (SELECT ref_cod FROM programa WHERE celula = ${celulaFilter})
+          AND l.ref_cod IN (SELECT cod FROM referencias WHERE celula = ${celulaFilter} AND ativo = true)
           ORDER BY l.data DESC, l.criado_em DESC`;
       } else if (mes && turno) {
         rows = await sql`SELECT l.* FROM lancamentos l 
           WHERE TO_CHAR(l.data,'YYYY-MM') = ${mes} AND l.turno = ${turno}
-          AND l.ref_cod IN (SELECT ref_cod FROM programa WHERE celula = ${celulaFilter})
+          AND l.ref_cod IN (SELECT cod FROM referencias WHERE celula = ${celulaFilter} AND ativo = true)
           ORDER BY l.data DESC, l.criado_em DESC`;
       } else if (mes) {
         rows = await sql`SELECT l.* FROM lancamentos l 
           WHERE TO_CHAR(l.data,'YYYY-MM') = ${mes}
-          AND l.ref_cod IN (SELECT ref_cod FROM programa WHERE celula = ${celulaFilter})
+          AND l.ref_cod IN (SELECT cod FROM referencias WHERE celula = ${celulaFilter} AND ativo = true)
           ORDER BY l.data DESC, l.criado_em DESC`;
       } else {
         rows = await sql`SELECT l.* FROM lancamentos l 

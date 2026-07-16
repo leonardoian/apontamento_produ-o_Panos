@@ -28,21 +28,38 @@ export default async function handler(req, res) {
         FROM lancamentos
         WHERE TO_CHAR(data,'YYYY-MM') = ${mes}
           AND ref_cod IN (
-            SELECT ref_cod FROM programa WHERE mes_ano = ${mes} AND celula = ${celula}
+            SELECT cod FROM referencias WHERE celula = ${celula} AND ativo = true
           )`;
 
       prog = await sql`
-        SELECT p.ref_cod AS cod, r.descricao,
-          (p.meta_turno * p.num_turnos) AS meta_total,
-          COALESCE(SUM(l.realizado),0)::int AS realizado,
-          COALESCE(SUM(l.refugo),0)::int    AS refugo,
-          p.num_turnos, p.meta_turno
-        FROM programa p
-        JOIN referencias r ON r.cod = p.ref_cod
-        LEFT JOIN lancamentos l ON l.ref_cod = p.ref_cod AND TO_CHAR(l.data,'YYYY-MM') = ${mes}
-        WHERE p.mes_ano = ${mes} AND p.ativo = true AND p.celula = ${celula}
-        GROUP BY p.id, p.ref_cod, r.cod, r.descricao, p.meta_turno, p.num_turnos
-        ORDER BY r.cod`;
+        SELECT cod, descricao, meta_total, realizado, refugo, num_turnos, meta_turno, sem_programa
+        FROM (
+          SELECT p.ref_cod AS cod, r.descricao,
+            (p.meta_turno * p.num_turnos) AS meta_total,
+            COALESCE(SUM(l.realizado),0)::int AS realizado,
+            COALESCE(SUM(l.refugo),0)::int    AS refugo,
+            p.num_turnos, p.meta_turno, false AS sem_programa
+          FROM programa p
+          JOIN referencias r ON r.cod = p.ref_cod
+          LEFT JOIN lancamentos l ON l.ref_cod = p.ref_cod AND TO_CHAR(l.data,'YYYY-MM') = ${mes}
+          WHERE p.mes_ano = ${mes} AND p.ativo = true AND p.celula = ${celula}
+          GROUP BY p.id, p.ref_cod, r.cod, r.descricao, p.meta_turno, p.num_turnos
+          UNION ALL
+          SELECT l.ref_cod AS cod, r.descricao,
+            0 AS meta_total,
+            COALESCE(SUM(l.realizado),0)::int AS realizado,
+            COALESCE(SUM(l.refugo),0)::int    AS refugo,
+            0 AS num_turnos, 0 AS meta_turno, true AS sem_programa
+          FROM lancamentos l
+          JOIN referencias r ON r.cod = l.ref_cod
+          WHERE TO_CHAR(l.data,'YYYY-MM') = ${mes}
+            AND r.celula = ${celula}
+            AND l.ref_cod NOT IN (
+              SELECT ref_cod FROM programa WHERE mes_ano = ${mes} AND ativo = true AND celula = ${celula}
+            )
+          GROUP BY l.ref_cod, r.descricao
+        ) t
+        ORDER BY sem_programa, cod`;
 
       turnos = await sql`
         SELECT turno,
@@ -51,7 +68,7 @@ export default async function handler(req, res) {
         FROM lancamentos
         WHERE TO_CHAR(data,'YYYY-MM') = ${mes}
           AND ref_cod IN (
-            SELECT ref_cod FROM programa WHERE mes_ano = ${mes} AND celula = ${celula}
+            SELECT cod FROM referencias WHERE celula = ${celula} AND ativo = true
           )
         GROUP BY turno ORDER BY turno`;
 
@@ -59,7 +76,7 @@ export default async function handler(req, res) {
         SELECT data, turno, ref_cod, operador, realizado, eficiencia
         FROM lancamentos
         WHERE ref_cod IN (
-          SELECT ref_cod FROM programa WHERE mes_ano = ${mes} AND celula = ${celula}
+          SELECT cod FROM referencias WHERE celula = ${celula} AND ativo = true
         )
         ORDER BY criado_em DESC LIMIT 8`;
 
@@ -73,17 +90,33 @@ export default async function handler(req, res) {
         FROM lancamentos WHERE TO_CHAR(data,'YYYY-MM') = ${mes}`;
 
       prog = await sql`
-        SELECT p.ref_cod AS cod, r.descricao,
-          (p.meta_turno * p.num_turnos) AS meta_total,
-          COALESCE(SUM(l.realizado),0)::int AS realizado,
-          COALESCE(SUM(l.refugo),0)::int    AS refugo,
-          p.num_turnos, p.meta_turno
-        FROM programa p
-        JOIN referencias r ON r.cod = p.ref_cod
-        LEFT JOIN lancamentos l ON l.ref_cod = p.ref_cod AND TO_CHAR(l.data,'YYYY-MM') = ${mes}
-        WHERE p.mes_ano = ${mes} AND p.ativo = true
-        GROUP BY p.id, p.ref_cod, r.cod, r.descricao, p.meta_turno, p.num_turnos
-        ORDER BY r.cod`;
+        SELECT cod, descricao, meta_total, realizado, refugo, num_turnos, meta_turno, sem_programa
+        FROM (
+          SELECT p.ref_cod AS cod, r.descricao,
+            (p.meta_turno * p.num_turnos) AS meta_total,
+            COALESCE(SUM(l.realizado),0)::int AS realizado,
+            COALESCE(SUM(l.refugo),0)::int    AS refugo,
+            p.num_turnos, p.meta_turno, false AS sem_programa
+          FROM programa p
+          JOIN referencias r ON r.cod = p.ref_cod
+          LEFT JOIN lancamentos l ON l.ref_cod = p.ref_cod AND TO_CHAR(l.data,'YYYY-MM') = ${mes}
+          WHERE p.mes_ano = ${mes} AND p.ativo = true
+          GROUP BY p.id, p.ref_cod, r.cod, r.descricao, p.meta_turno, p.num_turnos
+          UNION ALL
+          SELECT l.ref_cod AS cod, r.descricao,
+            0 AS meta_total,
+            COALESCE(SUM(l.realizado),0)::int AS realizado,
+            COALESCE(SUM(l.refugo),0)::int    AS refugo,
+            0 AS num_turnos, 0 AS meta_turno, true AS sem_programa
+          FROM lancamentos l
+          JOIN referencias r ON r.cod = l.ref_cod
+          WHERE TO_CHAR(l.data,'YYYY-MM') = ${mes}
+            AND l.ref_cod NOT IN (
+              SELECT ref_cod FROM programa WHERE mes_ano = ${mes} AND ativo = true
+            )
+          GROUP BY l.ref_cod, r.descricao
+        ) t
+        ORDER BY sem_programa, cod`;
 
       turnos = await sql`
         SELECT turno,
