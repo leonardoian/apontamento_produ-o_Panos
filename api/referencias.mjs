@@ -13,7 +13,7 @@ export default async function handler(req, res) {
 
   if (req.method === "GET") {
     try {
-      const rows = await sql`SELECT cod, descricao, meta_hora, celula FROM referencias WHERE ativo = true ORDER BY cod`;
+      const rows = await sql`SELECT cod, descricao, meta_hora, celula, peso_unitario FROM referencias WHERE ativo = true ORDER BY cod`;
       return res.status(200).json(rows);
     } catch (e) {
       return res.status(500).json({ error: e.message });
@@ -22,16 +22,17 @@ export default async function handler(req, res) {
 
   if (req.method === "POST") {
     if (u.perfil !== "admin") return res.status(403).json({ error: "Acesso negado" });
-    const { cod, descricao, meta_hora, celula } = getBody(req);
+    const { cod, descricao, meta_hora, celula, peso_unitario } = getBody(req);
     if (!cod || !descricao) return res.status(400).json({ error: "cod e descricao obrigatórios" });
     const cel = celula || 'Panos';
+    const pesoVal = (peso_unitario != null && String(peso_unitario).trim() !== '') ? +peso_unitario : null;
     try {
       if (meta_hora === undefined) {
-        await sql`INSERT INTO referencias (cod, descricao, meta_hora, celula) VALUES (${cod.toUpperCase()}, ${descricao}, null, ${cel})
-          ON CONFLICT (cod) DO UPDATE SET descricao = EXCLUDED.descricao, celula = EXCLUDED.celula, ativo = true`;
+        await sql`INSERT INTO referencias (cod, descricao, meta_hora, celula, peso_unitario) VALUES (${cod.toUpperCase()}, ${descricao}, null, ${cel}, ${pesoVal})
+          ON CONFLICT (cod) DO UPDATE SET descricao = EXCLUDED.descricao, celula = EXCLUDED.celula, peso_unitario = EXCLUDED.peso_unitario, ativo = true`;
       } else {
-        await sql`INSERT INTO referencias (cod, descricao, meta_hora, celula) VALUES (${cod.toUpperCase()}, ${descricao}, ${meta_hora}, ${cel})
-          ON CONFLICT (cod) DO UPDATE SET descricao = EXCLUDED.descricao, meta_hora = EXCLUDED.meta_hora, celula = EXCLUDED.celula, ativo = true`;
+        await sql`INSERT INTO referencias (cod, descricao, meta_hora, celula, peso_unitario) VALUES (${cod.toUpperCase()}, ${descricao}, ${meta_hora}, ${cel}, ${pesoVal})
+          ON CONFLICT (cod) DO UPDATE SET descricao = EXCLUDED.descricao, meta_hora = EXCLUDED.meta_hora, celula = EXCLUDED.celula, peso_unitario = EXCLUDED.peso_unitario, ativo = true`;
       }
       return res.status(200).json({ ok: true });
     } catch (e) {

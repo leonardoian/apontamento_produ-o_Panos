@@ -57,6 +57,7 @@ export async function initDB(sql) {
     ativo BOOLEAN DEFAULT true
   )`;
   await sql`ALTER TABLE referencias ADD COLUMN IF NOT EXISTS celula VARCHAR(30) DEFAULT 'Panos'`;
+  await sql`ALTER TABLE referencias ADD COLUMN IF NOT EXISTS peso_unitario DECIMAL(8,3) DEFAULT NULL`;
   await sql`CREATE TABLE IF NOT EXISTS programa (
     id SERIAL PRIMARY KEY,
     mes_ano VARCHAR(7) NOT NULL,

@@ -148,7 +148,7 @@
       <div class="meta" id="meta-refs"></div>
       <div class="tablewrap">
         <table>
-          <thead><tr><th>Código</th><th>Descrição</th><th>Ativo</th><th>Status</th></tr></thead>
+          <thead><tr><th>Código</th><th>Descrição</th><th>Peso (kg/pç)</th><th>Ativo</th><th>Status</th></tr></thead>
           <tbody id="tb-refs"></tbody>
         </table>
       </div>
@@ -240,9 +240,11 @@ function parseRefs(wb){
     cod:['COD_REF','COD. REF','CÓDIGO'],
     desc:['DESCRI'],
     ativo:['ATIVO'],
-    meta:['META HORA','META_HORA','PÇS/HORA','PCS/HORA','PÇS HORA','PCS HORA']
+    meta:['META HORA','META_HORA','PÇS/HORA','PCS/HORA','PÇS HORA','PCS HORA'],
+    peso:['PESO_UNITARIO','PESO UNIT','PESO (KG)','PESO/PC','PESO/PÇ','PESO KG']
   });
   const metaColPresent = c.meta >= 0;
+  const pesoColPresent = c.peso >= 0;
   for(let r=hi+1;r<rows.length;r++){
     const cod=up(rows[r][c.cod]); if(!cod) continue;
     const desc=norm(rows[r][c.desc]);
@@ -256,7 +258,17 @@ function parseRefs(wb){
         meta_hora = null;
       }
     }
-    DATA.refs.push({cod,desc,ativo:ativo==='S'||ativo===''?'S':'N', meta_hora});
+    let peso_unitario;
+    if (pesoColPresent) {
+      const raw = rows[r][c.peso];
+      if (raw != null && String(raw).trim() !== '') {
+        peso_unitario = parseFloat(String(raw).replace(',','.'));
+        if (isNaN(peso_unitario)) peso_unitario = null;
+      } else {
+        peso_unitario = null;
+      }
+    }
+    DATA.refs.push({cod,desc,ativo:ativo==='S'||ativo===''?'S':'N', meta_hora, peso_unitario});
   }
 }
 
@@ -317,6 +329,7 @@ function renderAll(fname){
     <tr>
       <td class="cod">${r.cod}</td>
       <td>${r.desc||'<span style="color:var(--muted)">(sem descrição)</span>'}</td>
+      <td class="num">${r.peso_unitario != null ? r.peso_unitario.toFixed(3) : '<span style="color:var(--muted)">—</span>'}</td>
       <td>${r.ativo==='S'?'<span class="pill ok">S</span>':'<span class="pill warn">N</span>'}</td>
       <td><span class="pill ok">ok</span></td>
     </tr>`).join('');
@@ -362,6 +375,7 @@ $('send').addEventListener('click',async()=>{
     try{
       const payload = { cod:r.cod, descricao:r.desc||r.cod };
       if (r.meta_hora !== undefined) payload.meta_hora = r.meta_hora;
+      if (r.peso_unitario != null) payload.peso_unitario = r.peso_unitario;
       await post('referencias', payload);
       sentRefs.add(r.cod);
     } catch(e){ fails.push('ref '+r.cod+': '+e.message); }

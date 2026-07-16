@@ -198,6 +198,10 @@
                   <div style="font:700 9px/1 var(--fh);letter-spacing:1px;color:var(--muted);text-transform:uppercase;margin-bottom:3px">Dias de Turno</div>
                   <div style="font:900 28px/1 var(--fh);color:var(--blue)" id="ord-calc-dias">—</div>
                 </div>
+                <div id="ord-calc-peso" style="display:none">
+                  <div style="font:700 9px/1 var(--fh);letter-spacing:1px;color:var(--muted);text-transform:uppercase;margin-bottom:3px">Peso Total Estimado</div>
+                  <div style="font:900 28px/1 var(--fh);color:var(--accent)" id="ord-calc-peso-val">—</div>
+                </div>
               </div>
             </div>
             <div class="brow">
@@ -1819,7 +1823,7 @@ function _buildOrdRefItems(rows) {
       onmouseenter="this.style.background='rgba(204,0,0,.12)'" onmouseleave="this.style.background=''">
       <span style="font-family:monospace;color:var(--accent);font-size:11px">${r.cod}</span>
       <span style="margin-left:8px">${r.descricao}</span>
-      <span style="float:right;font-size:10px;color:var(--muted)">${r.meta_hora} pçs/h</span>
+      <span style="float:right;font-size:10px;color:var(--muted)">${r.meta_hora} pçs/h${(r.peso_unitario && document.getElementById('ord-celula').value === 'Panos') ? ' · ' + (+r.peso_unitario).toFixed(3) + ' kg/pç' : ''}</span>
     </div>`
   ).join('');
 }
@@ -1857,15 +1861,31 @@ function preencheMetaOrdem() {
 }
 
 function calcOrdem() {
-  const qtd  = +document.getElementById('ord-qtd').value || 0;
-  const mh   = +document.getElementById('ord-meta-hora').value || 0;
-  const hpt  = +document.getElementById('ord-hpt').value || 8;
-  const calc = document.getElementById('ord-calc');
+  const qtd    = +document.getElementById('ord-qtd').value || 0;
+  const mh     = +document.getElementById('ord-meta-hora').value || 0;
+  const hpt    = +document.getElementById('ord-hpt').value || 8;
+  const celula = document.getElementById('ord-celula').value;
+  const calc   = document.getElementById('ord-calc');
   if (qtd > 0 && mh > 0 && hpt > 0) {
     const horas = qtd / mh;
     const dias  = horas / hpt;
     document.getElementById('ord-calc-horas').textContent = horas.toFixed(1) + 'h';
     document.getElementById('ord-calc-dias').textContent  = dias.toFixed(1) + ' dias';
+    const pesoDiv = document.getElementById('ord-calc-peso');
+    if (celula === 'Panos') {
+      const cod = document.getElementById('ord-ref').value;
+      const ref = _ordRefOptions.find(x => x.cod === cod);
+      const pesoUnit = ref?.peso_unitario ? +ref.peso_unitario : 0;
+      if (pesoUnit > 0) {
+        const total = (qtd * pesoUnit).toFixed(2);
+        document.getElementById('ord-calc-peso-val').textContent = total.replace('.', ',') + ' kg';
+        pesoDiv.style.display = 'block';
+      } else {
+        pesoDiv.style.display = 'none';
+      }
+    } else {
+      pesoDiv.style.display = 'none';
+    }
     calc.style.display = 'block';
   } else {
     calc.style.display = 'none';
