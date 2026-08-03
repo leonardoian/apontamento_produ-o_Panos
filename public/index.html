@@ -5,6 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Superpro — Sistema de Produção</title>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#cc0000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SuperPro">
+<link rel="apple-touch-icon" href="/icon-192.png">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/style.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -54,6 +60,7 @@
       <div class="un" id="sb-nome">—</div>
       <div class="ur" id="sb-role">—</div>
       <button class="btn-out" style="margin-top:6px" onclick="openModalSenha()">🔑 Alterar Senha</button>
+      <button class="btn-out" id="btn-pwa-install" style="display:none" onclick="installPWA()">⬇ Instalar App</button>
       <button class="btn-out" onclick="doLogout()">Sair</button>
     </div>
   </nav>
@@ -815,7 +822,8 @@ function goTo(p) {
   document.querySelectorAll('.ni').forEach(n => { if (n.getAttribute('onclick')?.includes("'" + p + "'")) n.classList.add('active'); });
   document.getElementById('tp-title').textContent = TITLES[p] || p;
   if (window.innerWidth <= 768) closeSidebar();
-  if (p === 'dashboard')  renderDashboard();
+  if (_dashInterval) { clearInterval(_dashInterval); _dashInterval = null; }
+  if (p === 'dashboard')  { renderDashboard(); _dashInterval = setInterval(renderDashboard, 30000); }
   if (p === 'programa')   renderPrograma();
   if (p === 'ordens')     renderOrdens();
   if (p === 'lancamento') { document.getElementById('ldata').value = today(); atualizaRefSel(); }
@@ -831,6 +839,7 @@ function goTo(p) {
 // ═══════════════════════════════════════
 let _dashData = null;
 let _dashMes  = null;
+let _dashInterval = null;
 
 async function renderDashboard() {
   const mes    = document.getElementById('dash-mes').value || curMes();
@@ -849,12 +858,31 @@ async function renderDashboard() {
     const _realMes = +t.total_realizado||0;
     const _ating = _metaMes > 0 ? (_realMes / _metaMes * 100) : null;
     const _atingCor = _ating === null ? 'var(--muted)' : _ating >= 100 ? 'var(--green)' : _ating >= 80 ? 'var(--orange)' : 'var(--red)';
-    document.getElementById('kpi-grid').innerHTML = `
+    let _kpiHtml = `
       <div class="kc y"><div class="kl">Total Realizado</div><div class="kv">${fmt(t.total_realizado)}</div><div class="ks">peças — ${mesL(mes)}</div></div>
       <div class="kc b"><div class="kl">Meta do Mês</div><div class="kv">${fmt(_metaMes)}</div><div class="ks">peças programadas</div></div>
       <div class="kc" style="border-top:3px solid ${_atingCor}"><div class="kl">Atingimento</div><div class="kv" style="color:${_atingCor}">${_ating !== null ? _ating.toFixed(1)+'%' : '—'}</div><div class="ks">${_ating !== null ? (_ating>=100?'meta atingida':fmt(_metaMes-_realMes)+' peças restantes') : 'sem programa'}</div></div>
       <div class="kc g"><div class="kl">Eficiência Média</div><div class="kv">${t.efic_media ? (t.efic_media*100).toFixed(1)+'%' : '—'}</div><div class="ks">todos os turnos</div></div>
       <div class="kc r"><div class="kl">Total Refugo</div><div class="kv">${fmt(t.total_refugo)}</div><div class="ks">peças rejeitadas</div></div>`;
+    if (mes === curMes() && _metaMes > 0) {
+      const _hoje = new Date();
+      const _dia = _hoje.getDate();
+      const _diasMes = new Date(_hoje.getFullYear(), _hoje.getMonth() + 1, 0).getDate();
+      const _diasRest = _diasMes - _dia;
+      if (_dia >= 2) {
+        const _proj = Math.round(_realMes / _dia * _diasMes);
+        const _projPct = _proj / _metaMes * 100;
+        const _projCor = _projPct >= 100 ? 'var(--green)' : _projPct >= 80 ? 'var(--orange)' : 'var(--red)';
+        _kpiHtml += `<div class="kc" style="border-top:3px solid ${_projCor}"><div class="kl">Projeção Final</div><div class="kv" style="color:${_projCor}">${_projPct.toFixed(1)}%</div><div class="ks">no ritmo atual • ${_diasRest}d restantes</div></div>`;
+      }
+      if (_diasRest > 0) {
+        const _falta = Math.max(0, _metaMes - _realMes);
+        const _metaDia = _falta <= 0 ? 0 : Math.ceil(_falta / (_diasRest + 1));
+        const _cor = _falta <= 0 ? 'var(--green)' : 'var(--text)';
+        _kpiHtml += `<div class="kc"><div class="kl">Meta Diária</div><div class="kv" style="color:${_cor}">${_falta <= 0 ? '✔' : fmt(_metaDia)}</div><div class="ks">${_falta <= 0 ? 'meta do mês garantida!' : 'peças/dia para bater a meta'}</div></div>`;
+      }
+    }
+    document.getElementById('kpi-grid').innerHTML = _kpiHtml;
 
     // Refs
     const rb = document.getElementById('dash-ref-body');
@@ -1804,6 +1832,7 @@ function exportOpPDF() {
 // ═══════════════════════════════════════
 let _ordemFiltroStatus = '';
 let _ordemFiltroCelula = '';
+let _ordens = [];
 const _CELULA_LABEL = { Aluminio:'Alumínio', Panos:'Panos', Placas:'Placas', Rodos:'Rodos', Manual:'Manual', Importacao:'Importação' };
 const _STATUS_LABEL  = { pendente:'PENDENTE', em_andamento:'EM ANDAMENTO', concluida:'CONCLUÍDA' };
 const _STATUS_COR    = { pendente:'var(--muted)', em_andamento:'var(--orange)', concluida:'var(--green)' };
@@ -1838,6 +1867,7 @@ async function renderOrdens() {
     let rows = await GET('ordens');
     if (_ordemFiltroStatus) rows = rows.filter(o => o.status === _ordemFiltroStatus);
     if (_ordemFiltroCelula) rows = rows.filter(o => o.celula === _ordemFiltroCelula);
+    _ordens = rows;
     document.getElementById('ordens-count').textContent = rows.length + ' ordem(ns)';
     if (!rows.length) {
       grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:48px;color:var(--muted)">
@@ -1883,7 +1913,10 @@ function renderOrdemCard(o, isAdmin) {
     ${o.obs ? `<div style="font-size:11px;color:var(--muted);padding:7px 10px;background:rgba(255,255,255,.03);border-left:2px solid var(--border);margin-bottom:10px">${o.obs}</div>` : ''}
     <div style="display:flex;justify-content:space-between;align-items:center;font-size:10px;color:var(--muted);padding-top:10px;border-top:1px solid var(--border)">
       <div>${dataPrev ? `Previsto: <strong style="color:var(--text)">${dataPrev}</strong> · ` : ''}Por ${o.criado_por} em ${criadoEm}</div>
-      ${isAdmin ? `<button class="btn bd bsm" onclick="deletarOrdem(${o.id})" title="Remover ordem">✕</button>` : ''}
+      <div style="display:flex;gap:6px">
+        <button class="btn bs bsm" onclick="imprimirOrdem(${o.id})" title="Imprimir ordem">🖨</button>
+        ${isAdmin ? `<button class="btn bd bsm" onclick="deletarOrdem(${o.id})" title="Remover ordem">✕</button>` : ''}
+      </div>
     </div>
   </div>`;
 }
@@ -2010,6 +2043,63 @@ async function deletarOrdem(id) {
   } catch(e) { if (!e.sessionExpired) toast('Erro: ' + e.message, 'err'); }
 }
 
+function imprimirOrdem(id) {
+  const o = _ordens.find(x => x.id == id);
+  if (!o) return;
+  const f = n => Number(n||0).toLocaleString('pt-BR');
+  const horas = +o.meta_hora > 0 ? (+o.quantidade / +o.meta_hora).toFixed(1) : '—';
+  const dias  = +o.meta_hora > 0 ? (+o.quantidade / +o.meta_hora / (+o.horas_por_turno||8)).toFixed(1) : '—';
+  const dataPrev = o.data_prevista ? String(o.data_prevista).slice(0,10).split('-').reverse().join('/') : '—';
+  const criadoEm = String(o.criado_em).slice(0,10).split('-').reverse().join('/');
+  const status   = _STATUS_LABEL[o.status] || o.status;
+  const celula   = _CELULA_LABEL[o.celula] || o.celula;
+  const p        = +o.quantidade > 0 ? Math.min(+o.total_realizado / +o.quantidade * 100, 100) : 0;
+  const w = window.open('', '_blank');
+  w.document.write(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
+<title>Ordem #${o.id} — ${o.ref_cod}</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Arial,sans-serif;padding:32px;color:#111;max-width:700px;margin:0 auto}
+  .logo{font-size:26px;font-weight:900;letter-spacing:-1px;margin-bottom:20px}
+  .logo span{color:#cc0000}
+  h1{font-size:17px;font-weight:700;margin-bottom:2px}
+  .sub{font-size:11px;color:#888;margin-bottom:4px}
+  .desc{font-size:20px;font-weight:700;margin:6px 0 20px}
+  table{width:100%;border-collapse:collapse;margin-top:8px;font-size:13px}
+  td,th{border:1px solid #ddd;padding:8px 12px;text-align:left}
+  th{background:#f5f5f5;font-size:10px;text-transform:uppercase;letter-spacing:1px;font-weight:700;width:180px}
+  .badge{display:inline-block;padding:2px 9px;font-size:10px;font-weight:700;background:#eee;letter-spacing:1px}
+  .bar-bg{background:#eee;height:8px;margin-top:16px;border-radius:2px}
+  .bar-fg{background:#cc0000;height:100%;border-radius:2px;width:${p.toFixed(0)}%}
+  .prog-lbl{font-size:11px;color:#888;margin-top:4px}
+  .footer{margin-top:24px;font-size:11px;color:#aaa;border-top:1px solid #eee;padding-top:12px;display:flex;justify-content:space-between}
+  .btn-print{margin-top:24px;padding:8px 20px;background:#cc0000;color:#fff;border:none;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:1px}
+  @media print{.btn-print{display:none}body{padding:16px}}
+</style></head><body>
+<div class="logo">SUPER<span>PRO</span></div>
+<h1>Ordem de Produção #${o.id}</h1>
+<div class="sub">${celula}</div>
+<div class="desc">${o.ref_cod} — ${o.descricao}</div>
+<table>
+  <tr><th>Quantidade</th><td><strong>${f(+o.quantidade)} peças</strong></td></tr>
+  <tr><th>Meta Hora</th><td>${f(+o.meta_hora)} pçs/h</td></tr>
+  <tr><th>Horas por Turno</th><td>${+o.horas_por_turno||8}h</td></tr>
+  <tr><th>Horas Necessárias</th><td>${horas}h</td></tr>
+  <tr><th>Dias de Turno Estimados</th><td>~${dias} dias</td></tr>
+  <tr><th>Data Prevista</th><td>${dataPrev}</td></tr>
+  <tr><th>Status</th><td><span class="badge">${status}</span></td></tr>
+  ${o.obs ? `<tr><th>Observação</th><td>${o.obs}</td></tr>` : ''}
+  <tr><th>Criado por</th><td>${o.criado_por} em ${criadoEm}</td></tr>
+</table>
+<div class="bar-bg"><div class="bar-fg"></div></div>
+<div class="prog-lbl">Progresso: ${f(+o.total_realizado)} / ${f(+o.quantidade)} peças — ${p.toFixed(1)}%</div>
+<div class="footer"><span>SuperPro — Sistema de Produção</span><span>Impresso em ${new Date().toLocaleString('pt-BR')}</span></div>
+<button class="btn-print" onclick="window.print()">🖨 IMPRIMIR</button>
+</body></html>`);
+  w.document.close();
+  w.focus();
+}
+
 // ═══════════════════════════════════════
 // SENHA
 // ═══════════════════════════════════════
@@ -2063,6 +2153,29 @@ async function init() {
       showApp();
     } catch { TOKEN = null; localStorage.removeItem('sp_token'); }
   }
+}
+
+// ═══════════════════════════════════════
+// PWA
+// ═══════════════════════════════════════
+let _pwaPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  _pwaPrompt = e;
+  const btn = document.getElementById('btn-pwa-install');
+  if (btn) btn.style.display = '';
+});
+function installPWA() {
+  if (!_pwaPrompt) return;
+  _pwaPrompt.prompt();
+  _pwaPrompt.userChoice.then(() => {
+    _pwaPrompt = null;
+    const btn = document.getElementById('btn-pwa-install');
+    if (btn) btn.style.display = 'none';
+  });
+}
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
 }
 
 window.addEventListener('focus', async () => {
