@@ -138,7 +138,15 @@
           <button class="btn bs bsm" id="btn-importar-prog" style="display:none" onclick="window.open('/importar.html','_blank')">⬆ Importar Planilha</button>
         </div>
         <div class="tw">
-          <div class="th"><div class="tt">PROGRAMA DO MÊS</div><span id="prog-count" style="font-size:12px;color:var(--muted)"></span></div>
+          <div class="th">
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+              <div class="tt">PROGRAMA DO MÊS</div>
+              <span id="prog-count" style="font-size:12px;color:var(--muted)"></span>
+            </div>
+            <input id="prog-busca" type="text" placeholder="Buscar referência..." oninput="filterPrograma()"
+              style="background:var(--surface);border:1px solid var(--border);color:var(--text);padding:5px 10px;font:13px var(--fb);outline:none;width:240px;transition:border-color .2s"
+              onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
+          </div>
           <div style="overflow-x:auto"><table><thead><tr>
             <th>Cód.</th><th>Descrição</th><th>Meta/Turno</th><th>Nº Turnos</th><th>Meta Total</th>
             <th style="color:var(--accent)">Real. T1</th><th style="color:var(--blue)">Real. T2</th><th style="color:var(--green)">Real. ADM</th>
@@ -904,79 +912,102 @@ async function renderDashboard() {
 // ═══════════════════════════════════════
 // PROGRAMA
 // ═══════════════════════════════════════
+let _progRowsVis = [], _progRefsSemProg = [], _progLancs = [];
+
 async function renderPrograma() {
   const mes = document.getElementById('prog-mes').value;
   const celula = document.getElementById('prog-celula').value;
   const tbody = document.getElementById('prog-body');
   if (!mes) { tbody.innerHTML = `<tr><td colspan="11" class="empty">Selecione um mês.</td></tr>`; return; }
   tbody.innerHTML = `<tr><td colspan="11" class="empty"><span class="loading"></span></td></tr>`;
+  document.getElementById('prog-busca').value = '';
   try {
     const rows = await GET('programa?mes=' + mes + '&celula=' + celula);
     const lancs = await GET('lancamentos?mes=' + mes + '&celula=' + celula);
     const cacheKey = mes + '_' + celula;
     _progCache[cacheKey] = rows;
-    const rowsVis = rows.filter(r => (+r.meta_total||0) > 0);
-    // Refs com lançamentos mas sem programa
+    _progLancs = lancs;
+    _progRowsVis = rows.filter(r => (+r.meta_total||0) > 0);
     const refsCodPrograma = new Set(rows.map(r => r.ref_cod));
-    const refsSemProg = [...new Map(
+    _progRefsSemProg = [...new Map(
       lancs.filter(l => !refsCodPrograma.has(l.ref_cod))
            .map(l => [l.ref_cod, { ref_cod: l.ref_cod, descricao: l.descricao || l.ref_cod }])
     ).values()];
-    document.getElementById('prog-count').textContent = (rowsVis.length + refsSemProg.length) + ' referências';
-    const isAdmin = USER?.perfil === 'admin';
-    const [anoM, mesM] = mes.split('-').map(Number);
-    const ultimoDia = new Date(anoM, mesM, 0);
-    const hoje = new Date(); hoje.setHours(0,0,0,0);
-    const diasRestantes = Math.ceil((ultimoDia - hoje) / 86400000);
-    const mesAtual = mes === curMes();
-
-    const rowProgHtml = rowsVis.map(r => {
-      const mT = +r.meta_total||0;
-      const rT1  = lancs.filter(l=>l.ref_cod===r.ref_cod&&l.turno==='T1').reduce((s,l)=>s+(+l.realizado||0),0);
-      const rT2  = lancs.filter(l=>l.ref_cod===r.ref_cod&&l.turno==='T2').reduce((s,l)=>s+(+l.realizado||0),0);
-      const rADM = lancs.filter(l=>l.ref_cod===r.ref_cod&&l.turno==='ADM').reduce((s,l)=>s+(+l.realizado||0),0);
-      const rT = rT1+rT2+rADM; const p = mT>0?rT/mT:0;
-      const alerta = mesAtual && diasRestantes <= 10 && diasRestantes >= 0 && p < 0.6;
-      return `<tr style="${alerta?'background:rgba(204,0,0,.08);outline:1px solid rgba(204,0,0,.3)':''}">
-          <td style="font-family:monospace;font-size:11px">${r.ref_cod}</td>
-          <td style="max-width:220px;font-size:12px">${alerta?`<span title="Abaixo de 60% com ${diasRestantes} dia(s) restantes" style="color:var(--red);margin-right:4px">⚠</span>`:''}${r.descricao}</td>
-          <td>${fmt(+r.meta_turno||0)}</td>
-          <td><span class="bt" style="background:rgba(204,0,0,.15);color:var(--accent)">${r.num_turnos}T</span></td>
-          <td><strong>${fmt(mT)}</strong></td>
-          <td style="color:var(--accent)">${fmt(rT1)}</td>
-          <td style="color:var(--blue)">${fmt(rT2)}</td>
-          <td style="color:var(--green)">${fmt(rADM)}</td>
-          <td><strong>${fmt(rT)}</strong></td>
-          <td style="color:${mT-rT<=0?'var(--green)':'var(--red)'}">${mT-rT>0?fmt(mT-rT):'✓'}</td>
-          <td class="${p>=1?'ok':p>=.8?'warn':'bad'}">${pct(rT,mT)}</td>
-          ${isAdmin?`<td><button class="btn bd bsm" onclick="deleteProg('${r.ref_cod}','${mes}','${celula}')">✕</button></td>`:''}
-        </tr>`;
-    }).join('');
-
-    const rowSemProgHtml = refsSemProg.map(r => {
-      const rT1  = lancs.filter(l=>l.ref_cod===r.ref_cod&&l.turno==='T1').reduce((s,l)=>s+(+l.realizado||0),0);
-      const rT2  = lancs.filter(l=>l.ref_cod===r.ref_cod&&l.turno==='T2').reduce((s,l)=>s+(+l.realizado||0),0);
-      const rADM = lancs.filter(l=>l.ref_cod===r.ref_cod&&l.turno==='ADM').reduce((s,l)=>s+(+l.realizado||0),0);
-      const rT = rT1+rT2+rADM;
-      return `<tr style="opacity:.75">
-          <td style="font-family:monospace;font-size:11px">${r.ref_cod}</td>
-          <td style="max-width:220px;font-size:12px">${r.descricao} <span style="font:700 9px var(--fh);letter-spacing:1px;color:var(--muted);border:1px solid var(--border);padding:1px 5px">SEM PROGRAMA</span></td>
-          <td>—</td><td>—</td><td>—</td>
-          <td style="color:var(--accent)">${fmt(rT1)}</td>
-          <td style="color:var(--blue)">${fmt(rT2)}</td>
-          <td style="color:var(--green)">${fmt(rADM)}</td>
-          <td><strong>${fmt(rT)}</strong></td>
-          <td>—</td><td>—</td>
-          ${isAdmin?'<td></td>':''}
-        </tr>`;
-    }).join('');
-
-    tbody.innerHTML = !rowsVis.length && !refsSemProg.length
-      ? `<tr><td colspan="11" class="empty"><div class="ei">☰</div>Nenhuma referência no programa. ${isAdmin?'Clique em "+ Adicionar Referência".':''}</td></tr>`
-      : rowProgHtml + rowSemProgHtml;
+    renderProgTable('');
   } catch(e) {
     tbody.innerHTML = `<tr><td colspan="11" class="empty" style="color:var(--red)">${e.message}</td></tr>`;
   }
+}
+
+function filterPrograma() {
+  renderProgTable(document.getElementById('prog-busca').value);
+}
+
+function renderProgTable(termo) {
+  const mes = document.getElementById('prog-mes').value;
+  const celula = document.getElementById('prog-celula').value;
+  const tbody = document.getElementById('prog-body');
+  const isAdmin = USER?.perfil === 'admin';
+  const t = (termo || '').toLowerCase().trim();
+  const [anoM, mesM] = mes.split('-').map(Number);
+  const ultimoDia = new Date(anoM, mesM, 0);
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const diasRestantes = Math.ceil((ultimoDia - hoje) / 86400000);
+  const mesAtual = mes === curMes();
+
+  const rowsF = !t ? _progRowsVis : _progRowsVis.filter(r =>
+    r.ref_cod.toLowerCase().includes(t) || (r.descricao||'').toLowerCase().includes(t));
+  const semProgF = !t ? _progRefsSemProg : _progRefsSemProg.filter(r =>
+    r.ref_cod.toLowerCase().includes(t) || (r.descricao||'').toLowerCase().includes(t));
+
+  document.getElementById('prog-count').textContent =
+    t ? `${rowsF.length + semProgF.length} de ${_progRowsVis.length + _progRefsSemProg.length} referências`
+      : (_progRowsVis.length + _progRefsSemProg.length) + ' referências';
+
+  const rowProgHtml = rowsF.map(r => {
+    const mT = +r.meta_total||0;
+    const rT1  = _progLancs.filter(l=>l.ref_cod===r.ref_cod&&l.turno==='T1').reduce((s,l)=>s+(+l.realizado||0),0);
+    const rT2  = _progLancs.filter(l=>l.ref_cod===r.ref_cod&&l.turno==='T2').reduce((s,l)=>s+(+l.realizado||0),0);
+    const rADM = _progLancs.filter(l=>l.ref_cod===r.ref_cod&&l.turno==='ADM').reduce((s,l)=>s+(+l.realizado||0),0);
+    const rT = rT1+rT2+rADM; const p = mT>0?rT/mT:0;
+    const alerta = mesAtual && diasRestantes <= 10 && diasRestantes >= 0 && p < 0.6;
+    return `<tr style="${alerta?'background:rgba(204,0,0,.08);outline:1px solid rgba(204,0,0,.3)':''}">
+        <td style="font-family:monospace;font-size:11px">${r.ref_cod}</td>
+        <td style="max-width:220px;font-size:12px">${alerta?`<span title="Abaixo de 60% com ${diasRestantes} dia(s) restantes" style="color:var(--red);margin-right:4px">⚠</span>`:''}${r.descricao}</td>
+        <td>${fmt(+r.meta_turno||0)}</td>
+        <td><span class="bt" style="background:rgba(204,0,0,.15);color:var(--accent)">${r.num_turnos}T</span></td>
+        <td><strong>${fmt(mT)}</strong></td>
+        <td style="color:var(--accent)">${fmt(rT1)}</td>
+        <td style="color:var(--blue)">${fmt(rT2)}</td>
+        <td style="color:var(--green)">${fmt(rADM)}</td>
+        <td><strong>${fmt(rT)}</strong></td>
+        <td style="color:${mT-rT<=0?'var(--green)':'var(--red)'}">${mT-rT>0?fmt(mT-rT):'✓'}</td>
+        <td class="${p>=1?'ok':p>=.8?'warn':'bad'}">${pct(rT,mT)}</td>
+        ${isAdmin?`<td><button class="btn bd bsm" onclick="deleteProg('${r.ref_cod}','${mes}','${celula}')">✕</button></td>`:''}
+      </tr>`;
+  }).join('');
+
+  const rowSemProgHtml = semProgF.map(r => {
+    const rT1  = _progLancs.filter(l=>l.ref_cod===r.ref_cod&&l.turno==='T1').reduce((s,l)=>s+(+l.realizado||0),0);
+    const rT2  = _progLancs.filter(l=>l.ref_cod===r.ref_cod&&l.turno==='T2').reduce((s,l)=>s+(+l.realizado||0),0);
+    const rADM = _progLancs.filter(l=>l.ref_cod===r.ref_cod&&l.turno==='ADM').reduce((s,l)=>s+(+l.realizado||0),0);
+    const rT = rT1+rT2+rADM;
+    return `<tr style="opacity:.75">
+        <td style="font-family:monospace;font-size:11px">${r.ref_cod}</td>
+        <td style="max-width:220px;font-size:12px">${r.descricao} <span style="font:700 9px var(--fh);letter-spacing:1px;color:var(--muted);border:1px solid var(--border);padding:1px 5px">SEM PROGRAMA</span></td>
+        <td>—</td><td>—</td><td>—</td>
+        <td style="color:var(--accent)">${fmt(rT1)}</td>
+        <td style="color:var(--blue)">${fmt(rT2)}</td>
+        <td style="color:var(--green)">${fmt(rADM)}</td>
+        <td><strong>${fmt(rT)}</strong></td>
+        <td>—</td><td>—</td>
+        ${isAdmin?'<td></td>':''}
+      </tr>`;
+  }).join('');
+
+  tbody.innerHTML = !rowsF.length && !semProgF.length
+    ? `<tr><td colspan="11" class="empty"><div class="ei">☰</div>${t ? 'Nenhuma referência encontrada para "' + termo + '".' : 'Nenhuma referência no programa. ' + (isAdmin?'Clique em "+ Adicionar Referência".':'')}</td></tr>`
+    : rowProgHtml + rowSemProgHtml;
 }
 
 function openModalProg() {
