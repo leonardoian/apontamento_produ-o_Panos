@@ -55,6 +55,7 @@
       <div class="ni" id="ni-refs" onclick="goTo('referencias')" style="display:none"><span class="ic">◉</span>Referências</div>
       <div class="ni" id="ni-users" onclick="goTo('usuarios')" style="display:none"><span class="ic">◎</span>Usuários</div>
       <div class="ni" id="ni-importar" onclick="window.open('/importar.html','_blank')" style="display:none"><span class="ic">⬆</span>Importar Programa</div>
+      <div class="ni" id="ni-resultado" onclick="window.open('https://sextabasicasuperpro.vercel.app/resultado.html','_blank')" style="display:none"><span class="ic">◎</span>Resultado Sexta</div>
     </div>
     <div class="sfoot">
       <div class="un" id="sb-nome">—</div>
@@ -742,7 +743,7 @@ async function showApp() {
   document.getElementById('tp-date').textContent = new Date().toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'short'});
 
   if (USER.perfil === 'admin') {
-    ['snl-admin','ni-refs','ni-users','ni-importar'].forEach(id => document.getElementById(id).style.display = '');
+    ['snl-admin','ni-refs','ni-users','ni-importar','ni-resultado'].forEach(id => document.getElementById(id).style.display = '');
     document.getElementById('hist-del-col').style.display = '';
     document.getElementById('btn-add-prog').style.display = '';
     document.getElementById('btn-importar-prog').style.display = '';
