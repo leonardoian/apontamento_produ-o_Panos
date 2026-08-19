@@ -282,7 +282,7 @@ function parseRefs(wb){
     ativo:['ATIVO'],
     meta:['META HORA','META_HORA','PÇS/HORA','PCS/HORA','PÇS HORA','PCS HORA'],
     peso:['PESO_UNITARIO','PESO UNIT','PESO (KG)','PESO/PC','PESO/PÇ','PESO KG'],
-    celula:['CELULA','CÉLULA','MAQUINA','MÁQUINA','SETOR']
+    celula:['CELULA','CÉLULA','MAQUINA','MÁQUINA','SETOR','BETTANIN']
   });
   const metaColPresent = c.meta >= 0;
   const pesoColPresent = c.peso >= 0;
@@ -320,7 +320,7 @@ function parseProg(wb){
   const hi=findHeader(rows,['COD_REF','COD. REF','MES_ANO','MÊS/ANO','META POR TURNO','PÇS/TURNO','TURNOS']); if(hi<0) return;
   const c=colMap(rows[hi],{
     mes:['MES_ANO','MÊS/ANO','MES/ANO','MÊS'],
-    celula:['CELULA','CÉLULA','MAQUINA','MÁQUINA','SETOR'],
+    celula:['CELULA','CÉLULA','MAQUINA','MÁQUINA','SETOR','BETTANIN'],
     cod:['COD_REF','COD. REF','REFERÊNCIA','REFERENCIA'],
     meta:['META POR TURNO','META/TURNO','PÇS/TURNO','PCS/TURNO'],
     turnos:['Nº DE TURNOS','N DE TURNOS','TURNOS']
