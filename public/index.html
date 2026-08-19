@@ -92,6 +92,9 @@
               <option value="Manual">Trabalho Manual</option>
               <option value="Importacao">Importação</option>
               <option value="Bettanin">Bettanin</option>
+              <option value="Sanremo">Sanremo</option>
+              <option value="RevendaIndustrial">Revenda Industrial</option>
+              <option value="BettaninIndustrial">Bettanin Industrial</option>
             </select>
           </div>
           <div class="fi"><label>Mês</label>
@@ -136,6 +139,9 @@
               <option value="Manual">Trabalho Manual</option>
               <option value="Importacao">Importação</option>
               <option value="Bettanin">Bettanin</option>
+              <option value="Sanremo">Sanremo</option>
+              <option value="RevendaIndustrial">Revenda Industrial</option>
+              <option value="BettaninIndustrial">Bettanin Industrial</option>
             </select>
           </div>
           <div class="fi"><label>Mês</label>
@@ -181,6 +187,9 @@
                   <option value="Manual">Trabalho Manual</option>
                   <option value="Importacao">Importação</option>
               <option value="Bettanin">Bettanin</option>
+              <option value="Sanremo">Sanremo</option>
+              <option value="RevendaIndustrial">Revenda Industrial</option>
+              <option value="BettaninIndustrial">Bettanin Industrial</option>
                 </select>
               </div>
               <div class="fi" style="position:relative"><label>Referência</label>
@@ -267,6 +276,9 @@
                 <option value="Manual">Trabalho Manual</option>
                 <option value="Importacao">Importação</option>
               <option value="Bettanin">Bettanin</option>
+              <option value="Sanremo">Sanremo</option>
+              <option value="RevendaIndustrial">Revenda Industrial</option>
+              <option value="BettaninIndustrial">Bettanin Industrial</option>
               </select>
             </div>
             <div class="fi"><label>Data</label><input type="date" id="ldata" onchange="atualizaRefSel()"></div>
@@ -338,6 +350,9 @@
               <option value="Manual">Trabalho Manual</option>
               <option value="Importacao">Importação</option>
               <option value="Bettanin">Bettanin</option>
+              <option value="Sanremo">Sanremo</option>
+              <option value="RevendaIndustrial">Revenda Industrial</option>
+              <option value="BettaninIndustrial">Bettanin Industrial</option>
             </select>
           </div>
           <div class="fi"><label>Mês</label><input type="month" id="hist-mes" onchange="renderHist()" style="min-width:150px"></div>
@@ -375,6 +390,9 @@
                 <option value="Manual">Trabalho Manual</option>
                 <option value="Importacao">Importação</option>
               <option value="Bettanin">Bettanin</option>
+              <option value="Sanremo">Sanremo</option>
+              <option value="RevendaIndustrial">Revenda Industrial</option>
+              <option value="BettaninIndustrial">Bettanin Industrial</option>
               </select>
             </div>
             <div class="fi"><label>Meta Hora</label><input type="number" id="r-meta-hora" placeholder="Ex: 80" min="0"></div>
@@ -490,6 +508,39 @@
               <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:8px;margin-top:2px"><span style="font:700 11px/1 var(--fh);letter-spacing:1px;color:var(--muted);text-transform:uppercase">Atingimento</span><span id="ga-Bettanin" style="font:900 16px/1 var(--fh)">—</span></div>
             </div>
           </div>
+          <!-- Sanremo -->
+          <div class="kc" style="padding:24px;text-align:center">
+            <div style="font:700 11px/1 var(--fh);letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:18px">Sanremo</div>
+            <div style="position:relative;width:150px;height:150px;margin:0 auto"><canvas id="chart-Sanremo"></canvas></div>
+            <div style="margin-top:16px;display:flex;flex-direction:column;gap:6px;text-align:left">
+              <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Meta Total</span><span id="gm-Sanremo" style="font:600 12px var(--fb)">—</span></div>
+              <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Realizado</span><span id="gr-Sanremo" style="font:600 12px var(--fb)">—</span></div>
+              <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Efic. Média</span><span id="ge-Sanremo" style="font:600 12px var(--fb)">—</span></div>
+              <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:8px;margin-top:2px"><span style="font:700 11px/1 var(--fh);letter-spacing:1px;color:var(--muted);text-transform:uppercase">Atingimento</span><span id="ga-Sanremo" style="font:900 16px/1 var(--fh)">—</span></div>
+            </div>
+          </div>
+          <!-- Revenda Industrial -->
+          <div class="kc" style="padding:24px;text-align:center">
+            <div style="font:700 11px/1 var(--fh);letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:18px">Revenda Industrial</div>
+            <div style="position:relative;width:150px;height:150px;margin:0 auto"><canvas id="chart-RevendaIndustrial"></canvas></div>
+            <div style="margin-top:16px;display:flex;flex-direction:column;gap:6px;text-align:left">
+              <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Meta Total</span><span id="gm-RevendaIndustrial" style="font:600 12px var(--fb)">—</span></div>
+              <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Realizado</span><span id="gr-RevendaIndustrial" style="font:600 12px var(--fb)">—</span></div>
+              <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Efic. Média</span><span id="ge-RevendaIndustrial" style="font:600 12px var(--fb)">—</span></div>
+              <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:8px;margin-top:2px"><span style="font:700 11px/1 var(--fh);letter-spacing:1px;color:var(--muted);text-transform:uppercase">Atingimento</span><span id="ga-RevendaIndustrial" style="font:900 16px/1 var(--fh)">—</span></div>
+            </div>
+          </div>
+          <!-- Bettanin Industrial -->
+          <div class="kc" style="padding:24px;text-align:center">
+            <div style="font:700 11px/1 var(--fh);letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:18px">Bettanin Industrial</div>
+            <div style="position:relative;width:150px;height:150px;margin:0 auto"><canvas id="chart-BettaninIndustrial"></canvas></div>
+            <div style="margin-top:16px;display:flex;flex-direction:column;gap:6px;text-align:left">
+              <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Meta Total</span><span id="gm-BettaninIndustrial" style="font:600 12px var(--fb)">—</span></div>
+              <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Realizado</span><span id="gr-BettaninIndustrial" style="font:600 12px var(--fb)">—</span></div>
+              <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Efic. Média</span><span id="ge-BettaninIndustrial" style="font:600 12px var(--fb)">—</span></div>
+              <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:8px;margin-top:2px"><span style="font:700 11px/1 var(--fh);letter-spacing:1px;color:var(--muted);text-transform:uppercase">Atingimento</span><span id="ga-BettaninIndustrial" style="font:900 16px/1 var(--fh)">—</span></div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -506,6 +557,9 @@
               <option value="Manual">Trabalho Manual</option>
               <option value="Importacao">Importação</option>
               <option value="Bettanin">Bettanin</option>
+              <option value="Sanremo">Sanremo</option>
+              <option value="RevendaIndustrial">Revenda Industrial</option>
+              <option value="BettaninIndustrial">Bettanin Industrial</option>
             </select>
           </div>
           <div class="fi"><label>Mês</label>
@@ -573,6 +627,10 @@
           <option value="Rodos">Máquina de Rodos</option>
           <option value="Manual">Trabalho Manual</option>
           <option value="Importacao">Importação</option>
+          <option value="Bettanin">Bettanin</option>
+          <option value="Sanremo">Sanremo</option>
+          <option value="RevendaIndustrial">Revenda Industrial</option>
+          <option value="BettaninIndustrial">Bettanin Industrial</option>
         </select>
       </div>
       <div class="fi"><label>Meta Hora (pçs/h)</label><input type="number" id="ref-edit-meta" min="0" placeholder="Opcional"></div>
@@ -1441,8 +1499,8 @@ async function salvarEditLanc() {
 // ═══════════════════════════════════════
 // REFERÊNCIAS
 // ═══════════════════════════════════════
-const CELULA_LABELS = { Aluminio:'Alumínio', Panos:'Panos', Placas:'Placas', Rodos:'Rodos', Manual:'Manual', Importacao:'Importação', Bettanin:'Bettanin' };
-const CELULA_COLORS = { Aluminio:'var(--blue)', Panos:'var(--accent)', Placas:'var(--green)', Rodos:'var(--orange)', Manual:'var(--muted)', Importacao:'#a855f7', Bettanin:'#06b6d4' };
+const CELULA_LABELS = { Aluminio:'Alumínio', Panos:'Panos', Placas:'Placas', Rodos:'Rodos', Manual:'Manual', Importacao:'Importação', Bettanin:'Bettanin', Sanremo:'Sanremo', RevendaIndustrial:'Revenda Industrial', BettaninIndustrial:'Bettanin Industrial' };
+const CELULA_COLORS = { Aluminio:'var(--blue)', Panos:'var(--accent)', Placas:'var(--green)', Rodos:'var(--orange)', Manual:'var(--muted)', Importacao:'#a855f7', Bettanin:'#06b6d4', Sanremo:'#f59e0b', RevendaIndustrial:'#8b5cf6', BettaninIndustrial:'#10b981' };
 
 function renderRefsTable(rows) {
   const tbody = document.getElementById('refs-body');
@@ -1651,7 +1709,10 @@ const CELULAS_GRAF = [
   { value: 'Rodos',      label: 'Máquina de Rodos' },
   { value: 'Manual',     label: 'Trabalho Manual' },
   { value: 'Importacao', label: 'Importação' },
-  { value: 'Bettanin',   label: 'Bettanin' },
+  { value: 'Bettanin',            label: 'Bettanin' },
+  { value: 'Sanremo',             label: 'Sanremo' },
+  { value: 'RevendaIndustrial',   label: 'Revenda Industrial' },
+  { value: 'BettaninIndustrial',  label: 'Bettanin Industrial' },
 ];
 const _chartInstances = {};
 
@@ -1891,7 +1952,7 @@ function exportOpPDF() {
 let _ordemFiltroStatus = '';
 let _ordemFiltroCelula = '';
 let _ordens = [];
-const _CELULA_LABEL = { Aluminio:'Alumínio', Panos:'Panos', Placas:'Placas', Rodos:'Rodos', Manual:'Manual', Importacao:'Importação', Bettanin:'Bettanin' };
+const _CELULA_LABEL = { Aluminio:'Alumínio', Panos:'Panos', Placas:'Placas', Rodos:'Rodos', Manual:'Manual', Importacao:'Importação', Bettanin:'Bettanin', Sanremo:'Sanremo', RevendaIndustrial:'Revenda Industrial', BettaninIndustrial:'Bettanin Industrial' };
 const _STATUS_LABEL  = { pendente:'PENDENTE', em_andamento:'EM ANDAMENTO', concluida:'CONCLUÍDA' };
 const _STATUS_COR    = { pendente:'var(--muted)', em_andamento:'var(--orange)', concluida:'var(--green)' };
 const _STATUS_BG     = { pendente:'rgba(136,136,136,.1)', em_andamento:'rgba(249,115,22,.1)', concluida:'rgba(16,185,129,.1)' };
