@@ -406,7 +406,18 @@
               <div class="tt">REFERÊNCIAS CADASTRADAS</div>
               <button class="btn bd bsm" id="btn-del-refs" style="display:none" onclick="delRefsSelected()">✕ Apagar selecionadas (<span id="refs-sel-count">0</span>)</button>
             </div>
-            <div style="display:flex;align-items:center;gap:8px">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <select id="refs-filtro-celula" onchange="filterRefs()" style="background:var(--surface);border:1px solid var(--border);color:var(--text);padding:5px 10px;font:700 11px var(--fh);letter-spacing:1px;outline:none;cursor:pointer;text-transform:uppercase">
+                <option value="">Todas as Células</option>
+                <option value="Aluminio">Alumínio</option>
+                <option value="Panos">Panos</option>
+                <option value="Rodos">Rodos</option>
+                <option value="Importacao">Importação</option>
+                <option value="Bettanin">Bettanin</option>
+                <option value="Sanremo">Sanremo</option>
+                <option value="RevendaIndustrial">Revenda Industrial</option>
+                <option value="BettaninIndustrial">Bettanin Industrial</option>
+              </select>
               <input id="refs-busca" type="text" placeholder="Buscar por código ou descrição..." oninput="filterRefs()"
                 style="background:var(--surface);border:1px solid var(--border);color:var(--text);padding:5px 10px;font:13px var(--fb);outline:none;width:280px;transition:border-color .2s"
                 onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
@@ -1558,9 +1569,12 @@ async function delRefsSelected() {
 
 function filterRefs() {
   const termo = document.getElementById('refs-busca').value.toLowerCase().trim();
-  const filtrados = !termo ? _refs : _refs.filter(r =>
-    r.cod.toLowerCase().includes(termo) || r.descricao.toLowerCase().includes(termo)
-  );
+  const celula = document.getElementById('refs-filtro-celula').value;
+  const filtrados = _refs.filter(r => {
+    const matchCelula = !celula || (r.celula || 'Panos') === celula;
+    const matchTermo = !termo || r.cod.toLowerCase().includes(termo) || r.descricao.toLowerCase().includes(termo);
+    return matchCelula && matchTermo;
+  });
   renderRefsTable(filtrados);
 }
 
@@ -1573,6 +1587,7 @@ async function renderRefs() {
     const rows = await GET('referencias');
     _refs = rows;
     document.getElementById('refs-busca').value = '';
+    document.getElementById('refs-filtro-celula').value = '';
     renderRefsTable(rows);
   } catch(e) {
     tbody.innerHTML = `<tr><td colspan="7" class="empty" style="color:var(--red)">${e.message}</td></tr>`;
