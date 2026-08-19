@@ -882,6 +882,22 @@ async function renderDashboard() {
         const _cor = _falta <= 0 ? 'var(--green)' : 'var(--text)';
         _kpiHtml += `<div class="kc"><div class="kl">Meta Diária</div><div class="kv" style="color:${_cor}">${_falta <= 0 ? '✔' : fmt(_metaDia)}</div><div class="ks">${_falta <= 0 ? 'meta do mês garantida!' : 'peças/dia para bater a meta'}</div></div>`;
       }
+      if (_ating !== null) {
+        const _esperado = _dia / _diasMes * 100;
+        const _diff = _ating - _esperado;
+        const _diffCor = _diff >= 0 ? 'var(--green)' : 'var(--red)';
+        const _diffStr = (_diff >= 0 ? '+' : '') + _diff.toFixed(1) + '%';
+        const _seta = _diff >= 0 ? '▲' : '▼';
+        _kpiHtml += `<div class="kc" style="border-top:3px solid ${_diffCor}">
+          <div class="kl">Ritmo vs Previsto</div>
+          <div class="kv" style="color:${_diffCor};font-size:clamp(22px,3vw,36px)">${_seta} ${_diffStr}</div>
+          <div class="ks" style="margin-top:6px">
+            <span style="color:var(--muted)">Esperado hoje:</span> <strong style="color:var(--text)">${_esperado.toFixed(1)}%</strong>
+            &nbsp;·&nbsp;
+            <span style="color:var(--muted)">Atual:</span> <strong style="color:${_diffCor}">${_ating.toFixed(1)}%</strong>
+          </div>
+        </div>`;
+      }
     }
     document.getElementById('kpi-grid').innerHTML = _kpiHtml;
 
