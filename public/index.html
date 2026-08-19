@@ -1012,7 +1012,7 @@ function renderProgTable(termo) {
         <td><strong>${fmt(rT)}</strong></td>
         <td style="color:${mT-rT<=0?'var(--green)':'var(--red)'}">${mT-rT>0?fmt(mT-rT):'✓'}</td>
         <td class="${p>=1?'ok':p>=.8?'warn':'bad'}">${pct(rT,mT)}</td>
-        ${isAdmin?`<td><button class="btn bd bsm" onclick="deleteProg('${r.ref_cod}','${mes}','${celula}')">✕</button></td>`:''}
+        ${isAdmin?`<td><div style="display:flex;gap:4px"><button class="btn bs bsm" onclick="openEditProg('${r.ref_cod}',${+r.meta_turno||0},${+r.num_turnos||2})" title="Editar">✎</button><button class="btn bd bsm" onclick="deleteProg('${r.ref_cod}','${mes}','${celula}')" title="Remover">✕</button></div></td>`:''}
       </tr>`;
   }).join('');
 
@@ -1041,14 +1041,36 @@ function renderProgTable(termo) {
 
 function openModalProg() {
   const mes = document.getElementById('prog-mes').value || curMes();
+  document.getElementById('modal-prog-title').textContent = 'ADICIONAR AO PROGRAMA';
   document.getElementById('mp-mes').value = mes;
-  document.getElementById('mp-ref').innerHTML = '<option value="">Selecione...</option>' +
+  const sel = document.getElementById('mp-ref');
+  sel.disabled = false;
+  sel.innerHTML = '<option value="">Selecione...</option>' +
     _refs.map(r => `<option value="${r.cod}">${r.cod} — ${r.descricao}</option>`).join('');
   document.getElementById('mp-meta').value = '';
   document.getElementById('mp-nt').value = '2';
   document.getElementById('modal-prog').style.display = 'flex';
 }
-function closeModal() { document.getElementById('modal-prog').style.display = 'none'; }
+
+function openEditProg(ref_cod, meta_turno, num_turnos) {
+  const mes = document.getElementById('prog-mes').value;
+  const ref = _refs.find(r => r.cod === ref_cod);
+  const label = ref ? `${ref_cod} — ${ref.descricao}` : ref_cod;
+  document.getElementById('modal-prog-title').textContent = 'EDITAR PROGRAMA';
+  document.getElementById('mp-mes').value = mes;
+  const sel = document.getElementById('mp-ref');
+  sel.innerHTML = `<option value="${ref_cod}">${label}</option>`;
+  sel.value = ref_cod;
+  sel.disabled = true;
+  document.getElementById('mp-meta').value = meta_turno;
+  document.getElementById('mp-nt').value = num_turnos;
+  document.getElementById('modal-prog').style.display = 'flex';
+}
+
+function closeModal() {
+  document.getElementById('modal-prog').style.display = 'none';
+  document.getElementById('mp-ref').disabled = false;
+}
 
 async function salvarProg() {
   const mes_ano   = document.getElementById('mp-mes').value;
