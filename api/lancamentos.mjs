@@ -15,27 +15,24 @@ export default async function handler(req, res) {
     const { mes, turno, ref, celula } = req.query || {};
     try {
       let rows;
-      const celulaFilter = celula || "Panos";
-      
+      const todas = !celula || celula === "TODAS";
+
       if (mes && turno && ref) {
-        rows = await sql`SELECT l.* FROM lancamentos l 
-          WHERE TO_CHAR(l.data,'YYYY-MM') = ${mes} AND l.turno = ${turno} AND l.ref_cod = ${ref} 
-          AND l.ref_cod IN (SELECT cod FROM referencias WHERE celula = ${celulaFilter} AND ativo = true)
-          ORDER BY l.data DESC, l.criado_em DESC`;
+        rows = todas
+          ? await sql`SELECT l.* FROM lancamentos l WHERE TO_CHAR(l.data,'YYYY-MM') = ${mes} AND l.turno = ${turno} AND l.ref_cod = ${ref} ORDER BY l.data DESC, l.criado_em DESC`
+          : await sql`SELECT l.* FROM lancamentos l WHERE TO_CHAR(l.data,'YYYY-MM') = ${mes} AND l.turno = ${turno} AND l.ref_cod = ${ref} AND l.ref_cod IN (SELECT cod FROM referencias WHERE celula = ${celula} AND ativo = true) ORDER BY l.data DESC, l.criado_em DESC`;
       } else if (mes && turno) {
-        rows = await sql`SELECT l.* FROM lancamentos l 
-          WHERE TO_CHAR(l.data,'YYYY-MM') = ${mes} AND l.turno = ${turno}
-          AND l.ref_cod IN (SELECT cod FROM referencias WHERE celula = ${celulaFilter} AND ativo = true)
-          ORDER BY l.data DESC, l.criado_em DESC`;
+        rows = todas
+          ? await sql`SELECT l.* FROM lancamentos l WHERE TO_CHAR(l.data,'YYYY-MM') = ${mes} AND l.turno = ${turno} ORDER BY l.data DESC, l.criado_em DESC`
+          : await sql`SELECT l.* FROM lancamentos l WHERE TO_CHAR(l.data,'YYYY-MM') = ${mes} AND l.turno = ${turno} AND l.ref_cod IN (SELECT cod FROM referencias WHERE celula = ${celula} AND ativo = true) ORDER BY l.data DESC, l.criado_em DESC`;
       } else if (mes) {
-        rows = await sql`SELECT l.* FROM lancamentos l 
-          WHERE TO_CHAR(l.data,'YYYY-MM') = ${mes}
-          AND l.ref_cod IN (SELECT cod FROM referencias WHERE celula = ${celulaFilter} AND ativo = true)
-          ORDER BY l.data DESC, l.criado_em DESC`;
+        rows = todas
+          ? await sql`SELECT l.* FROM lancamentos l WHERE TO_CHAR(l.data,'YYYY-MM') = ${mes} ORDER BY l.data DESC, l.criado_em DESC`
+          : await sql`SELECT l.* FROM lancamentos l WHERE TO_CHAR(l.data,'YYYY-MM') = ${mes} AND l.ref_cod IN (SELECT cod FROM referencias WHERE celula = ${celula} AND ativo = true) ORDER BY l.data DESC, l.criado_em DESC`;
       } else {
-        rows = await sql`SELECT l.* FROM lancamentos l 
-          WHERE l.ref_cod IN (SELECT ref_cod FROM programa WHERE celula = ${celulaFilter})
-          ORDER BY l.criado_em DESC LIMIT 100`;
+        rows = todas
+          ? await sql`SELECT l.* FROM lancamentos l ORDER BY l.criado_em DESC LIMIT 100`
+          : await sql`SELECT l.* FROM lancamentos l WHERE l.ref_cod IN (SELECT ref_cod FROM programa WHERE celula = ${celula}) ORDER BY l.criado_em DESC LIMIT 100`;
       }
       return res.status(200).json(rows);
     } catch (e) {

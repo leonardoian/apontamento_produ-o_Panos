@@ -343,8 +343,9 @@
         <div class="filtbar">
           <div class="fi"><label>Célula</label>
             <select id="hist-celula" onchange="renderHist()" style="min-width:160px">
+              <option value="TODAS">Todas as Células</option>
               <option value="Aluminio">Celular de Alumínio</option>
-              <option value="Panos" selected>Máquina de Panos</option>
+              <option value="Panos">Máquina de Panos</option>
               <option value="Placas">Máquina de Placas</option>
               <option value="Rodos">Máquina de Rodos</option>
               <option value="Manual">Trabalho Manual</option>
@@ -1413,7 +1414,7 @@ async function renderHist() {
   const tbody = document.getElementById('hist-body');
   tbody.innerHTML = `<tr><td colspan="13" class="empty"><span class="loading"></span></td></tr>`;
   try {
-    let q = 'lancamentos?mes=' + mes + '&celula=' + celula;
+    let q = 'lancamentos?mes=' + mes + (celula && celula !== 'TODAS' ? '&celula=' + celula : '&celula=TODAS');
     if (turno) q += '&turno=' + turno;
     if (ref)   q += '&ref=' + ref;
     const rows = await GET(q);

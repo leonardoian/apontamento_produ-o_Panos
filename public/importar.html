@@ -427,11 +427,10 @@ $('send').addEventListener('click',async()=>{
   }
 
   // 1b) auto-cria refs que aparecem no programa mas não estavam na aba REFERENCIAS
+  // Não envia celula: COALESCE preserva a célula existente no banco p/ refs já cadastradas
   const extraRefs=[...new Set(validProg.map(p=>p.cod))].filter(cod=>!sentRefs.has(cod));
   for(const cod of extraRefs){
-    const fromProg = DATA.prog.find(p => p.cod === cod);
     const autoPayload = {cod, descricao: cod};
-    if (fromProg?.celula) autoPayload.celula = fromProg.celula;
     try{ await post('referencias', autoPayload); sentRefs.add(cod); }
     catch(e){ /* já existe no banco — segue */ }
   }
