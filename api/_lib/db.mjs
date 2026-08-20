@@ -110,6 +110,17 @@ export async function initDB(sql) {
   await sql`UPDATE referencias SET celula = 'RevendaIndustrial'  WHERE LOWER(REPLACE(celula,' ','')) = 'revendaindustrial'`;
   await sql`UPDATE referencias SET celula = 'BettaninIndustrial' WHERE LOWER(REPLACE(celula,' ','')) = 'bettaninindustrial'`;
 
+  await sql`UPDATE programa SET celula = 'Importacao'        WHERE LOWER(REPLACE(celula,' ','')) = 'importacao'`;
+  await sql`UPDATE programa SET celula = 'Aluminio'          WHERE LOWER(REPLACE(celula,' ','')) IN ('aluminio','alumínio')`;
+  await sql`UPDATE programa SET celula = 'Panos'             WHERE LOWER(celula) = 'panos'`;
+  await sql`UPDATE programa SET celula = 'Rodos'             WHERE LOWER(celula) = 'rodos'`;
+  await sql`UPDATE programa SET celula = 'Manual'            WHERE LOWER(celula) = 'manual'`;
+  await sql`UPDATE programa SET celula = 'Placas'            WHERE LOWER(celula) = 'placas'`;
+  await sql`UPDATE programa SET celula = 'Bettanin'          WHERE LOWER(celula) = 'bettanin'`;
+  await sql`UPDATE programa SET celula = 'Sanremo'           WHERE LOWER(celula) = 'sanremo'`;
+  await sql`UPDATE programa SET celula = 'RevendaIndustrial'  WHERE LOWER(REPLACE(celula,' ','')) = 'revendaindustrial'`;
+  await sql`UPDATE programa SET celula = 'BettaninIndustrial' WHERE LOWER(REPLACE(celula,' ','')) = 'bettaninindustrial'`;
+
   const existe = await sql`SELECT id FROM usuarios WHERE login = 'admin' LIMIT 1`;
   if (!existe.length) {
     const hash = await bcrypt.hash("admin123", 10);

@@ -1,5 +1,19 @@
 import { setCors, handleOptions, getAuth, getBody, getSQL, initDB } from "./_lib/db.mjs";
 
+const _CELULA_NORM = {
+  importacao:'Importacao',importação:'Importacao',
+  aluminio:'Aluminio','alumínio':'Aluminio',
+  panos:'Panos',rodos:'Rodos',manual:'Manual',placas:'Placas',
+  bettanin:'Bettanin',sanremo:'Sanremo',
+  revendaindustrial:'RevendaIndustrial',
+  bettaninindustrial:'BettaninIndustrial',
+};
+function normCelula(c) {
+  if (!c || !String(c).trim()) return 'Panos';
+  const key = String(c).trim().toLowerCase().replace(/\s+/g,'');
+  return _CELULA_NORM[key] || String(c).trim();
+}
+
 export default async function handler(req, res) {
   setCors(res);
   if (handleOptions(req, res)) return;
@@ -13,7 +27,7 @@ export default async function handler(req, res) {
 
   if (req.method === "GET") {
     const mes = req.query?.mes || "";
-    const celula = req.query?.celula || "Panos";
+    const celula = normCelula(req.query?.celula || "Panos");
     try {
       const rows = mes
         ? await sql`SELECT p.id, p.mes_ano, p.ref_cod, p.celula, p.meta_turno, p.num_turnos,
@@ -34,9 +48,10 @@ export default async function handler(req, res) {
     if (u.perfil !== "admin") return res.status(403).json({ error: "Acesso negado" });
     const { mes_ano, ref_cod, celula, meta_turno, num_turnos } = getBody(req);
     if (!mes_ano || !ref_cod) return res.status(400).json({ error: "mes_ano e ref_cod obrigatórios" });
+    const celulaVal = normCelula(celula);
     try {
       await sql`INSERT INTO programa (mes_ano, ref_cod, celula, meta_turno, num_turnos)
-        VALUES (${mes_ano}, ${ref_cod.toUpperCase()}, ${celula || 'Panos'}, ${meta_turno || 0}, ${num_turnos || 2})
+        VALUES (${mes_ano}, ${ref_cod.toUpperCase()}, ${celulaVal}, ${meta_turno || 0}, ${num_turnos || 2})
         ON CONFLICT (mes_ano, ref_cod, celula) DO UPDATE
         SET meta_turno = EXCLUDED.meta_turno, num_turnos = EXCLUDED.num_turnos, ativo = true`;
       return res.status(200).json({ ok: true });
@@ -48,8 +63,9 @@ export default async function handler(req, res) {
   if (req.method === "DELETE") {
     if (u.perfil !== "admin") return res.status(403).json({ error: "Acesso negado" });
     const { mes_ano, ref_cod, celula } = getBody(req);
+    const celulaVal = normCelula(celula);
     try {
-      await sql`UPDATE programa SET ativo = false WHERE mes_ano = ${mes_ano} AND ref_cod = ${ref_cod} AND celula = ${celula || 'Panos'}`;
+      await sql`UPDATE programa SET ativo = false WHERE mes_ano = ${mes_ano} AND ref_cod = ${ref_cod} AND celula = ${celulaVal}`;
       return res.status(200).json({ ok: true });
     } catch (e) {
       return res.status(500).json({ error: e.message });
