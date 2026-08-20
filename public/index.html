@@ -361,7 +361,9 @@
             <select id="hist-turno" onchange="renderHist()"><option value="">Todos</option><option>T1</option><option>T2</option><option>ADM</option></select>
           </div>
           <div class="fi"><label>Referência</label>
-            <select id="hist-ref" onchange="renderHist()" style="min-width:170px"><option value="">Todas</option></select>
+            <input type="text" id="hist-ref" placeholder="Código ou descrição..." oninput="filterHist()"
+              style="background:var(--surface);border:1px solid var(--border);color:var(--text);padding:5px 10px;font:13px var(--fb);outline:none;min-width:200px;transition:border-color .2s"
+              onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
           </div>
           <button class="btn bs bsm" onclick="renderHist()">↻ Atualizar</button>
         </div>
@@ -875,10 +877,6 @@ async function loadRefs() {
   try {
     const rows = await GET('referencias');
     _refs = rows;
-    const histSel = document.getElementById('hist-ref');
-    if (histSel) {
-      histSel.innerHTML = '<option value="">Todas</option>' + _refs.map(r => `<option value="${r.cod}">${r.cod}</option>`).join('');
-    }
     const mpRef = document.getElementById('mp-ref');
     if (mpRef) {
       mpRef.innerHTML = '<option value="">Selecione...</option>' + _refs.map(r => `<option value="${r.cod}">${r.cod} — ${r.descricao}</option>`).join('');
@@ -1410,18 +1408,15 @@ async function renderLancRecentes(data, celula) {
 async function renderHist() {
   const mes   = document.getElementById('hist-mes').value;
   const turno = document.getElementById('hist-turno').value;
-  const ref   = document.getElementById('hist-ref').value;
   const celula = document.getElementById('hist-celula').value;
   const tbody = document.getElementById('hist-body');
   tbody.innerHTML = `<tr><td colspan="13" class="empty"><span class="loading"></span></td></tr>`;
   try {
     let q = 'lancamentos?mes=' + mes + (celula && celula !== 'TODAS' ? '&celula=' + celula : '&celula=TODAS');
     if (turno) q += '&turno=' + turno;
-    if (ref)   q += '&ref=' + ref;
-    const rows = await GET(q);
-    document.getElementById('hist-count').textContent = rows.length + ' registro(s)';
+    _histRows = await GET(q);
     const isAdmin = USER?.perfil === 'admin';
-    if (isAdmin) rows.forEach(l => {
+    if (isAdmin) _histRows.forEach(l => {
       _editLancMap[l.id] = {
         ref_cod: l.ref_cod, descricao: l.descricao||'',
         data: String(l.data).slice(0,10), turno: l.turno,
@@ -1429,31 +1424,43 @@ async function renderHist() {
         hi: l.hora_inicio||'', hf: l.hora_fim||'', obs: l.obs||''
       };
     });
-    tbody.innerHTML = !rows.length
-      ? `<tr><td colspan="13" class="empty"><div class="ei">⊞</div>Nenhum lançamento encontrado.</td></tr>`
-      : rows.map(l => {
-          const m=+l.meta||0, r=+l.realizado||0, ef=+l.eficiencia||0;
-          return `<tr>
-            <td style="white-space:nowrap">${String(l.data).slice(0,10).split('-').reverse().join('/')}</td>
-            <td><span class="bt ${l.turno?.toLowerCase()}">${l.turno}</span></td>
-            <td style="font-family:monospace;font-size:11px">${l.ref_cod}</td>
-            <td style="max-width:160px;font-size:11px">${l.descricao||''}</td>
-            <td style="font-size:11px">${l.operador||''}</td>
-            <td><strong>${fmt(r)}</strong></td><td>${fmt(m)}</td>
-            <td style="color:var(--red)">${fmt(+l.refugo||0)}</td>
-            <td class="${ef>0?eClass(ef):''}">${ef>0?(ef*100).toFixed(1)+'%':'—'}</td>
-            <td style="font-size:10px">${l.hora_inicio||'—'}</td>
-            <td style="font-size:10px">${l.hora_fim||'—'}</td>
-            <td style="max-width:130px;font-size:10px;color:var(--muted)">${l.obs||''}</td>
-            ${isAdmin?`<td style="white-space:nowrap;display:flex;gap:4px">
-              <button class="btn bsm" style="background:rgba(59,130,246,.15);color:var(--blue);border:1px solid rgba(59,130,246,.3)" onclick="openEditLanc(${l.id})">✎</button>
-              <button class="btn bd bsm" onclick="delLanc(${l.id})">✕</button>
-            </td>`:''}
-          </tr>`;
-        }).join('');
+    filterHist();
   } catch(e) {
     tbody.innerHTML = `<tr><td colspan="13" class="empty" style="color:var(--red)">${e.message}</td></tr>`;
   }
+}
+
+let _histRows = [];
+function filterHist() {
+  const termo = (document.getElementById('hist-ref')?.value || '').toLowerCase().trim();
+  const rows = termo
+    ? _histRows.filter(l => l.ref_cod.toLowerCase().includes(termo) || (l.descricao||'').toLowerCase().includes(termo))
+    : _histRows;
+  const isAdmin = USER?.perfil === 'admin';
+  const tbody = document.getElementById('hist-body');
+  document.getElementById('hist-count').textContent = rows.length + ' registro(s)';
+  tbody.innerHTML = !rows.length
+    ? `<tr><td colspan="13" class="empty"><div class="ei">⊞</div>Nenhum lançamento encontrado.</td></tr>`
+    : rows.map(l => {
+        const m=+l.meta||0, r=+l.realizado||0, ef=+l.eficiencia||0;
+        return `<tr>
+          <td style="white-space:nowrap">${String(l.data).slice(0,10).split('-').reverse().join('/')}</td>
+          <td><span class="bt ${l.turno?.toLowerCase()}">${l.turno}</span></td>
+          <td style="font-family:monospace;font-size:11px">${l.ref_cod}</td>
+          <td style="max-width:160px;font-size:11px">${l.descricao||''}</td>
+          <td style="font-size:11px">${l.operador||''}</td>
+          <td><strong>${fmt(r)}</strong></td><td>${fmt(m)}</td>
+          <td style="color:var(--red)">${fmt(+l.refugo||0)}</td>
+          <td class="${ef>0?eClass(ef):''}">${ef>0?(ef*100).toFixed(1)+'%':'—'}</td>
+          <td style="font-size:10px">${l.hora_inicio||'—'}</td>
+          <td style="font-size:10px">${l.hora_fim||'—'}</td>
+          <td style="max-width:130px;font-size:10px;color:var(--muted)">${l.obs||''}</td>
+          ${isAdmin?`<td style="white-space:nowrap;display:flex;gap:4px">
+            <button class="btn bsm" style="background:rgba(59,130,246,.15);color:var(--blue);border:1px solid rgba(59,130,246,.3)" onclick="openEditLanc(${l.id})">✎</button>
+            <button class="btn bd bsm" onclick="delLanc(${l.id})">✕</button>
+          </td>`:''}
+        </tr>`;
+      }).join('');
 }
 
 async function delLanc(id) {
