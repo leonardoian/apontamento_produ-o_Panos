@@ -821,6 +821,10 @@ function toast(msg, type='ok', ms=3500) {
 async function doLogin() {
   const login = document.getElementById('l-user').value.trim();
   const senha = document.getElementById('l-pass').value;
+  const btn = document.querySelector('.btn-login');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="loading"></span>';
+  document.getElementById('l-err').style.display = 'none';
   try {
     const data = await POST('login', { login, senha });
     TOKEN = data.token;
@@ -829,6 +833,8 @@ async function doLogin() {
     showApp();
   } catch(e) {
     document.getElementById('l-err').style.display = 'block';
+    btn.disabled = false;
+    btn.innerHTML = 'ENTRAR →';
   }
 }
 document.addEventListener('keydown', e => {
