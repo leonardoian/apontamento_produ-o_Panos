@@ -95,6 +95,7 @@
               <option value="Sanremo">Sanremo</option>
               <option value="RevendaIndustrial">Revenda Industrial</option>
               <option value="BettaninIndustrial">Bettanin Industrial</option>
+              <option value="ImportacaoManual">Importação Trabalho Manual</option>
             </select>
           </div>
           <div class="fi"><label>Mês</label>
@@ -142,6 +143,7 @@
               <option value="Sanremo">Sanremo</option>
               <option value="RevendaIndustrial">Revenda Industrial</option>
               <option value="BettaninIndustrial">Bettanin Industrial</option>
+              <option value="ImportacaoManual">Importação Trabalho Manual</option>
             </select>
           </div>
           <div class="fi"><label>Mês</label>
@@ -190,6 +192,7 @@
               <option value="Sanremo">Sanremo</option>
               <option value="RevendaIndustrial">Revenda Industrial</option>
               <option value="BettaninIndustrial">Bettanin Industrial</option>
+              <option value="ImportacaoManual">Importação Trabalho Manual</option>
                 </select>
               </div>
               <div class="fi" style="position:relative"><label>Referência</label>
@@ -279,6 +282,7 @@
               <option value="Sanremo">Sanremo</option>
               <option value="RevendaIndustrial">Revenda Industrial</option>
               <option value="BettaninIndustrial">Bettanin Industrial</option>
+              <option value="ImportacaoManual">Importação Trabalho Manual</option>
               </select>
             </div>
             <div class="fi"><label>Data</label><input type="date" id="ldata" onchange="atualizaRefSel()"></div>
@@ -354,6 +358,7 @@
               <option value="Sanremo">Sanremo</option>
               <option value="RevendaIndustrial">Revenda Industrial</option>
               <option value="BettaninIndustrial">Bettanin Industrial</option>
+              <option value="ImportacaoManual">Importação Trabalho Manual</option>
             </select>
           </div>
           <div class="fi"><label>Mês</label><input type="month" id="hist-mes" onchange="renderHist()" style="min-width:150px"></div>
@@ -396,6 +401,7 @@
               <option value="Sanremo">Sanremo</option>
               <option value="RevendaIndustrial">Revenda Industrial</option>
               <option value="BettaninIndustrial">Bettanin Industrial</option>
+              <option value="ImportacaoManual">Importação Trabalho Manual</option>
               </select>
             </div>
             <div class="fi"><label>Meta Hora</label><input type="number" id="r-meta-hora" placeholder="Ex: 80" min="0"></div>
@@ -422,6 +428,7 @@
                 <option value="Sanremo">Sanremo</option>
                 <option value="RevendaIndustrial">Revenda Industrial</option>
                 <option value="BettaninIndustrial">Bettanin Industrial</option>
+              <option value="ImportacaoManual">Importação Trabalho Manual</option>
               </select>
               <input id="refs-busca" type="text" placeholder="Buscar por código ou descrição..." oninput="filterRefs()"
                 style="background:var(--surface);border:1px solid var(--border);color:var(--text);padding:5px 10px;font:13px var(--fb);outline:none;width:280px;transition:border-color .2s"
@@ -557,6 +564,17 @@
               <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:8px;margin-top:2px"><span style="font:700 11px/1 var(--fh);letter-spacing:1px;color:var(--muted);text-transform:uppercase">Atingimento</span><span id="ga-BettaninIndustrial" style="font:900 16px/1 var(--fh)">—</span></div>
             </div>
           </div>
+          <!-- Importação Trabalho Manual -->
+          <div class="kc" style="padding:24px;text-align:center">
+            <div style="font:700 11px/1 var(--fh);letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:18px">Imp. Trabalho Manual</div>
+            <div style="position:relative;width:150px;height:150px;margin:0 auto"><canvas id="chart-ImportacaoManual"></canvas></div>
+            <div style="margin-top:16px;display:flex;flex-direction:column;gap:6px;text-align:left">
+              <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Meta Total</span><span id="gm-ImportacaoManual" style="font:600 12px var(--fb)">—</span></div>
+              <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Realizado</span><span id="gr-ImportacaoManual" style="font:600 12px var(--fb)">—</span></div>
+              <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Efic. Média</span><span id="ge-ImportacaoManual" style="font:600 12px var(--fb)">—</span></div>
+              <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:8px;margin-top:2px"><span style="font:700 11px/1 var(--fh);letter-spacing:1px;color:var(--muted);text-transform:uppercase">Atingimento</span><span id="ga-ImportacaoManual" style="font:900 16px/1 var(--fh)">—</span></div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -576,6 +594,7 @@
               <option value="Sanremo">Sanremo</option>
               <option value="RevendaIndustrial">Revenda Industrial</option>
               <option value="BettaninIndustrial">Bettanin Industrial</option>
+              <option value="ImportacaoManual">Importação Trabalho Manual</option>
             </select>
           </div>
           <div class="fi"><label>Mês</label>
@@ -647,6 +666,7 @@
           <option value="Sanremo">Sanremo</option>
           <option value="RevendaIndustrial">Revenda Industrial</option>
           <option value="BettaninIndustrial">Bettanin Industrial</option>
+          <option value="ImportacaoManual">Importação Trabalho Manual</option>
         </select>
       </div>
       <div class="fi"><label>Meta Hora (pçs/h)</label><input type="number" id="ref-edit-meta" min="0" placeholder="Opcional"></div>
@@ -1520,8 +1540,8 @@ async function salvarEditLanc() {
 // ═══════════════════════════════════════
 // REFERÊNCIAS
 // ═══════════════════════════════════════
-const CELULA_LABELS = { Aluminio:'Alumínio', Panos:'Panos', Placas:'Placas', Rodos:'Rodos', Manual:'Manual', Importacao:'Importação', Bettanin:'Bettanin', Sanremo:'Sanremo', RevendaIndustrial:'Revenda Industrial', BettaninIndustrial:'Bettanin Industrial' };
-const CELULA_COLORS = { Aluminio:'var(--blue)', Panos:'var(--accent)', Placas:'var(--green)', Rodos:'var(--orange)', Manual:'var(--muted)', Importacao:'#a855f7', Bettanin:'#06b6d4', Sanremo:'#f59e0b', RevendaIndustrial:'#8b5cf6', BettaninIndustrial:'#10b981' };
+const CELULA_LABELS = { Aluminio:'Alumínio', Panos:'Panos', Placas:'Placas', Rodos:'Rodos', Manual:'Manual', Importacao:'Importação', Bettanin:'Bettanin', Sanremo:'Sanremo', RevendaIndustrial:'Revenda Industrial', BettaninIndustrial:'Bettanin Industrial', ImportacaoManual:'Imp. Trabalho Manual' };
+const CELULA_COLORS = { Aluminio:'var(--blue)', Panos:'var(--accent)', Placas:'var(--green)', Rodos:'var(--orange)', Manual:'var(--muted)', Importacao:'#a855f7', Bettanin:'#06b6d4', Sanremo:'#f59e0b', RevendaIndustrial:'#8b5cf6', BettaninIndustrial:'#10b981', ImportacaoManual:'#ec4899' };
 
 function renderRefsTable(rows) {
   const tbody = document.getElementById('refs-body');
@@ -1738,6 +1758,7 @@ const CELULAS_GRAF = [
   { value: 'Sanremo',             label: 'Sanremo' },
   { value: 'RevendaIndustrial',   label: 'Revenda Industrial' },
   { value: 'BettaninIndustrial',  label: 'Bettanin Industrial' },
+  { value: 'ImportacaoManual',    label: 'Importação Trabalho Manual' },
 ];
 const _chartInstances = {};
 
@@ -1977,7 +1998,7 @@ function exportOpPDF() {
 let _ordemFiltroStatus = '';
 let _ordemFiltroCelula = '';
 let _ordens = [];
-const _CELULA_LABEL = { Aluminio:'Alumínio', Panos:'Panos', Placas:'Placas', Rodos:'Rodos', Manual:'Manual', Importacao:'Importação', Bettanin:'Bettanin', Sanremo:'Sanremo', RevendaIndustrial:'Revenda Industrial', BettaninIndustrial:'Bettanin Industrial' };
+const _CELULA_LABEL = { Aluminio:'Alumínio', Panos:'Panos', Placas:'Placas', Rodos:'Rodos', Manual:'Manual', Importacao:'Importação', Bettanin:'Bettanin', Sanremo:'Sanremo', RevendaIndustrial:'Revenda Industrial', BettaninIndustrial:'Bettanin Industrial', ImportacaoManual:'Imp. Trabalho Manual' };
 const _STATUS_LABEL  = { pendente:'PENDENTE', em_andamento:'EM ANDAMENTO', concluida:'CONCLUÍDA' };
 const _STATUS_COR    = { pendente:'var(--muted)', em_andamento:'var(--orange)', concluida:'var(--green)' };
 const _STATUS_BG     = { pendente:'rgba(136,136,136,.1)', em_andamento:'rgba(249,115,22,.1)', concluida:'rgba(16,185,129,.1)' };

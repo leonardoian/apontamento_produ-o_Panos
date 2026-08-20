@@ -7,6 +7,7 @@ const _CELULA_NORM = {
   bettanin:'Bettanin',sanremo:'Sanremo',
   revendaindustrial:'RevendaIndustrial',
   bettaninindustrial:'BettaninIndustrial',
+  importacaomanual:'ImportacaoManual',
 };
 function normCelula(c) {
   if (!c || !String(c).trim()) return null;

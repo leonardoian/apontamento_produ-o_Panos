@@ -120,6 +120,8 @@ export async function initDB(sql) {
   await sql`UPDATE programa SET celula = 'Sanremo'           WHERE LOWER(celula) = 'sanremo'`;
   await sql`UPDATE programa SET celula = 'RevendaIndustrial'  WHERE LOWER(REPLACE(celula,' ','')) = 'revendaindustrial'`;
   await sql`UPDATE programa SET celula = 'BettaninIndustrial' WHERE LOWER(REPLACE(celula,' ','')) = 'bettaninindustrial'`;
+  await sql`UPDATE referencias SET celula = 'ImportacaoManual'  WHERE LOWER(REPLACE(celula,' ','')) IN ('importacaomanual','importaçãotrabalho','importacaotrabalho')`;
+  await sql`UPDATE programa    SET celula = 'ImportacaoManual'  WHERE LOWER(REPLACE(celula,' ','')) IN ('importacaomanual','importaçãotrabalho','importacaotrabalho')`;
 
   const existe = await sql`SELECT id FROM usuarios WHERE login = 'admin' LIMIT 1`;
   if (!existe.length) {
