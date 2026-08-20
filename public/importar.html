@@ -228,6 +228,24 @@ const norm = s => String(s==null?'':s).trim();
 const up   = s => norm(s).toUpperCase();
 const toInt= v => { const n=parseInt(String(v).replace(/[^\d-]/g,''),10); return isNaN(n)?0:n; };
 
+const _CELULA_NORM_MAP = {
+  'importacao':'Importacao','importação':'Importacao','importacão':'Importacao',
+  'aluminio':'Aluminio','alumínio':'Aluminio','aluminío':'Aluminio',
+  'panos':'Panos',
+  'rodos':'Rodos',
+  'manual':'Manual',
+  'placas':'Placas',
+  'bettanin':'Bettanin',
+  'sanremo':'Sanremo',
+  'revendaindustrial':'RevendaIndustrial','revenda industrial':'RevendaIndustrial','revenda':'RevendaIndustrial',
+  'bettaninindustrial':'BettaninIndustrial','bettanin industrial':'BettaninIndustrial',
+};
+const normCelula = s => {
+  if (!s || !s.trim()) return null;
+  const key = s.trim().toLowerCase();
+  return _CELULA_NORM_MAP[key] || _CELULA_NORM_MAP[key.replace(/\s+/g,'')] || s.trim();
+};
+
 // Encontra a linha de cabeçalho: a que tiver MAIS palavras-chave distintas.
 // Evita pegar linhas de aviso que mencionam só um termo (ex.: "Preencha MES_ANO...").
 function findHeader(rows, keys){
@@ -309,7 +327,7 @@ function parseRefs(wb){
         peso_unitario = null;
       }
     }
-    const celulaRef = norm(rows[r][c.celula]) || null;
+    const celulaRef = normCelula(rows[r][c.celula]);
     DATA.refs.push({cod,desc,ativo:ativo==='S'||ativo===''?'S':'N', meta_hora, peso_unitario, celula: celulaRef});
   }
 }
@@ -328,7 +346,7 @@ function parseProg(wb){
   for(let r=hi+1;r<rows.length;r++){
     const cod=up(rows[r][c.cod]); if(!cod) continue;       // pula linhas sem código
     let mes=norm(rows[r][c.mes]);
-    let celula=norm(rows[r][c.celula])||'Panos';           // padrão: Panos
+    let celula=normCelula(rows[r][c.celula])||'Panos';      // padrão: Panos
     // normaliza datas que o Excel possa ter convertido
     if(/^\d{4}-\d{2}/.test(mes)) mes=mes.slice(0,7);
     const meta=toInt(rows[r][c.meta]);

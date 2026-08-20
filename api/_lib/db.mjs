@@ -98,6 +98,18 @@ export async function initDB(sql) {
     criado_em TIMESTAMP DEFAULT NOW(),
     ativo BOOLEAN DEFAULT true
   )`;
+  // Normaliza valores de célula com acento ou caixa errada que possam ter sido importados
+  await sql`UPDATE referencias SET celula = 'Importacao' WHERE celula IN ('Importação','importação','IMPORTACAO','IMPORTAÇÃO','importacao')`;
+  await sql`UPDATE referencias SET celula = 'Aluminio'   WHERE celula IN ('Alumínio','ALUMINIO','ALUMÍNIO','aluminio','alumínio')`;
+  await sql`UPDATE referencias SET celula = 'Panos'      WHERE celula IN ('PANOS','panos')`;
+  await sql`UPDATE referencias SET celula = 'Rodos'      WHERE celula IN ('RODOS','rodos')`;
+  await sql`UPDATE referencias SET celula = 'Manual'     WHERE celula IN ('MANUAL','manual')`;
+  await sql`UPDATE referencias SET celula = 'Placas'     WHERE celula IN ('PLACAS','placas')`;
+  await sql`UPDATE referencias SET celula = 'Bettanin'   WHERE celula IN ('BETTANIN','bettanin')`;
+  await sql`UPDATE referencias SET celula = 'Sanremo'    WHERE celula IN ('SANREMO','sanremo')`;
+  await sql`UPDATE referencias SET celula = 'RevendaIndustrial'  WHERE LOWER(REPLACE(celula,' ','')) = 'revendaindustrial'`;
+  await sql`UPDATE referencias SET celula = 'BettaninIndustrial' WHERE LOWER(REPLACE(celula,' ','')) = 'bettaninindustrial'`;
+
   const existe = await sql`SELECT id FROM usuarios WHERE login = 'admin' LIMIT 1`;
   if (!existe.length) {
     const hash = await bcrypt.hash("admin123", 10);

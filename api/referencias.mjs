@@ -1,5 +1,19 @@
 import { setCors, handleOptions, getAuth, getBody, getSQL, initDB } from "./_lib/db.mjs";
 
+const _CELULA_NORM = {
+  importacao:'Importacao',importação:'Importacao',
+  aluminio:'Aluminio','alumínio':'Aluminio',
+  panos:'Panos',rodos:'Rodos',manual:'Manual',placas:'Placas',
+  bettanin:'Bettanin',sanremo:'Sanremo',
+  revendaindustrial:'RevendaIndustrial',
+  bettaninindustrial:'BettaninIndustrial',
+};
+function normCelula(c) {
+  if (!c || !String(c).trim()) return null;
+  const key = String(c).trim().toLowerCase().replace(/\s+/g,'');
+  return _CELULA_NORM[key] || String(c).trim();
+}
+
 export default async function handler(req, res) {
   setCors(res);
   if (handleOptions(req, res)) return;
@@ -25,7 +39,7 @@ export default async function handler(req, res) {
     const { cod, descricao, meta_hora, celula, peso_unitario } = getBody(req);
     if (!cod || !descricao) return res.status(400).json({ error: "cod e descricao obrigatórios" });
     // null = não fornecido → ON CONFLICT preserva o valor existente via COALESCE
-    const celVal = (celula != null && celula !== '') ? celula : null;
+    const celVal = (celula != null && celula !== '') ? normCelula(celula) : null;
     const insertCel = celVal || 'Panos';
     const pesoVal = (peso_unitario != null && String(peso_unitario).trim() !== '') ? +peso_unitario : null;
     try {
