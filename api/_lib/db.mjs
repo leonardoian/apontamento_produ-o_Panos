@@ -123,6 +123,17 @@ export async function initDB(sql) {
   await sql`UPDATE referencias SET celula = 'ImportacaoManual'  WHERE LOWER(REPLACE(celula,' ','')) IN ('importacaomanual','importaçãotrabalho','importacaotrabalho')`;
   await sql`UPDATE programa    SET celula = 'ImportacaoManual'  WHERE LOWER(REPLACE(celula,' ','')) IN ('importacaomanual','importaçãotrabalho','importacaotrabalho')`;
 
+  await sql`CREATE TABLE IF NOT EXISTS estoque (
+    id SERIAL PRIMARY KEY,
+    ref_cod VARCHAR(30) NOT NULL,
+    cd VARCHAR(20) NOT NULL,
+    deposito VARCHAR(10) NOT NULL,
+    quantidade INT DEFAULT 0,
+    atualizado_em TIMESTAMP DEFAULT NOW(),
+    UNIQUE(ref_cod, cd, deposito)
+  )`;
+  await sql`ALTER TABLE referencias ADD COLUMN IF NOT EXISTS forecast_mensal INT DEFAULT NULL`;
+
   const existe = await sql`SELECT id FROM usuarios WHERE login = 'admin' LIMIT 1`;
   if (!existe.length) {
     const hash = await bcrypt.hash("admin123", 10);
