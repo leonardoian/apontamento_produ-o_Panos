@@ -458,6 +458,14 @@
           </div>
         </div>
 
+        <!-- barra de progresso importação -->
+        <div id="est-prog-wrap" style="display:none;margin-bottom:10px">
+          <div id="est-prog-status" style="font-size:12px;color:var(--muted);margin-bottom:6px"></div>
+          <div style="height:4px;background:var(--border);overflow:hidden;border-radius:2px">
+            <div id="est-prog-bar" style="height:100%;width:0%;background:var(--accent);transition:width .25s ease"></div>
+          </div>
+        </div>
+
         <!-- instruções formato -->
         <div id="est-fmt-info" style="display:none;background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.25);padding:12px 16px;margin-bottom:12px;font-size:12px;color:var(--muted);line-height:1.8">
           <strong style="color:var(--text)">Formato da planilha de estoque (aba ESTOQUE):</strong><br>
@@ -1936,10 +1944,32 @@ function downloadModeloEstoque() {
   XLSX.writeFile(wb, 'modelo_estoque.xlsx');
 }
 
+function _estProgSet(pct, status) {
+  const wrap = document.getElementById('est-prog-wrap');
+  const bar  = document.getElementById('est-prog-bar');
+  const lbl  = document.getElementById('est-prog-status');
+  if (!wrap) return;
+  wrap.style.display = 'block';
+  bar.style.width = pct + '%';
+  if (lbl && status) lbl.textContent = status;
+}
+function _estProgHide() {
+  const wrap = document.getElementById('est-prog-wrap');
+  const bar  = document.getElementById('est-prog-bar');
+  if (!wrap) return;
+  setTimeout(() => {
+    wrap.style.display = 'none';
+    if (bar) bar.style.width = '0%';
+  }, 1500);
+}
+
 async function importarEstoqueFile(input) {
   const file = input.files[0];
   if (!file) return;
   input.value = '';
+  const btn = document.getElementById('btn-imp-estoque');
+  if (btn) { btn.disabled = true; btn.style.opacity = '.5'; }
+  _estProgSet(10, 'Lendo arquivo...');
   const reader = new FileReader();
   reader.onload = async e => {
     try {
@@ -1947,13 +1977,18 @@ async function importarEstoqueFile(input) {
       const sheetName = wb.SheetNames.find(n => n.toUpperCase().includes('ESTOQUE')) || wb.SheetNames[0];
       const ws   = wb.Sheets[sheetName];
       const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
-      if (rows.length < 2) { toast('Planilha vazia ou sem dados.', 'err'); return; }
+      if (rows.length < 2) {
+        _estProgSet(0); _estProgHide();
+        if (btn) { btn.disabled = false; btn.style.opacity = ''; }
+        toast('Planilha vazia ou sem dados.', 'err'); return;
+      }
+      _estProgSet(35, 'Lendo referências...');
 
       const normH = s => String(s||'').trim().toUpperCase().replace(/[\s\-_.]/g,'');
       const hdr = rows[0].map(normH);
       const ci = k => hdr.findIndex(h => h === k);
       const ciAny = ks => { for (const k of ks) { const i = ci(k); if (i>=0) return i; } return -1; };
-      const iCod  = ci('CODREF'); if (iCod < 0) { toast('Coluna COD_REF não encontrada.','err'); return; }
+      const iCod  = ci('CODREF'); if (iCod < 0) { _estProgSet(0); _estProgHide(); if (btn) { btn.disabled=false; btn.style.opacity=''; } toast('Coluna COD_REF não encontrada.','err'); return; }
       const iM60  = ci('MTZ0860');
       const iM03  = ci('MTZ0803');
       const iM02  = ci('MTZ0802');
@@ -1989,15 +2024,25 @@ async function importarEstoqueFile(input) {
         }
       }
 
-      if (!registros.length) { toast('Nenhuma linha válida encontrada.', 'err'); return; }
-      toast(`Importando ${registros.length} registros...`, 'info');
+      if (!registros.length) {
+        _estProgSet(0); _estProgHide();
+        if (btn) { btn.disabled = false; btn.style.opacity = ''; }
+        toast('Nenhuma linha válida encontrada.', 'err'); return;
+      }
+      _estProgSet(50, `Enviando ${registros.length} registros...`);
       await POST('estoque', { registros, forecast });
+      _estProgSet(100, `Concluído! ${registros.length} registros atualizados.`);
       toast(`Estoque atualizado com sucesso!`, 'ok');
+      _estProgHide();
+      if (btn) { btn.disabled = false; btn.style.opacity = ''; }
       renderEstoque();
     } catch(err) {
+      _estProgSet(0); _estProgHide();
+      if (btn) { btn.disabled = false; btn.style.opacity = ''; }
       toast('Erro ao importar: ' + err.message, 'err');
     }
   };
+  reader.onloadstart = () => _estProgSet(25, 'Processando arquivo...');
   reader.readAsArrayBuffer(file);
 }
 
