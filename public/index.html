@@ -459,10 +459,18 @@
         </div>
 
         <!-- barra de progresso importação -->
+        <style>
+          @keyframes est-stripe{0%{background-position:0 0}100%{background-position:40px 0}}
+          #est-prog-bar.sending{
+            background-image:repeating-linear-gradient(45deg,transparent,transparent 10px,rgba(255,255,255,.15) 10px,rgba(255,255,255,.15) 20px);
+            background-size:40px 40px;
+            animation:est-stripe .6s linear infinite;
+          }
+        </style>
         <div id="est-prog-wrap" style="display:none;margin-bottom:10px">
           <div id="est-prog-status" style="font-size:12px;color:var(--muted);margin-bottom:6px"></div>
           <div style="height:4px;background:var(--border);overflow:hidden;border-radius:2px">
-            <div id="est-prog-bar" style="height:100%;width:0%;background:var(--accent);transition:width .25s ease"></div>
+            <div id="est-prog-bar" style="height:100%;width:0%;background:var(--accent);transition:width .4s ease"></div>
           </div>
         </div>
 
@@ -2030,7 +2038,9 @@ async function importarEstoqueFile(input) {
         toast('Nenhuma linha válida encontrada.', 'err'); return;
       }
       _estProgSet(50, `Enviando ${registros.length} registros de estoque${forecast.length ? ' e ' + forecast.length + ' previsões' : ''}...`);
+      document.getElementById('est-prog-bar')?.classList.add('sending');
       await POST('estoque', { registros, forecast });
+      document.getElementById('est-prog-bar')?.classList.remove('sending');
       _estProgSet(100, `Concluído!`);
       const fcMsg = forecast.length ? ` · ${forecast.length} previsões salvas` : ' · sem colunas de forecast no arquivo';
       toast(`Estoque atualizado: ${registros.length} saldos${fcMsg}`, 'ok');
@@ -2039,6 +2049,7 @@ async function importarEstoqueFile(input) {
       if (btn) { btn.disabled = false; btn.style.opacity = ''; }
       renderEstoque();
     } catch(err) {
+      document.getElementById('est-prog-bar')?.classList.remove('sending');
       _estProgSet(0); _estProgHide();
       if (btn) { btn.disabled = false; btn.style.opacity = ''; }
       toast('Erro ao importar: ' + err.message, 'err');
