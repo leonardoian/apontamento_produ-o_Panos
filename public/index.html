@@ -2029,10 +2029,12 @@ async function importarEstoqueFile(input) {
         if (btn) { btn.disabled = false; btn.style.opacity = ''; }
         toast('Nenhuma linha válida encontrada.', 'err'); return;
       }
-      _estProgSet(50, `Enviando ${registros.length} registros...`);
+      _estProgSet(50, `Enviando ${registros.length} registros de estoque${forecast.length ? ' e ' + forecast.length + ' previsões' : ''}...`);
       await POST('estoque', { registros, forecast });
-      _estProgSet(100, `Concluído! ${registros.length} registros atualizados.`);
-      toast(`Estoque atualizado com sucesso!`, 'ok');
+      _estProgSet(100, `Concluído!`);
+      const fcMsg = forecast.length ? ` · ${forecast.length} previsões salvas` : ' · sem colunas de forecast no arquivo';
+      toast(`Estoque atualizado: ${registros.length} saldos${fcMsg}`, 'ok');
+      if (!forecast.length) toast('Para importar o forecast, use a tela de Importar (importar.html)', 'info', 6000);
       _estProgHide();
       if (btn) { btn.disabled = false; btn.style.opacity = ''; }
       renderEstoque();
