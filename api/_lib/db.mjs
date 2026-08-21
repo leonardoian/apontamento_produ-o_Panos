@@ -134,6 +134,10 @@ export async function initDB(sql) {
   )`;
   await sql`ALTER TABLE referencias ADD COLUMN IF NOT EXISTS estoque_atual INT DEFAULT NULL`;
   await sql`ALTER TABLE referencias ADD COLUMN IF NOT EXISTS forecast_mensal INT DEFAULT NULL`;
+  await sql`ALTER TABLE referencias ADD COLUMN IF NOT EXISTS forecast_mi_pe  INT DEFAULT NULL`;
+  await sql`ALTER TABLE referencias ADD COLUMN IF NOT EXISTS forecast_mi_sp  INT DEFAULT NULL`;
+  await sql`ALTER TABLE referencias ADD COLUMN IF NOT EXISTS forecast_mi_mtz INT DEFAULT NULL`;
+  await sql`ALTER TABLE referencias ADD COLUMN IF NOT EXISTS forecast_me     INT DEFAULT NULL`;
 
   const existe = await sql`SELECT id FROM usuarios WHERE login = 'admin' LIMIT 1`;
   if (!existe.length) {

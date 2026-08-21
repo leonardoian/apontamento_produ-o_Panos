@@ -462,7 +462,7 @@
         <div id="est-fmt-info" style="display:none;background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.25);padding:12px 16px;margin-bottom:12px;font-size:12px;color:var(--muted);line-height:1.8">
           <strong style="color:var(--text)">Formato da planilha de estoque (aba ESTOQUE):</strong><br>
           Colunas obrigatórias: <code>COD_REF · MTZ_0860 · MTZ_0803 · SP_0803 · PE_0803</code><br>
-          Coluna opcional: <code>FORECAST</code> (previsão mensal de venda)
+          Colunas opcionais de forecast: <code>FC_MI_PE</code>, <code>FC_MI_SP</code>, <code>FC_MI_MTZ</code>, <code>FC_ME</code>
           <button class="btn bs bsm" style="margin-left:12px" onclick="downloadModeloEstoque()">⬇ Baixar Modelo</button>
         </div>
 
@@ -481,8 +481,9 @@
                   <th colspan="3" style="text-align:center;background:rgba(6,182,212,.12);border-bottom:2px solid #06b6d4;color:#06b6d4;letter-spacing:1px">CD-MTZ</th>
                   <th style="text-align:center;background:rgba(59,130,246,.1);border-bottom:2px solid var(--blue);color:var(--blue);letter-spacing:1px">CD-SP</th>
                   <th style="text-align:center;background:rgba(245,158,11,.1);border-bottom:2px solid #f59e0b;color:#f59e0b;letter-spacing:1px">CD-PE</th>
-                  <th rowspan="2" style="text-align:right">Total</th>
-                  <th rowspan="2" style="text-align:right">Forecast</th>
+                  <th rowspan="2" style="text-align:right">Total Est.</th>
+                  <th colspan="4" style="text-align:center;background:rgba(139,92,246,.1);border-bottom:2px solid #8b5cf6;color:#8b5cf6;letter-spacing:1px">FORECAST MI</th>
+                  <th rowspan="2" style="text-align:right;background:rgba(16,185,129,.06);color:var(--green)">FC Externo</th>
                   <th rowspan="2" style="text-align:right">Dias Est.</th>
                 </tr>
                 <tr>
@@ -491,6 +492,10 @@
                   <th style="text-align:right;background:rgba(6,182,212,.06);font-weight:400;font-size:10px">Total</th>
                   <th style="text-align:right;background:rgba(59,130,246,.06);font-weight:400;font-size:10px">Dep. 0803</th>
                   <th style="text-align:right;background:rgba(245,158,11,.06);font-weight:400;font-size:10px">Dep. 0803</th>
+                  <th style="text-align:right;background:rgba(139,92,246,.06);font-weight:400;font-size:10px">PE</th>
+                  <th style="text-align:right;background:rgba(139,92,246,.06);font-weight:400;font-size:10px">SP</th>
+                  <th style="text-align:right;background:rgba(139,92,246,.06);font-weight:400;font-size:10px">MTZ</th>
+                  <th style="text-align:right;background:rgba(139,92,246,.1);font-weight:700;font-size:10px">Somado</th>
                 </tr>
               </thead>
               <tbody id="est-body"></tbody>
@@ -1847,13 +1852,13 @@ async function renderEstoque() {
   const mes = mesSel?.value || curMes();
 
   const tbody = document.getElementById('est-body');
-  tbody.innerHTML = `<tr><td colspan="11" class="empty"><span class="loading"></span></td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="15" class="empty"><span class="loading"></span></td></tr>`;
   try {
     _estRows = await GET('estoque?mes=' + mes);
     document.getElementById('est-busca').value = '';
     filterEstoque();
   } catch(e) {
-    tbody.innerHTML = `<tr><td colspan="11" class="empty" style="color:var(--red)">${e.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="15" class="empty" style="color:var(--red)">${e.message}</td></tr>`;
   }
 }
 
@@ -1871,7 +1876,7 @@ function renderEstoqueTable(rows) {
   const diasMes = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
 
   if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="11" class="empty"><div class="ei">▣</div>Nenhum registro encontrado.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="15" class="empty"><div class="ei">▣</div>Nenhum registro encontrado.</td></tr>`;
     return;
   }
   tbody.innerHTML = rows.map((r, i) => {
@@ -1881,7 +1886,12 @@ function renderEstoqueTable(rows) {
     const sp0803   = +r.sp_0803  || 0;
     const pe0803   = +r.pe_0803  || 0;
     const total    = mtzTotal + sp0803 + pe0803;
-    const forecast = +r.forecast_mensal || 0;
+    const miPe     = +r.forecast_mi_pe  || 0;
+    const miSp     = +r.forecast_mi_sp  || 0;
+    const miMtz    = +r.forecast_mi_mtz || 0;
+    const miSomado = miPe + miSp + miMtz;
+    const me       = +r.forecast_me    || 0;
+    const forecast = +r.forecast_mensal || (miSomado + me);
     const programa = +r.meta_total || 0;
 
     let diasHtml = '—';
@@ -1902,7 +1912,11 @@ function renderEstoqueTable(rows) {
       <td style="text-align:right;background:rgba(59,130,246,.04)">${fmtN(sp0803)}</td>
       <td style="text-align:right;background:rgba(245,158,11,.04)">${fmtN(pe0803)}</td>
       <td style="text-align:right;font-weight:700">${fmtN(total)}</td>
-      <td style="text-align:right;color:var(--muted);font-size:11px">${forecast > 0 ? fmt(forecast) : '—'}</td>
+      <td style="text-align:right;background:rgba(139,92,246,.04);font-size:11px">${fmtN(miPe)}</td>
+      <td style="text-align:right;background:rgba(139,92,246,.04);font-size:11px">${fmtN(miSp)}</td>
+      <td style="text-align:right;background:rgba(139,92,246,.04);font-size:11px">${fmtN(miMtz)}</td>
+      <td style="text-align:right;background:rgba(139,92,246,.1);font-weight:700">${fmtN(miSomado)}</td>
+      <td style="text-align:right;background:rgba(16,185,129,.06);color:var(--green);font-size:11px">${fmtN(me)}</td>
       <td style="text-align:right">${diasHtml}</td>
     </tr>`;
   }).join('');
@@ -1911,9 +1925,9 @@ function renderEstoqueTable(rows) {
 function downloadModeloEstoque() {
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.aoa_to_sheet([
-    ['COD_REF','MTZ_0860','MTZ_0803','SP_0803','PE_0803','FORECAST'],
-    ['SP9063',0,0,0,0,0],
-    ['SP9064',0,0,0,0,0],
+    ['COD_REF','MTZ_0860','MTZ_0803','SP_0803','PE_0803','FC_MI_PE','FC_MI_SP','FC_MI_MTZ','FC_ME'],
+    ['SP9063',0,0,0,0,0,0,0,0],
+    ['SP9064',0,0,0,0,0,0,0,0],
   ]);
   XLSX.utils.book_append_sheet(wb, ws, 'ESTOQUE');
   XLSX.writeFile(wb, 'modelo_estoque.xlsx');
@@ -1935,12 +1949,17 @@ async function importarEstoqueFile(input) {
       const normH = s => String(s||'').trim().toUpperCase().replace(/[\s\-_.]/g,'');
       const hdr = rows[0].map(normH);
       const ci = k => hdr.findIndex(h => h === k);
+      const ciAny = ks => { for (const k of ks) { const i = ci(k); if (i>=0) return i; } return -1; };
       const iCod  = ci('CODREF'); if (iCod < 0) { toast('Coluna COD_REF não encontrada.','err'); return; }
       const iM60  = ci('MTZ0860');
       const iM03  = ci('MTZ0803');
       const iSP   = ci('SP0803');
       const iPE   = ci('PE0803');
-      const iFc   = ci('FORECAST');
+      const iFcPe  = ciAny(['FCMIPE','FORECASTMIPE','FORECASTMERCADOINTERNOPE']);
+      const iFcSp  = ciAny(['FCMISP','FCMICDSP','FORECASTMISP','FORECASTMERCADOINTERNOIDSP','FORECASTMICDSP']);
+      const iFcMtz = ciAny(['FCMIMTZ','FORECASTMIMTZ','FORECASTMERCADOINTERNOMTZ']);
+      const iFcMe  = ciAny(['FCME','FORECASTME','FORECASTMERCADOEXTERNO','FORECASTEXTERNO']);
+      const iFc    = ciAny(['FORECAST','FORECASTTOTAL','PREVISAO','PREVISÃO']);
 
       const registros = [];
       const forecast  = [];
@@ -1951,7 +1970,18 @@ async function importarEstoqueFile(input) {
         if (iM03 >= 0) registros.push({ ref_cod: cod, cd: 'CD-MTZ', deposito: '0803', quantidade: +rows[r][iM03]||0 });
         if (iSP  >= 0) registros.push({ ref_cod: cod, cd: 'CD-SP',  deposito: '0803', quantidade: +rows[r][iSP] ||0 });
         if (iPE  >= 0) registros.push({ ref_cod: cod, cd: 'CD-PE',  deposito: '0803', quantidade: +rows[r][iPE] ||0 });
-        if (iFc  >= 0 && rows[r][iFc] !== '') forecast.push({ ref_cod: cod, forecast_mensal: +rows[r][iFc]||0 });
+        const hasBreakdown = iFcPe>=0 || iFcSp>=0 || iFcMtz>=0 || iFcMe>=0;
+        if (hasBreakdown) {
+          forecast.push({
+            ref_cod: cod,
+            forecast_mi_pe:  iFcPe  >= 0 ? +rows[r][iFcPe]  || 0 : null,
+            forecast_mi_sp:  iFcSp  >= 0 ? +rows[r][iFcSp]  || 0 : null,
+            forecast_mi_mtz: iFcMtz >= 0 ? +rows[r][iFcMtz] || 0 : null,
+            forecast_me:     iFcMe  >= 0 ? +rows[r][iFcMe]  || 0 : null,
+          });
+        } else if (iFc >= 0 && rows[r][iFc] !== '') {
+          forecast.push({ ref_cod: cod, forecast_mensal: +rows[r][iFc]||0 });
+        }
       }
 
       if (!registros.length) { toast('Nenhuma linha válida encontrada.', 'err'); return; }
