@@ -301,10 +301,14 @@ function parseRefs(wb){
     ativo:['ATIVO'],
     meta:['META HORA','META_HORA','PÇS/HORA','PCS/HORA','PÇS HORA','PCS HORA'],
     peso:['PESO_UNITARIO','PESO UNIT','PESO (KG)','PESO/PC','PESO/PÇ','PESO KG'],
-    celula:['CELULA','CÉLULA','MAQUINA','MÁQUINA','SETOR','BETTANIN']
+    celula:['CELULA','CÉLULA','MAQUINA','MÁQUINA','SETOR','BETTANIN'],
+    estoque:['ESTOQUE','ESTOQUE_ATUAL','SALDO','QTD_ESTOQUE'],
+    forecast:['FORECAST','PREVISAO','PREVISÃO','PREV_VENDA','PREV VENDA']
   });
   const metaColPresent = c.meta >= 0;
   const pesoColPresent = c.peso >= 0;
+  const estColPresent  = c.estoque >= 0;
+  const fcColPresent   = c.forecast >= 0;
   for(let r=hi+1;r<rows.length;r++){
     const cod=up(rows[r][c.cod]); if(!cod) continue;
     const desc=norm(rows[r][c.desc]);
@@ -329,7 +333,9 @@ function parseRefs(wb){
       }
     }
     const celulaRef = normCelula(rows[r][c.celula]);
-    DATA.refs.push({cod,desc,ativo:ativo==='S'||ativo===''?'S':'N', meta_hora, peso_unitario, celula: celulaRef});
+    const estoque_atual   = estColPresent && rows[r][c.estoque]  != null && String(rows[r][c.estoque]).trim()  !== '' ? toInt(rows[r][c.estoque])  : null;
+    const forecast_mensal = fcColPresent  && rows[r][c.forecast] != null && String(rows[r][c.forecast]).trim() !== '' ? toInt(rows[r][c.forecast]) : null;
+    DATA.refs.push({cod,desc,ativo:ativo==='S'||ativo===''?'S':'N', meta_hora, peso_unitario, celula: celulaRef, estoque_atual, forecast_mensal});
   }
 }
 
@@ -437,7 +443,9 @@ $('send').addEventListener('click',async()=>{
     try{
       const payload = { cod:r.cod, descricao:r.desc||r.cod };
       if (r.meta_hora !== undefined) payload.meta_hora = r.meta_hora;
-      if (r.peso_unitario != null) payload.peso_unitario = r.peso_unitario;
+      if (r.peso_unitario   != null) payload.peso_unitario   = r.peso_unitario;
+      if (r.estoque_atual   != null) payload.estoque_atual   = r.estoque_atual;
+      if (r.forecast_mensal != null) payload.forecast_mensal = r.forecast_mensal;
       if (r.celula) payload.celula = r.celula;
       await post('referencias', payload);
       sentRefs.add(r.cod);

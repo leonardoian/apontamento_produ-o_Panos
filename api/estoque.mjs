@@ -12,20 +12,36 @@ export default async function handler(req, res) {
   try { await initDB(sql); } catch (e) { return res.status(500).json({ error: "Erro initDB: " + e.message }); }
 
   if (req.method === "GET") {
+    const mes = req.query?.mes || "";
     try {
-      const rows = await sql`
-        SELECT
-          r.cod, r.descricao, r.celula, r.forecast_mensal,
-          COALESCE(SUM(CASE WHEN e.cd='CD-MTZ' AND e.deposito='0860' THEN e.quantidade END), 0)::int AS mtz_0860,
-          COALESCE(SUM(CASE WHEN e.cd='CD-MTZ' AND e.deposito='0803' THEN e.quantidade END), 0)::int AS mtz_0803,
-          COALESCE(SUM(CASE WHEN e.cd='CD-SP'  AND e.deposito='0803' THEN e.quantidade END), 0)::int AS sp_0803,
-          COALESCE(SUM(CASE WHEN e.cd='CD-PE'  AND e.deposito='0803' THEN e.quantidade END), 0)::int AS pe_0803
-        FROM referencias r
-        LEFT JOIN estoque e ON e.ref_cod = r.cod
-        WHERE r.ativo = true
-        GROUP BY r.cod, r.descricao, r.celula, r.forecast_mensal
-        ORDER BY r.cod
-      `;
+      const rows = mes
+        ? await sql`
+          SELECT
+            r.cod, r.descricao, r.celula, r.estoque_atual, r.forecast_mensal,
+            COALESCE(SUM(CASE WHEN e.cd='CD-MTZ' AND e.deposito='0860' THEN e.quantidade END), 0)::int AS mtz_0860,
+            COALESCE(SUM(CASE WHEN e.cd='CD-MTZ' AND e.deposito='0803' THEN e.quantidade END), 0)::int AS mtz_0803,
+            COALESCE(SUM(CASE WHEN e.cd='CD-SP'  AND e.deposito='0803' THEN e.quantidade END), 0)::int AS sp_0803,
+            COALESCE(SUM(CASE WHEN e.cd='CD-PE'  AND e.deposito='0803' THEN e.quantidade END), 0)::int AS pe_0803,
+            COALESCE(SUM(p.meta_turno * p.num_turnos) FILTER (WHERE p.mes_ano = ${mes} AND p.ativo = true), 0)::int AS meta_total
+          FROM referencias r
+          LEFT JOIN estoque e ON e.ref_cod = r.cod
+          LEFT JOIN programa p ON p.ref_cod = r.cod
+          WHERE r.ativo = true
+          GROUP BY r.cod, r.descricao, r.celula, r.estoque_atual, r.forecast_mensal
+          ORDER BY r.cod`
+        : await sql`
+          SELECT
+            r.cod, r.descricao, r.celula, r.estoque_atual, r.forecast_mensal,
+            COALESCE(SUM(CASE WHEN e.cd='CD-MTZ' AND e.deposito='0860' THEN e.quantidade END), 0)::int AS mtz_0860,
+            COALESCE(SUM(CASE WHEN e.cd='CD-MTZ' AND e.deposito='0803' THEN e.quantidade END), 0)::int AS mtz_0803,
+            COALESCE(SUM(CASE WHEN e.cd='CD-SP'  AND e.deposito='0803' THEN e.quantidade END), 0)::int AS sp_0803,
+            COALESCE(SUM(CASE WHEN e.cd='CD-PE'  AND e.deposito='0803' THEN e.quantidade END), 0)::int AS pe_0803,
+            0::int AS meta_total
+          FROM referencias r
+          LEFT JOIN estoque e ON e.ref_cod = r.cod
+          WHERE r.ativo = true
+          GROUP BY r.cod, r.descricao, r.celula, r.estoque_atual, r.forecast_mensal
+          ORDER BY r.cod`;
       return res.status(200).json(rows);
     } catch (e) {
       return res.status(500).json({ error: e.message });

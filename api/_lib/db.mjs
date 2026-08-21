@@ -132,6 +132,7 @@ export async function initDB(sql) {
     atualizado_em TIMESTAMP DEFAULT NOW(),
     UNIQUE(ref_cod, cd, deposito)
   )`;
+  await sql`ALTER TABLE referencias ADD COLUMN IF NOT EXISTS estoque_atual INT DEFAULT NULL`;
   await sql`ALTER TABLE referencias ADD COLUMN IF NOT EXISTS forecast_mensal INT DEFAULT NULL`;
 
   const existe = await sql`SELECT id FROM usuarios WHERE login = 'admin' LIMIT 1`;

@@ -169,7 +169,7 @@
           <div style="overflow-x:auto"><table><thead><tr>
             <th>Cód.</th><th>Descrição</th><th>Meta/Turno</th><th>Nº Turnos</th><th>Meta Total</th>
             <th style="color:var(--accent)">Real. T1</th><th style="color:var(--blue)">Real. T2</th><th style="color:var(--green)">Real. ADM</th>
-            <th>Total Real.</th><th>Falta</th><th>%</th><th id="th-prog-ac" style="display:none">Ações</th>
+            <th>Total Real.</th><th>Falta</th><th>%</th><th title="(Programa + Estoque + Forecast) / (Forecast ÷ 30)">Dias Est.</th><th id="th-prog-ac" style="display:none">Ações</th>
           </tr></thead><tbody id="prog-body"></tbody></table></div>
         </div>
       </div>
@@ -439,7 +439,7 @@
           </div>
           <div style="overflow-x:auto"><table><thead><tr>
             <th style="width:36px"><input type="checkbox" id="refs-all" onchange="toggleAllRefs(this.checked)" style="accent-color:var(--accent);width:15px;height:15px;cursor:pointer"></th>
-            <th>#</th><th>Código</th><th>Descrição</th><th>Célula(s)</th><th>Meta Hora</th><th>Peso (kg/pç)</th><th>Ação</th>
+            <th>#</th><th>Código</th><th>Descrição</th><th>Célula(s)</th><th>Meta Hora</th><th>Peso (kg/pç)</th><th>Estoque</th><th>Forecast</th><th>Ação</th>
           </tr></thead><tbody id="refs-body"></tbody></table></div>
         </div>
       </div>
@@ -447,6 +447,7 @@
       <!-- ESTOQUE -->
       <div class="ps" id="sec-estoque">
         <div class="filtbar" style="flex-wrap:wrap;gap:8px">
+          <div class="fi"><label>Mês</label><input type="month" id="est-mes" onchange="renderEstoque()" style="min-width:150px"></div>
           <input type="text" id="est-busca" placeholder="Buscar por código ou descrição..." oninput="filterEstoque()"
             style="background:var(--surface);border:1px solid var(--border);color:var(--text);padding:5px 10px;font:13px var(--fb);outline:none;min-width:260px;transition:border-color .2s"
             onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
@@ -726,6 +727,8 @@
       </div>
       <div class="fi"><label>Meta Hora (pçs/h)</label><input type="number" id="ref-edit-meta" min="0" placeholder="Opcional"></div>
       <div class="fi" id="ref-edit-peso-wrap"><label>Peso Unitário (kg/pç)</label><input type="number" id="ref-edit-peso" min="0" step="0.001" placeholder="Ex: 0.350"></div>
+      <div class="fi"><label>Estoque Atual (pçs)</label><input type="number" id="ref-edit-estoque" min="0" placeholder="Opcional"></div>
+      <div class="fi"><label>Forecast Mensal (pçs)</label><input type="number" id="ref-edit-forecast" min="0" placeholder="Opcional"></div>
     </div>
     <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:20px">
       <button class="btn bs bsm" onclick="document.getElementById('modal-ref').style.display='none'">Cancelar</button>
@@ -1133,8 +1136,8 @@ async function renderPrograma() {
   const mes = document.getElementById('prog-mes').value;
   const celula = document.getElementById('prog-celula').value;
   const tbody = document.getElementById('prog-body');
-  if (!mes) { tbody.innerHTML = `<tr><td colspan="11" class="empty">Selecione um mês.</td></tr>`; return; }
-  tbody.innerHTML = `<tr><td colspan="11" class="empty"><span class="loading"></span></td></tr>`;
+  if (!mes) { tbody.innerHTML = `<tr><td colspan="12" class="empty">Selecione um mês.</td></tr>`; return; }
+  tbody.innerHTML = `<tr><td colspan="12" class="empty"><span class="loading"></span></td></tr>`;
   document.getElementById('prog-busca').value = '';
   try {
     const rows = await GET('programa?mes=' + mes + '&celula=' + celula);
@@ -1150,7 +1153,7 @@ async function renderPrograma() {
     ).values()];
     renderProgTable('');
   } catch(e) {
-    tbody.innerHTML = `<tr><td colspan="11" class="empty" style="color:var(--red)">${e.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="12" class="empty" style="color:var(--red)">${e.message}</td></tr>`;
   }
 }
 
@@ -1186,6 +1189,12 @@ function renderProgTable(termo) {
     const rADM = _progLancs.filter(l=>l.ref_cod===r.ref_cod&&l.turno==='ADM').reduce((s,l)=>s+(+l.realizado||0),0);
     const rT = rT1+rT2+rADM; const p = mT>0?rT/mT:0;
     const alerta = mesAtual && diasRestantes <= 10 && diasRestantes >= 0 && p < 0.6;
+    const refDat = _refs.find(x => x.cod === r.ref_cod);
+    const estoque  = +(refDat?.estoque_atual  || 0);
+    const forecast = +(refDat?.forecast_mensal || 0);
+    const dias = forecast > 0 ? ((mT + estoque + forecast) * 30 / forecast) : null;
+    const diasHtml = dias == null ? '<td style="color:var(--muted)">—</td>'
+      : `<td style="font-weight:600;color:${dias>=30?'var(--green)':dias>=15?'#f59e0b':'var(--red)'}">${dias.toFixed(1)}d</td>`;
     return `<tr style="${alerta?'background:rgba(204,0,0,.08);outline:1px solid rgba(204,0,0,.3)':''}">
         <td style="font-family:monospace;font-size:11px">${r.ref_cod}</td>
         <td style="max-width:220px;font-size:12px">${alerta?`<span title="Abaixo de 60% com ${diasRestantes} dia(s) restantes" style="color:var(--red);margin-right:4px">⚠</span>`:''}${r.descricao}</td>
@@ -1198,6 +1207,7 @@ function renderProgTable(termo) {
         <td><strong>${fmt(rT)}</strong></td>
         <td style="color:${mT-rT<=0?'var(--green)':'var(--red)'}">${mT-rT>0?fmt(mT-rT):'✓'}</td>
         <td class="${p>=1?'ok':p>=.8?'warn':'bad'}">${pct(rT,mT)}</td>
+        ${diasHtml}
         ${isAdmin?`<td><div style="display:flex;gap:4px"><button class="btn bs bsm" onclick="openEditProg('${r.ref_cod}',${+r.meta_turno||0},${+r.num_turnos||2})" title="Editar">✎</button><button class="btn bd bsm" onclick="deleteProg('${r.ref_cod}','${mes}','${celula}')" title="Remover">✕</button></div></td>`:''}
       </tr>`;
   }).join('');
@@ -1215,13 +1225,13 @@ function renderProgTable(termo) {
         <td style="color:var(--blue)">${fmt(rT2)}</td>
         <td style="color:var(--green)">${fmt(rADM)}</td>
         <td><strong>${fmt(rT)}</strong></td>
-        <td>—</td><td>—</td>
+        <td>—</td><td>—</td><td>—</td>
         ${isAdmin?'<td></td>':''}
       </tr>`;
   }).join('');
 
   tbody.innerHTML = !rowsF.length && !semProgF.length
-    ? `<tr><td colspan="11" class="empty"><div class="ei">☰</div>${t ? 'Nenhuma referência encontrada para "' + termo + '".' : 'Nenhuma referência no programa. ' + (isAdmin?'Clique em "+ Adicionar Referência".':'')}</td></tr>`
+    ? `<tr><td colspan="12" class="empty"><div class="ei">☰</div>${t ? 'Nenhuma referência encontrada para "' + termo + '".' : 'Nenhuma referência no programa. ' + (isAdmin?'Clique em "+ Adicionar Referência".':'')}</td></tr>`
     : rowProgHtml + rowSemProgHtml;
 }
 
@@ -1608,11 +1618,13 @@ const CELULA_COLORS = { Aluminio:'var(--blue)', Panos:'var(--accent)', Placas:'v
 function renderRefsTable(rows) {
   const tbody = document.getElementById('refs-body');
   tbody.innerHTML = !rows.length
-    ? `<tr><td colspan="8" class="empty">Nenhuma referência encontrada.</td></tr>`
+    ? `<tr><td colspan="10" class="empty">Nenhuma referência encontrada.</td></tr>`
     : rows.map((r,i) => {
         const c = r.celula || 'Panos';
         const celulasHtml = `<span style="display:inline-block;padding:1px 6px;border-radius:2px;font:700 10px var(--fh);letter-spacing:1px;background:rgba(0,0,0,.3);border:1px solid ${CELULA_COLORS[c]||'var(--border)'};color:${CELULA_COLORS[c]||'var(--muted)'}">${CELULA_LABELS[c]||c}</span>`;
         const pesoHtml = (c === 'Panos' && r.peso_unitario) ? `<span style="color:var(--accent)">${(+r.peso_unitario).toFixed(3)}</span>` : '<span style="color:var(--muted)">—</span>';
+        const estHtml  = r.estoque_atual   != null ? fmt(+r.estoque_atual)   : '<span style="color:var(--muted)">—</span>';
+        const fcHtml   = r.forecast_mensal != null ? fmt(+r.forecast_mensal) : '<span style="color:var(--muted)">—</span>';
         return `<tr>
           <td><input type="checkbox" class="ref-chk" data-cod="${r.cod}" onchange="updateRefSelection()" style="accent-color:var(--accent);width:15px;height:15px;cursor:pointer"></td>
           <td>${i+1}</td>
@@ -1621,6 +1633,8 @@ function renderRefsTable(rows) {
           <td>${celulasHtml}</td>
           <td style="cursor:pointer;color:var(--blue)" onclick="openEditRef('${r.cod}')">${r.meta_hora ? r.meta_hora + ' pçs/h' : '—'} <span style="font-size:12px">✎</span></td>
           <td>${pesoHtml}</td>
+          <td style="text-align:right;font-size:11px">${estHtml}</td>
+          <td style="text-align:right;font-size:11px">${fcHtml}</td>
           <td><button class="btn bd bsm" onclick="delRef('${r.cod}')">✕</button></td>
         </tr>`;
       }).join('');
@@ -1744,6 +1758,8 @@ function openEditRef(cod) {
   document.getElementById('ref-edit-celula').value = r.celula || 'Panos';
   document.getElementById('ref-edit-meta').value = r.meta_hora || '';
   document.getElementById('ref-edit-peso').value = r.peso_unitario || '';
+  document.getElementById('ref-edit-estoque').value = r.estoque_atual != null ? r.estoque_atual : '';
+  document.getElementById('ref-edit-forecast').value = r.forecast_mensal != null ? r.forecast_mensal : '';
   document.getElementById('modal-ref').style.display = 'flex';
   toggleEditRefPeso();
 }
@@ -1758,8 +1774,16 @@ async function salvarEditRef() {
   const meta_hora = metaStr ? parseInt(metaStr) : null;
   if (metaStr && isNaN(meta_hora)) { alert('Meta Hora inválida.'); return; }
   const peso_unitario = (celula === 'Panos' && pesoRaw) ? parseFloat(pesoRaw) : null;
+  const estoqueRaw  = document.getElementById('ref-edit-estoque').value.trim();
+  const forecastRaw = document.getElementById('ref-edit-forecast').value.trim();
+  const estoque_atual   = estoqueRaw  ? parseInt(estoqueRaw)  : null;
+  const forecast_mensal = forecastRaw ? parseInt(forecastRaw) : null;
   try {
-    await POST('referencias', { cod, descricao: desc, celula, meta_hora, ...(celula === 'Panos' ? { peso_unitario } : {}) });
+    await POST('referencias', { cod, descricao: desc, celula, meta_hora,
+      ...(celula === 'Panos' ? { peso_unitario } : {}),
+      ...(estoque_atual   != null ? { estoque_atual }   : {}),
+      ...(forecast_mensal != null ? { forecast_mensal } : {})
+    });
     _progCache = {};
     document.getElementById('modal-ref').style.display = 'none';
     renderRefs();
@@ -1818,10 +1842,14 @@ async function renderEstoque() {
   if (btnImp) btnImp.style.display = isAdmin ? '' : 'none';
   if (fmtInfo) fmtInfo.style.display = isAdmin ? '' : 'none';
 
+  const mesSel = document.getElementById('est-mes');
+  if (mesSel && !mesSel.value) mesSel.value = curMes();
+  const mes = mesSel?.value || curMes();
+
   const tbody = document.getElementById('est-body');
   tbody.innerHTML = `<tr><td colspan="11" class="empty"><span class="loading"></span></td></tr>`;
   try {
-    _estRows = await GET('estoque');
+    _estRows = await GET('estoque?mes=' + mes);
     document.getElementById('est-busca').value = '';
     filterEstoque();
   } catch(e) {
@@ -1854,11 +1882,11 @@ function renderEstoqueTable(rows) {
     const pe0803   = +r.pe_0803  || 0;
     const total    = mtzTotal + sp0803 + pe0803;
     const forecast = +r.forecast_mensal || 0;
+    const programa = +r.meta_total || 0;
 
     let diasHtml = '—';
     if (forecast > 0) {
-      const consumoDiario = forecast / diasMes;
-      const dias = total / consumoDiario;
+      const dias = (programa + total + forecast) / (forecast / 30);
       const cor = dias >= 30 ? 'var(--green)' : dias >= 15 ? '#f59e0b' : 'var(--red)';
       diasHtml = `<span style="font-weight:700;color:${cor}">${dias.toFixed(1)}</span>`;
     }
