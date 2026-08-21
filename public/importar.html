@@ -303,12 +303,18 @@ function parseRefs(wb){
     peso:['PESO_UNITARIO','PESO UNIT','PESO (KG)','PESO/PC','PESO/PÇ','PESO KG'],
     celula:['CELULA','CÉLULA','MAQUINA','MÁQUINA','SETOR','BETTANIN'],
     estoque:['ESTOQUE','ESTOQUE_ATUAL','SALDO','QTD_ESTOQUE'],
-    forecast:['FORECAST','PREVISAO','PREVISÃO','PREV_VENDA','PREV VENDA']
+    fc_pe: ['FORECAST MI PE','FC MI PE','FC_MI_PE','FCMIPE'],
+    fc_sp: ['FORECAST MI CD SP','FORECAST MI SP','FC MI SP','FC_MI_SP','FCMISP','FCMICDSP'],
+    fc_mtz:['FORECAST MI MTZ','FC MI MTZ','FC_MI_MTZ','FCMIMTZ'],
+    fc_me: ['FORECAST MERCADO EXTERNO','FORECAST EXTERNO','FC ME','FC_ME','FCME'],
+    forecast:['PREV_VENDA','PREVISAO','PREVISÃO','PREV VENDA','FORECAST TOTAL','FORECAST MENSAL']
   });
-  const metaColPresent = c.meta >= 0;
-  const pesoColPresent = c.peso >= 0;
+  const metaColPresent = c.meta    >= 0;
+  const pesoColPresent = c.peso    >= 0;
   const estColPresent  = c.estoque >= 0;
-  const fcColPresent   = c.forecast >= 0;
+  const hasFcBreakdown = c.fc_pe >= 0 || c.fc_sp >= 0 || c.fc_mtz >= 0 || c.fc_me >= 0;
+  const fcTotalPresent = !hasFcBreakdown && c.forecast >= 0;
+  const toN = (row, idx) => idx >= 0 && row[idx] != null && String(row[idx]).trim() !== '' ? toInt(row[idx]) : null;
   for(let r=hi+1;r<rows.length;r++){
     const cod=up(rows[r][c.cod]); if(!cod) continue;
     const desc=norm(rows[r][c.desc]);
@@ -333,9 +339,19 @@ function parseRefs(wb){
       }
     }
     const celulaRef = normCelula(rows[r][c.celula]);
-    const estoque_atual   = estColPresent && rows[r][c.estoque]  != null && String(rows[r][c.estoque]).trim()  !== '' ? toInt(rows[r][c.estoque])  : null;
-    const forecast_mensal = fcColPresent  && rows[r][c.forecast] != null && String(rows[r][c.forecast]).trim() !== '' ? toInt(rows[r][c.forecast]) : null;
-    DATA.refs.push({cod,desc,ativo:ativo==='S'||ativo===''?'S':'N', meta_hora, peso_unitario, celula: celulaRef, estoque_atual, forecast_mensal});
+    const estoque_atual = estColPresent ? toN(rows[r], c.estoque) : null;
+    let forecast_mi_pe, forecast_mi_sp, forecast_mi_mtz, forecast_me, forecast_mensal;
+    if (hasFcBreakdown) {
+      forecast_mi_pe  = toN(rows[r], c.fc_pe);
+      forecast_mi_sp  = toN(rows[r], c.fc_sp);
+      forecast_mi_mtz = toN(rows[r], c.fc_mtz);
+      forecast_me     = toN(rows[r], c.fc_me);
+      forecast_mensal = (forecast_mi_pe||0) + (forecast_mi_sp||0) + (forecast_mi_mtz||0) + (forecast_me||0) || null;
+    } else {
+      forecast_mensal = fcTotalPresent ? toN(rows[r], c.forecast) : null;
+    }
+    DATA.refs.push({cod,desc,ativo:ativo==='S'||ativo===''?'S':'N', meta_hora, peso_unitario, celula: celulaRef,
+      estoque_atual, forecast_mensal, forecast_mi_pe, forecast_mi_sp, forecast_mi_mtz, forecast_me});
   }
 }
 
@@ -446,6 +462,10 @@ $('send').addEventListener('click',async()=>{
       if (r.peso_unitario   != null) payload.peso_unitario   = r.peso_unitario;
       if (r.estoque_atual   != null) payload.estoque_atual   = r.estoque_atual;
       if (r.forecast_mensal != null) payload.forecast_mensal = r.forecast_mensal;
+      if (r.forecast_mi_pe  != null) payload.forecast_mi_pe  = r.forecast_mi_pe;
+      if (r.forecast_mi_sp  != null) payload.forecast_mi_sp  = r.forecast_mi_sp;
+      if (r.forecast_mi_mtz != null) payload.forecast_mi_mtz = r.forecast_mi_mtz;
+      if (r.forecast_me     != null) payload.forecast_me     = r.forecast_me;
       if (r.celula) payload.celula = r.celula;
       await post('referencias', payload);
       sentRefs.add(r.cod);
