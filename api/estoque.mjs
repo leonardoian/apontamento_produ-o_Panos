@@ -21,6 +21,7 @@ export default async function handler(req, res) {
             r.forecast_mi_pe, r.forecast_mi_sp, r.forecast_mi_mtz, r.forecast_me,
             COALESCE(SUM(CASE WHEN e.cd='CD-MTZ' AND e.deposito='0860' THEN e.quantidade END), 0)::int AS mtz_0860,
             COALESCE(SUM(CASE WHEN e.cd='CD-MTZ' AND e.deposito='0803' THEN e.quantidade END), 0)::int AS mtz_0803,
+            COALESCE(SUM(CASE WHEN e.cd='CD-MTZ' AND e.deposito='0802' THEN e.quantidade END), 0)::int AS mtz_0802,
             COALESCE(SUM(CASE WHEN e.cd='CD-SP'  AND e.deposito='0803' THEN e.quantidade END), 0)::int AS sp_0803,
             COALESCE(SUM(CASE WHEN e.cd='CD-PE'  AND e.deposito='0803' THEN e.quantidade END), 0)::int AS pe_0803,
             COALESCE(SUM(p.meta_turno * p.num_turnos) FILTER (WHERE p.mes_ano = ${mes} AND p.ativo = true), 0)::int AS meta_total
@@ -36,6 +37,7 @@ export default async function handler(req, res) {
             r.forecast_mi_pe, r.forecast_mi_sp, r.forecast_mi_mtz, r.forecast_me,
             COALESCE(SUM(CASE WHEN e.cd='CD-MTZ' AND e.deposito='0860' THEN e.quantidade END), 0)::int AS mtz_0860,
             COALESCE(SUM(CASE WHEN e.cd='CD-MTZ' AND e.deposito='0803' THEN e.quantidade END), 0)::int AS mtz_0803,
+            COALESCE(SUM(CASE WHEN e.cd='CD-MTZ' AND e.deposito='0802' THEN e.quantidade END), 0)::int AS mtz_0802,
             COALESCE(SUM(CASE WHEN e.cd='CD-SP'  AND e.deposito='0803' THEN e.quantidade END), 0)::int AS sp_0803,
             COALESCE(SUM(CASE WHEN e.cd='CD-PE'  AND e.deposito='0803' THEN e.quantidade END), 0)::int AS pe_0803,
             0::int AS meta_total
