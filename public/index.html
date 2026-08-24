@@ -169,7 +169,7 @@
           <div style="overflow-x:auto"><table><thead><tr>
             <th>Cód.</th><th>Descrição</th><th>Meta/Turno</th><th>Nº Turnos</th><th>Meta Total</th>
             <th style="color:var(--accent)">Real. T1</th><th style="color:var(--blue)">Real. T2</th><th style="color:var(--green)">Real. ADM</th>
-            <th>Total Real.</th><th>Falta</th><th>%</th><th title="(Programa + Estoque + Forecast) / (Forecast ÷ 30)">Dias Est.</th><th id="th-prog-ac" style="display:none">Ações</th>
+            <th>Total Real.</th><th>Falta</th><th>%</th><th title="(Estoque − Forecast) / (Forecast ÷ 30) — cobertura após descontar a demanda do mês">Dias Est.</th><th id="th-prog-ac" style="display:none">Ações</th>
           </tr></thead><tbody id="prog-body"></tbody></table></div>
         </div>
       </div>
@@ -1226,7 +1226,7 @@ function renderProgTable(termo) {
     const refDat = _refs.find(x => x.cod === r.ref_cod);
     const estoque  = +(refDat?.estoque_atual  || 0);
     const forecast = +(refDat?.forecast_mensal || 0);
-    const dias = forecast > 0 ? ((mT + estoque + forecast) * 30 / forecast) : null;
+    const dias = forecast > 0 ? ((estoque - forecast) * 30 / forecast) : null;
     const diasHtml = dias == null ? '<td style="color:var(--muted)">—</td>'
       : `<td style="font-weight:600;color:${dias>=30?'var(--green)':dias>=15?'#f59e0b':'var(--red)'}">${dias.toFixed(1)}d</td>`;
     return `<tr style="${alerta?'background:rgba(204,0,0,.08);outline:1px solid rgba(204,0,0,.3)':''}">
@@ -1926,11 +1926,11 @@ function renderEstoqueTable(rows) {
     // planilhas só com a coluna FORECAST total — nesses casos ele não é
     // recalculado a partir das parcelas e pode não bater com o que está na tela.
     const fcDiverge = forecast !== (miSomado + me);
-    const programa = +r.meta_total || 0;
 
     let diasHtml = '—';
     if (forecast > 0) {
-      const dias = (programa + total + forecast) / (forecast / 30);
+      // Cobertura depois de descontar a demanda do mês: negativo = já falta.
+      const dias = (total - forecast) / (forecast / 30);
       const cor = dias >= 30 ? 'var(--green)' : dias >= 15 ? '#f59e0b' : 'var(--red)';
       diasHtml = `<span style="font-weight:700;color:${cor}">${dias.toFixed(1)}</span>`;
     }
