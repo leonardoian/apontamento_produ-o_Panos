@@ -24,10 +24,18 @@ export default async function handler(req, res) {
             COALESCE(SUM(CASE WHEN e.cd='CD-MTZ' AND e.deposito='0802' THEN e.quantidade END), 0)::int AS mtz_0802,
             COALESCE(SUM(CASE WHEN e.cd='CD-SP'  AND e.deposito='0803' THEN e.quantidade END), 0)::int AS sp_0803,
             COALESCE(SUM(CASE WHEN e.cd='CD-PE'  AND e.deposito='0803' THEN e.quantidade END), 0)::int AS pe_0803,
-            COALESCE(SUM(p.meta_turno * p.num_turnos) FILTER (WHERE p.mes_ano = ${mes} AND p.ativo = true), 0)::int AS meta_total
+            COALESCE(MAX(pr.meta_total), 0)::int AS meta_total
           FROM referencias r
           LEFT JOIN estoque e ON e.ref_cod = r.cod
-          LEFT JOIN programa p ON p.ref_cod = r.cod
+          -- programa agregado ANTES do join: unir as duas tabelas direto na referencia
+          -- multiplicava cada saldo pelo nº de linhas de programa da referência
+          -- (de todos os meses, pois o FILTER só limitava a soma, não o join).
+          LEFT JOIN (
+            SELECT ref_cod, SUM(meta_turno * num_turnos)::int AS meta_total
+            FROM programa
+            WHERE mes_ano = ${mes} AND ativo = true
+            GROUP BY ref_cod
+          ) pr ON pr.ref_cod = r.cod
           WHERE r.ativo = true
           GROUP BY r.cod, r.descricao, r.celula, r.estoque_atual, r.forecast_mensal, r.forecast_mi_pe, r.forecast_mi_sp, r.forecast_mi_mtz, r.forecast_me
           ORDER BY r.cod`
@@ -54,7 +62,38 @@ export default async function handler(req, res) {
 
   if (req.method === "POST") {
     if (u.perfil !== "admin") return res.status(403).json({ error: "Acesso negado" });
-    const { registros, forecast } = getBody(req);
+    const { registros, forecast, iniciar, finalizar, marcador } = getBody(req);
+
+    // A importação envia os saldos em lotes, então não dá para limpar o estoque
+    // antes de inserir: o 1º lote apagaria tudo e uma falha no meio deixaria o
+    // saldo pela metade. Em vez disso, marca-se o instante de início e, só
+    // depois que TODOS os lotes passaram, zera-se o que não foi tocado.
+    if (iniciar) {
+      try {
+        // ::timestamp para bater com o tipo da coluna atualizado_em — NOW() é
+        // timestamptz e a comparação passaria a depender do fuso da sessão.
+        const [{ agora }] = await sql`SELECT NOW()::timestamp AS agora`;
+        return res.status(200).json({ ok: true, marcador: agora });
+      } catch (e) {
+        return res.status(500).json({ error: e.message });
+      }
+    }
+
+    if (finalizar) {
+      if (!marcador) return res.status(400).json({ error: "marcador obrigatório" });
+      try {
+        // Zera em vez de apagar: mantém a linha visível e preserva
+        // `atualizado_em` como a marca da última atualização real.
+        const zeradas = await sql`
+          UPDATE estoque SET quantidade = 0
+          WHERE atualizado_em < ${marcador} AND quantidade <> 0
+          RETURNING 1`;
+        return res.status(200).json({ ok: true, zeradas: zeradas.length });
+      } catch (e) {
+        return res.status(500).json({ error: e.message });
+      }
+    }
+
     const BATCH = 50;
     const runBatch = async (items, fn) => {
       for (let i = 0; i < items.length; i += BATCH) {
