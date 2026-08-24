@@ -169,7 +169,7 @@
           <div style="overflow-x:auto"><table><thead><tr>
             <th>Cód.</th><th>Descrição</th><th>Meta/Turno</th><th>Nº Turnos</th><th>Meta Total</th>
             <th style="color:var(--accent)">Real. T1</th><th style="color:var(--blue)">Real. T2</th><th style="color:var(--green)">Real. ADM</th>
-            <th>Total Real.</th><th>Falta</th><th>%</th><th title="(Estoque − Forecast) / (Forecast ÷ 30) — cobertura após descontar a demanda do mês">Dias Est.</th><th id="th-prog-ac" style="display:none">Ações</th>
+            <th>Total Real.</th><th>Falta</th><th>%</th><th id="th-prog-ac" style="display:none">Ações</th>
           </tr></thead><tbody id="prog-body"></tbody></table></div>
         </div>
       </div>
@@ -1223,12 +1223,6 @@ function renderProgTable(termo) {
     const rADM = _progLancs.filter(l=>l.ref_cod===r.ref_cod&&l.turno==='ADM').reduce((s,l)=>s+(+l.realizado||0),0);
     const rT = rT1+rT2+rADM; const p = mT>0?rT/mT:0;
     const alerta = mesAtual && diasRestantes <= 10 && diasRestantes >= 0 && p < 0.6;
-    const refDat = _refs.find(x => x.cod === r.ref_cod);
-    const estoque  = +(refDat?.estoque_atual  || 0);
-    const forecast = +(refDat?.forecast_mensal || 0);
-    const dias = forecast > 0 ? ((estoque - forecast) * 30 / forecast) : null;
-    const diasHtml = dias == null ? '<td style="color:var(--muted)">—</td>'
-      : `<td style="font-weight:600;color:${dias>=30?'var(--green)':dias>=15?'#f59e0b':'var(--red)'}">${dias.toFixed(1)}d</td>`;
     return `<tr style="${alerta?'background:rgba(204,0,0,.08);outline:1px solid rgba(204,0,0,.3)':''}">
         <td style="font-family:monospace;font-size:11px">${r.ref_cod}</td>
         <td style="max-width:220px;font-size:12px">${alerta?`<span title="Abaixo de 60% com ${diasRestantes} dia(s) restantes" style="color:var(--red);margin-right:4px">⚠</span>`:''}${r.descricao}</td>
@@ -1241,7 +1235,6 @@ function renderProgTable(termo) {
         <td><strong>${fmt(rT)}</strong></td>
         <td style="color:${mT-rT<=0?'var(--green)':'var(--red)'}">${mT-rT>0?fmt(mT-rT):'✓'}</td>
         <td class="${p>=1?'ok':p>=.8?'warn':'bad'}">${pct(rT,mT)}</td>
-        ${diasHtml}
         ${isAdmin?`<td><div style="display:flex;gap:4px"><button class="btn bs bsm" onclick="openEditProg('${r.ref_cod}',${+r.meta_turno||0},${+r.num_turnos||2})" title="Editar">✎</button><button class="btn bd bsm" onclick="deleteProg('${r.ref_cod}','${mes}','${celula}')" title="Remover">✕</button></div></td>`:''}
       </tr>`;
   }).join('');
@@ -1259,13 +1252,13 @@ function renderProgTable(termo) {
         <td style="color:var(--blue)">${fmt(rT2)}</td>
         <td style="color:var(--green)">${fmt(rADM)}</td>
         <td><strong>${fmt(rT)}</strong></td>
-        <td>—</td><td>—</td><td>—</td>
+        <td>—</td><td>—</td>
         ${isAdmin?'<td></td>':''}
       </tr>`;
   }).join('');
 
   tbody.innerHTML = !rowsF.length && !semProgF.length
-    ? `<tr><td colspan="12" class="empty"><div class="ei">☰</div>${t ? 'Nenhuma referência encontrada para "' + termo + '".' : 'Nenhuma referência no programa. ' + (isAdmin?'Clique em "+ Adicionar Referência".':'')}</td></tr>`
+    ? `<tr><td colspan="11" class="empty"><div class="ei">☰</div>${t ? 'Nenhuma referência encontrada para "' + termo + '".' : 'Nenhuma referência no programa. ' + (isAdmin?'Clique em "+ Adicionar Referência".':'')}</td></tr>`
     : rowProgHtml + rowSemProgHtml;
 }
 
