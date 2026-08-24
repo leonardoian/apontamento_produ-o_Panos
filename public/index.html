@@ -802,6 +802,18 @@
   </div>
 </div>
 
+<!-- MODAL EVOLUÇÃO DO ESTOQUE -->
+<div id="modal-hist" style="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:none;align-items:center;justify-content:center">
+  <div style="background:var(--surface);border:1px solid var(--border);border-top:3px solid var(--accent);width:760px;max-width:95vw;max-height:90vh;overflow-y:auto;padding:26px">
+    <div style="font:700 20px/1 var(--fh);margin-bottom:4px" id="modal-hist-title">EVOLUÇÃO DO ESTOQUE</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:18px" id="modal-hist-sub"></div>
+    <div id="modal-hist-body"></div>
+    <div style="display:flex;justify-content:flex-end;margin-top:20px">
+      <button class="btn bs bsm" onclick="closeModalHist()">Fechar</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL ALTERAR SENHA (própria) -->
 <div id="modal-senha" style="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:none;align-items:center;justify-content:center">
   <div style="background:var(--surface);border:1px solid var(--border);border-top:3px solid var(--blue);width:400px;max-width:95vw;padding:26px">
@@ -1931,7 +1943,11 @@ function renderEstoqueTable(rows) {
     const fmtN = n => n > 0 ? fmt(n) : '<span style="color:var(--muted)">—</span>';
     return `<tr>
       <td style="color:var(--muted);font-size:11px">${i+1}</td>
-      <td style="font-family:monospace;font-size:11px;font-weight:600">${r.cod}</td>
+      <td style="font-family:monospace;font-size:11px;font-weight:600">
+        <span onclick="verHistoricoEstoque('${r.cod}')"
+              title="Ver evolução do estoque"
+              style="cursor:pointer;border-bottom:1px dotted var(--muted)">${r.cod}</span>
+      </td>
       <td style="font-size:11px;max-width:200px">${r.descricao||''}</td>
       <td style="text-align:right;background:rgba(6,182,212,.04)">${fmtN(mtz0860)}</td>
       <td style="text-align:right;background:rgba(6,182,212,.04)">${fmtN(mtz0803)}</td>
@@ -1949,6 +1965,100 @@ function renderEstoqueTable(rows) {
       <td style="text-align:right">${diasHtml}</td>
     </tr>`;
   }).join('');
+}
+
+function closeModalHist() {
+  document.getElementById('modal-hist').style.display = 'none';
+}
+
+// Série do estoque de uma referência, um ponto por importação.
+async function verHistoricoEstoque(cod) {
+  const modal = document.getElementById('modal-hist');
+  // Descrição vem de _estRows em vez do onclick: evita quebrar o atributo
+  // quando ela contém aspas.
+  const descricao = (_estRows.find(r => r.cod === cod) || {}).descricao || '';
+  document.getElementById('modal-hist-title').textContent = cod;
+  document.getElementById('modal-hist-sub').textContent = descricao;
+  document.getElementById('modal-hist-body').innerHTML =
+    '<div style="padding:30px;text-align:center"><span class="loading"></span></div>';
+  modal.style.display = 'flex';
+
+  let serie;
+  try {
+    serie = await GET('estoque?historico=1&ref=' + encodeURIComponent(cod));
+  } catch (e) {
+    document.getElementById('modal-hist-body').innerHTML =
+      `<div style="color:var(--red);padding:20px">${e.message}</div>`;
+    return;
+  }
+
+  if (!serie.length) {
+    document.getElementById('modal-hist-body').innerHTML =
+      `<div style="color:var(--muted);padding:24px;line-height:1.7">
+        Nenhum histórico ainda para esta referência.<br>
+        O histórico começa a ser registrado a partir da próxima importação de estoque.
+      </div>`;
+    return;
+  }
+
+  const dt = s => new Date(s).toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit' });
+  const dias = (t, f) => f > 0 ? (t - f) / (f / 30) : null;
+
+  // ── Gráfico: estoque x forecast. Onde a linha do estoque cruza abaixo da
+  // linha do forecast, a referência está em ruptura (Dias Est. negativo).
+  let grafico = '';
+  if (serie.length > 1) {
+    const W = 700, H = 190, P = 34;
+    const vals = serie.flatMap(s => [+s.total || 0, +s.forecast_mensal || 0]);
+    const max  = Math.max(...vals, 1);
+    const x = i => P + i * (W - P * 2) / (serie.length - 1);
+    const y = v => H - P - (v / max) * (H - P * 2);
+    const pts = f => serie.map((s, i) => `${x(i)},${y(f(s))}`).join(' ');
+    grafico = `
+      <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;margin-bottom:18px">
+        <line x1="${P}" y1="${H-P}" x2="${W-P}" y2="${H-P}" stroke="var(--border)"/>
+        <line x1="${P}" y1="${P}"   x2="${P}"   y2="${H-P}" stroke="var(--border)"/>
+        <text x="${P-6}" y="${P+4}"   text-anchor="end" fill="var(--muted)" font-size="10">${fmt(max)}</text>
+        <text x="${P-6}" y="${H-P+4}" text-anchor="end" fill="var(--muted)" font-size="10">0</text>
+        <polyline fill="none" stroke="#8b5cf6" stroke-width="1.5" stroke-dasharray="4 3"
+                  points="${pts(s => +s.forecast_mensal || 0)}"/>
+        <polyline fill="none" stroke="var(--accent)" stroke-width="2"
+                  points="${pts(s => +s.total || 0)}"/>
+        ${serie.map((s, i) => `<circle cx="${x(i)}" cy="${y(+s.total||0)}" r="3" fill="var(--accent)"><title>${dt(s.importado_em)}: ${fmt(s.total)}</title></circle>`).join('')}
+      </svg>
+      <div style="display:flex;gap:18px;font-size:11px;color:var(--muted);margin-bottom:16px">
+        <span><span style="display:inline-block;width:14px;height:2px;background:var(--accent);vertical-align:middle"></span> Estoque total</span>
+        <span><span style="display:inline-block;width:14px;height:2px;background:#8b5cf6;vertical-align:middle"></span> Forecast — abaixo desta linha há ruptura</span>
+      </div>`;
+  }
+
+  const linhas = [...serie].reverse().map(s => {
+    const d = dias(+s.total || 0, +s.forecast_mensal || 0);
+    const cor = d == null ? 'var(--muted)' : d >= 30 ? 'var(--green)' : d >= 15 ? '#f59e0b' : 'var(--red)';
+    return `<tr>
+      <td>${dt(s.importado_em)}</td>
+      <td style="text-align:right">${fmt(s.mtz_0860)}</td>
+      <td style="text-align:right">${fmt(s.mtz_0803)}</td>
+      <td style="text-align:right">${fmt(s.mtz_0802)}</td>
+      <td style="text-align:right">${fmt(s.sp_0803)}</td>
+      <td style="text-align:right">${fmt(s.pe_0803)}</td>
+      <td style="text-align:right;font-weight:700">${fmt(s.total)}</td>
+      <td style="text-align:right">${s.forecast_mensal != null ? fmt(s.forecast_mensal) : '—'}</td>
+      <td style="text-align:right;font-weight:700;color:${cor}">${d == null ? '—' : d.toFixed(1)}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('modal-hist-body').innerHTML = grafico + `
+    <div style="overflow-x:auto"><table style="width:100%;font-size:12px">
+      <thead><tr>
+        <th style="text-align:left">Importação</th>
+        <th style="text-align:right">0860</th><th style="text-align:right">0803</th>
+        <th style="text-align:right">0802</th><th style="text-align:right">SP</th>
+        <th style="text-align:right">PE</th><th style="text-align:right">Total</th>
+        <th style="text-align:right">Forecast</th><th style="text-align:right">Dias Est.</th>
+      </tr></thead>
+      <tbody>${linhas}</tbody>
+    </table></div>`;
 }
 
 function downloadModeloEstoque() {

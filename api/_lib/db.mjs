@@ -112,6 +112,23 @@ export async function initDB(sql) {
       atualizado_em TIMESTAMP DEFAULT NOW(),
       UNIQUE(ref_cod, cd, deposito)
     )`,
+    // `estoque` guarda só a foto atual: cada importação sobregrava a anterior.
+    // Este histórico registra um snapshot por importação, permitindo ver a
+    // evolução do saldo e quando uma referência entrou em ruptura.
+    // importado_em = o marcador da importação, igual para todas as linhas dela.
+    sql`CREATE TABLE IF NOT EXISTS estoque_historico (
+      id SERIAL PRIMARY KEY,
+      importado_em TIMESTAMP NOT NULL,
+      ref_cod VARCHAR(30) NOT NULL,
+      mtz_0860 INT DEFAULT 0,
+      mtz_0803 INT DEFAULT 0,
+      mtz_0802 INT DEFAULT 0,
+      sp_0803 INT DEFAULT 0,
+      pe_0803 INT DEFAULT 0,
+      total INT DEFAULT 0,
+      forecast_mensal INT,
+      UNIQUE(importado_em, ref_cod)
+    )`,
   ]);
 
   // Fase 2: ALTER TABLE em paralelo (depende das tabelas existirem)
@@ -124,6 +141,10 @@ export async function initDB(sql) {
     sql`ALTER TABLE referencias ADD COLUMN IF NOT EXISTS forecast_mi_sp  INT DEFAULT NULL`,
     sql`ALTER TABLE referencias ADD COLUMN IF NOT EXISTS forecast_mi_mtz INT DEFAULT NULL`,
     sql`ALTER TABLE referencias ADD COLUMN IF NOT EXISTS forecast_me     INT DEFAULT NULL`,
+    // Série de uma referência ao longo do tempo (tela de evolução).
+    sql`CREATE INDEX IF NOT EXISTS ix_est_hist_ref ON estoque_historico (ref_cod, importado_em DESC)`,
+    // Lista de importações e leitura de um snapshot inteiro.
+    sql`CREATE INDEX IF NOT EXISTS ix_est_hist_data ON estoque_historico (importado_em DESC)`,
   ]);
 
   // Fase 3: normalização de dados legados em paralelo
