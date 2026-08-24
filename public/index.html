@@ -477,8 +477,9 @@
         <!-- instruções formato -->
         <div id="est-fmt-info" style="display:none;background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.25);padding:12px 16px;margin-bottom:12px;font-size:12px;color:var(--muted);line-height:1.8">
           <strong style="color:var(--text)">Formato da planilha de estoque (aba ESTOQUE):</strong><br>
-          Colunas obrigatórias: <code>COD_REF · MTZ_0860 · MTZ_0803 · SP_0803 · PE_0803</code><br>
-          Colunas opcionais de forecast: <code>FC_MI_PE</code>, <code>FC_MI_SP</code>, <code>FC_MI_MTZ</code>, <code>FC_ME</code>
+          Colunas obrigatórias: <code>COD_REF · MTZ_0860 · MTZ_0803 · MTZ_0802 · SP_0803 · PE_0803</code><br>
+          Colunas opcionais de forecast: <code>FC_MI_PE</code>, <code>FC_MI_SP</code>, <code>FC_MI_MTZ</code>, <code>FC_ME</code><br>
+          O cabeçalho pode estar em qualquer uma das 15 primeiras linhas. Valores decimais são arredondados.
           <button class="btn bs bsm" style="margin-left:12px" onclick="downloadModeloEstoque()">⬇ Baixar Modelo</button>
         </div>
 
@@ -856,7 +857,17 @@ async function api(method, path, body) {
   };
   if (body) opts.body = JSON.stringify(body);
   const r = await fetch(API + '/' + path, opts);
-  const data = await r.json();
+  // A Vercel devolve HTML (não JSON) em timeout/erro de plataforma — não deixa o
+  // SyntaxError do parse mascarar a causa real.
+  const raw = await r.text();
+  let data;
+  try { data = raw ? JSON.parse(raw) : {}; }
+  catch {
+    if (r.status === 504 || /FUNCTION_INVOCATION_TIMEOUT/i.test(raw))
+      throw new Error('O servidor demorou demais e cancelou a operação (timeout). Tente com menos linhas por vez.');
+    if (r.status === 413) throw new Error('Arquivo grande demais para enviar de uma vez.');
+    throw new Error('Resposta inesperada do servidor (HTTP ' + r.status + ').');
+  }
   if (r.status === 401 && path !== 'login') {
     doLogout();
     toast('Sua sessão expirou. Faça login novamente.', 'info', 5000);
@@ -1984,7 +1995,7 @@ async function importarEstoqueFile(input) {
       const wb = XLSX.read(e.target.result, { type: 'array' });
       const sheetName = wb.SheetNames.find(n => n.toUpperCase().includes('ESTOQUE')) || wb.SheetNames[0];
       const ws   = wb.Sheets[sheetName];
-      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', blankrows: false });
       if (rows.length < 2) {
         _estProgSet(0); _estProgHide();
         if (btn) { btn.disabled = false; btn.style.opacity = ''; }
@@ -1992,43 +2003,99 @@ async function importarEstoqueFile(input) {
       }
       _estProgSet(35, 'Lendo referências...');
 
-      const normH = s => String(s||'').trim().toUpperCase().replace(/[\s\-_.]/g,'');
-      const hdr = rows[0].map(normH);
-      const ci = k => hdr.findIndex(h => h === k);
-      const ciAny = ks => { for (const k of ks) { const i = ci(k); if (i>=0) return i; } return -1; };
-      const iCod  = ci('CODREF'); if (iCod < 0) { _estProgSet(0); _estProgHide(); if (btn) { btn.disabled=false; btn.style.opacity=''; } toast('Coluna COD_REF não encontrada.','err'); return; }
-      const iM60  = ci('MTZ0860');
-      const iM03  = ci('MTZ0803');
-      const iM02  = ci('MTZ0802');
-      const iSP   = ci('SP0803');
-      const iPE   = ci('PE0803');
-      const iFcPe  = ciAny(['FCMIPE','FORECASTMIPE','FORECASTMERCADOINTERNOPE']);
-      const iFcSp  = ciAny(['FCMISP','FCMICDSP','FORECASTMISP','FORECASTMERCADOINTERNOIDSP','FORECASTMICDSP']);
-      const iFcMtz = ciAny(['FCMIMTZ','FORECASTMIMTZ','FORECASTMERCADOINTERNOMTZ']);
-      const iFcMe  = ciAny(['FCME','FORECASTME','FORECASTMERCADOEXTERNO','FORECASTEXTERNO']);
-      const iFc    = ciAny(['FORECAST','FORECASTTOTAL','PREVISAO','PREVISÃO']);
+      // Tira acentos e pontuação: "Forecast M.I. - PE" → "FORECASTMIPE"
+      const normH = s => String(s||'').trim().toUpperCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+        .replace(/[^A-Z0-9]/g,'');
+
+      // O cabeçalho nem sempre está na primeira linha (título, logo, linha em
+      // branco). Pega, entre as 15 primeiras, a que tiver mais palavras-chave.
+      const HKEYS = ['CODREF','CODIGO','MTZ0860','MTZ0803','MTZ0802','SP0803','PE0803','FORECAST','FCMI'];
+      let hi = 0, hiScore = 0;
+      for (let i = 0; i < Math.min(rows.length, 15); i++) {
+        const joined = rows[i].map(normH).join('|');
+        const score = HKEYS.reduce((s,k) => s + (joined.includes(k) ? 1 : 0), 0);
+        if (score > hiScore) { hiScore = score; hi = i; }
+      }
+      if (!hiScore) {
+        _estProgSet(0); _estProgHide();
+        if (btn) { btn.disabled = false; btn.style.opacity = ''; }
+        toast('Não encontrei a linha de cabeçalho (COD_REF, MTZ_0860...).', 'err'); return;
+      }
+      const hdr = rows[hi].map(normH);
+
+      // Igualdade primeiro, depois "começa com" e "contém". O `used` impede que
+      // a coluna genérica FORECAST roube uma coluna de breakdown.
+      const used = new Set();
+      const findCol = keys => {
+        const tests = [(h,k) => h === k, (h,k) => h.startsWith(k), (h,k) => h.includes(k)];
+        for (const test of tests) {
+          for (const k of keys) {
+            const i = hdr.findIndex((h, ix) => h && !used.has(ix) && test(h, k));
+            if (i >= 0) { used.add(i); return i; }
+          }
+        }
+        return -1;
+      };
+
+      const iCod = findCol(['CODREF','CODIGOREF','CODPRODUTO','REFERENCIA','CODIGO','COD']);
+      if (iCod < 0) {
+        _estProgSet(0); _estProgHide();
+        if (btn) { btn.disabled = false; btn.style.opacity = ''; }
+        toast('Coluna COD_REF não encontrada.','err'); return;
+      }
+      const iM60 = findCol(['MTZ0860','CDMTZ0860','MATRIZ0860','0860']);
+      const iM03 = findCol(['MTZ0803','CDMTZ0803','MATRIZ0803']);
+      const iM02 = findCol(['MTZ0802','CDMTZ0802','MATRIZ0802','0802']);
+      const iSP  = findCol(['SP0803','CDSP0803','CDSP']);
+      const iPE  = findCol(['PE0803','CDPE0803','CDPE']);
+      // Breakdown antes do total: a chave genérica FORECAST casaria com qualquer um.
+      const iFcPe  = findCol(['FCMIPE','FORECASTMIPE','FORECASTMERCADOINTERNOPE','FCPE']);
+      const iFcSp  = findCol(['FCMISP','FCMICDSP','FORECASTMISP','FORECASTMICDSP','FORECASTMERCADOINTERNOSP','FORECASTMERCADOINTERNOCDSP','FCSP']);
+      const iFcMtz = findCol(['FCMIMTZ','FORECASTMIMTZ','FORECASTMERCADOINTERNOMTZ','FCMTZ']);
+      const iFcMe  = findCol(['FCME','FORECASTME','FORECASTMERCADOEXTERNO','FORECASTEXTERNO','MERCADOEXTERNO']);
+      const iFc    = findCol(['FORECASTTOTAL','FORECASTMENSAL','FORECAST','PREVISAO','PREVVENDA']);
+
+      if (iM60 < 0 && iM03 < 0 && iM02 < 0 && iSP < 0 && iPE < 0) {
+        _estProgSet(0); _estProgHide();
+        if (btn) { btn.disabled = false; btn.style.opacity = ''; }
+        toast('Nenhuma coluna de depósito encontrada (MTZ_0860, MTZ_0803, SP_0803...).','err'); return;
+      }
+
+      // Relatórios do SAP trazem "12.500" / "12.500,75" como texto: +"12.500"
+      // é NaN e zerava o valor sem avisar.
+      const toNum = v => {
+        if (v == null || v === '') return 0;
+        if (typeof v === 'number') return Math.round(v);
+        let s = String(v).trim().replace(/[^\d,.\-]/g, '');
+        if (!s || s === '-') return 0;
+        if (s.includes(',')) s = s.replace(/\./g, '').replace(',', '.');
+        else if (/^-?\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, '');
+        const n = parseFloat(s);
+        return isNaN(n) ? 0 : Math.round(n);
+      };
+      const hasBreakdown = iFcPe >= 0 || iFcSp >= 0 || iFcMtz >= 0 || iFcMe >= 0;
 
       const registros = [];
       const forecast  = [];
-      for (let r = 1; r < rows.length; r++) {
+      for (let r = hi + 1; r < rows.length; r++) {
         const cod = String(rows[r][iCod]||'').trim().toUpperCase();
         if (!cod) continue;
-        if (iM60 >= 0) registros.push({ ref_cod: cod, cd: 'CD-MTZ', deposito: '0860', quantidade: +rows[r][iM60]||0 });
-        if (iM03 >= 0) registros.push({ ref_cod: cod, cd: 'CD-MTZ', deposito: '0803', quantidade: +rows[r][iM03]||0 });
-        if (iM02 >= 0) registros.push({ ref_cod: cod, cd: 'CD-MTZ', deposito: '0802', quantidade: +rows[r][iM02]||0 });
-        if (iSP  >= 0) registros.push({ ref_cod: cod, cd: 'CD-SP',  deposito: '0803', quantidade: +rows[r][iSP] ||0 });
-        if (iPE  >= 0) registros.push({ ref_cod: cod, cd: 'CD-PE',  deposito: '0803', quantidade: +rows[r][iPE] ||0 });
-        const hasBreakdown = iFcPe>=0 || iFcSp>=0 || iFcMtz>=0 || iFcMe>=0;
+        if (iM60 >= 0) registros.push({ ref_cod: cod, cd: 'CD-MTZ', deposito: '0860', quantidade: toNum(rows[r][iM60]) });
+        if (iM03 >= 0) registros.push({ ref_cod: cod, cd: 'CD-MTZ', deposito: '0803', quantidade: toNum(rows[r][iM03]) });
+        if (iM02 >= 0) registros.push({ ref_cod: cod, cd: 'CD-MTZ', deposito: '0802', quantidade: toNum(rows[r][iM02]) });
+        if (iSP  >= 0) registros.push({ ref_cod: cod, cd: 'CD-SP',  deposito: '0803', quantidade: toNum(rows[r][iSP]) });
+        if (iPE  >= 0) registros.push({ ref_cod: cod, cd: 'CD-PE',  deposito: '0803', quantidade: toNum(rows[r][iPE]) });
         if (hasBreakdown) {
           forecast.push({
             ref_cod: cod,
-            forecast_mi_pe:  iFcPe  >= 0 ? +rows[r][iFcPe]  || 0 : null,
-            forecast_mi_sp:  iFcSp  >= 0 ? +rows[r][iFcSp]  || 0 : null,
-            forecast_mi_mtz: iFcMtz >= 0 ? +rows[r][iFcMtz] || 0 : null,
-            forecast_me:     iFcMe  >= 0 ? +rows[r][iFcMe]  || 0 : null,
+            forecast_mi_pe:  iFcPe  >= 0 ? toNum(rows[r][iFcPe])  : null,
+            forecast_mi_sp:  iFcSp  >= 0 ? toNum(rows[r][iFcSp])  : null,
+            forecast_mi_mtz: iFcMtz >= 0 ? toNum(rows[r][iFcMtz]) : null,
+            forecast_me:     iFcMe  >= 0 ? toNum(rows[r][iFcMe])  : null,
           });
-        } else if (iFc >= 0 && rows[r][iFc] !== '') {
-          forecast.push({ ref_cod: cod, forecast_mensal: +rows[r][iFc]||0 });
+        } else if (iFc >= 0 && String(rows[r][iFc]).trim() !== '') {
+          forecast.push({ ref_cod: cod, forecast_mensal: toNum(rows[r][iFc]) });
         }
       }
 
@@ -2037,14 +2104,54 @@ async function importarEstoqueFile(input) {
         if (btn) { btn.disabled = false; btn.style.opacity = ''; }
         toast('Nenhuma linha válida encontrada.', 'err'); return;
       }
-      _estProgSet(50, `Enviando ${registros.length} registros de estoque${forecast.length ? ' e ' + forecast.length + ' previsões' : ''}...`);
-      document.getElementById('est-prog-bar')?.classList.add('sending');
-      await POST('estoque', { registros, forecast });
-      document.getElementById('est-prog-bar')?.classList.remove('sending');
+
+      // Envia em lotes: um POST único com milhares de upserts estourava o tempo
+      // da função serverless e a Vercel devolvia HTML de timeout no lugar do JSON.
+      const regPorCod = new Map();
+      for (const x of registros) {
+        if (!regPorCod.has(x.ref_cod)) regPorCod.set(x.ref_cod, []);
+        regPorCod.get(x.ref_cod).push(x);
+      }
+      const fcPorCod = new Map(forecast.map(f => [f.ref_cod, f]));
+      const codigos  = [...regPorCod.keys()];
+
+      const LOTE = 100;
+      const totalLotes = Math.ceil(codigos.length / LOTE);
+      const barra = document.getElementById('est-prog-bar');
+      const semCadastro = [];          // amostra p/ exibir
+      let semCadastroTotal = 0;        // contagem real (a amostra vem truncada)
+      let fcSalvos = 0;
+      barra?.classList.add('sending');
+      for (let i = 0; i < codigos.length; i += LOTE) {
+        const grupo   = codigos.slice(i, i + LOTE);
+        const nLote   = Math.floor(i / LOTE) + 1;
+        const loteReg = grupo.flatMap(c => regPorCod.get(c) || []);
+        const loteFc  = grupo.map(c => fcPorCod.get(c)).filter(Boolean);
+        _estProgSet(40 + Math.round(nLote / totalLotes * 55),
+          `Enviando lote ${nLote}/${totalLotes} — ${Math.min(i + LOTE, codigos.length)}/${codigos.length} referências...`);
+        let resp;
+        try {
+          resp = await POST('estoque', { registros: loteReg, forecast: loteFc });
+        } catch (e) {
+          // Os lotes anteriores já foram gravados: deixa claro que parou no meio.
+          e.message = `${e.message} (parou no lote ${nLote} de ${totalLotes}; os ${i} primeiros códigos já foram gravados)`;
+          throw e;
+        }
+        fcSalvos += resp?.forecast || 0;
+        semCadastroTotal += resp?.nao_cadastradas_total || 0;
+        if (resp?.nao_cadastradas?.length && semCadastro.length < 5) semCadastro.push(...resp.nao_cadastradas);
+      }
+      barra?.classList.remove('sending');
       _estProgSet(100, `Concluído!`);
-      const fcMsg = forecast.length ? ` · ${forecast.length} previsões salvas` : ' · sem colunas de forecast no arquivo';
+      const fcMsg = fcSalvos ? ` · ${fcSalvos} previsões salvas` : ' · sem colunas de forecast no arquivo';
       toast(`Estoque atualizado: ${registros.length} saldos${fcMsg}`, 'ok');
-      if (!forecast.length) toast('Para importar o forecast, use a tela de Importar (importar.html)', 'info', 6000);
+      if (!forecast.length) {
+        toast('Nenhuma coluna de forecast reconhecida (FC_MI_PE, FC_MI_SP, FC_MI_MTZ, FC_ME).', 'info', 6000);
+      } else if (semCadastroTotal) {
+        // Sem linha em `referencias` o forecast não tem onde ser gravado e a
+        // referência nem aparece nesta tela.
+        toast(`${semCadastroTotal} código(s) não estão cadastrados em Referências e ficaram sem forecast: ${semCadastro.slice(0,5).join(', ')}${semCadastroTotal>5?'...':''}`, 'err', 12000);
+      }
       _estProgHide();
       if (btn) { btn.disabled = false; btn.style.opacity = ''; }
       renderEstoque();
