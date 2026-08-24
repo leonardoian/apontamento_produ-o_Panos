@@ -129,44 +129,6 @@ export async function initDB(sql) {
       forecast_mensal INT,
       UNIQUE(importado_em, ref_cod)
     )`,
-    // ─── Lista técnica (BOM) ────────────────────────────────────────────
-    // Só COMPONENTES: o acabado é a própria linha em `referencias`, ligada
-    // por código (idênticos nos dois sistemas). Evita duplicar a referência.
-    sql`CREATE TABLE IF NOT EXISTS materiais (
-      id BIGSERIAL PRIMARY KEY,
-      codigo VARCHAR(60) UNIQUE NOT NULL,
-      descricao VARCHAR(200) NOT NULL,
-      umc VARCHAR(10) NOT NULL DEFAULT 'PC',
-      criado_em TIMESTAMP DEFAULT NOW()
-    )`,
-    // Estoque dos componentes. Nome distinto de `estoque` de propósito:
-    // aquela é a de produto acabado, por CD/depósito, com outro formato.
-    sql`CREATE TABLE IF NOT EXISTS estoque_materiais (
-      material_id BIGINT PRIMARY KEY,
-      qtd_atual NUMERIC(14,2) NOT NULL DEFAULT 0,
-      atualizado_em TIMESTAMP DEFAULT NOW()
-    )`,
-    // BOM de 1 nível. pcs_por_umc = quantas peças produzidas consomem uma
-    // unidade de compra do componente (ex.: caixa de 6 -> 6).
-    sql`CREATE TABLE IF NOT EXISTS bom_itens (
-      id BIGSERIAL PRIMARY KEY,
-      ref_cod VARCHAR(30) NOT NULL,
-      material_id BIGINT NOT NULL,
-      pcs_por_umc NUMERIC(14,4) NOT NULL CHECK (pcs_por_umc > 0),
-      atualizado_em TIMESTAMP DEFAULT NOW(),
-      UNIQUE(ref_cod, material_id)
-    )`,
-    // Pedidos por (mês do programa, componente) — vários por item.
-    sql`CREATE TABLE IF NOT EXISTS pedidos_compra (
-      id BIGSERIAL PRIMARY KEY,
-      mes_ano VARCHAR(7) NOT NULL,
-      material_id BIGINT NOT NULL,
-      numero_pedido VARCHAR(60),
-      qtd_pedida NUMERIC(14,2),
-      previsao_entrega DATE,
-      entregue BOOLEAN NOT NULL DEFAULT false,
-      criado_em TIMESTAMP DEFAULT NOW()
-    )`,
   ]);
 
   // Fase 2: ALTER TABLE em paralelo (depende das tabelas existirem)
@@ -183,10 +145,6 @@ export async function initDB(sql) {
     sql`CREATE INDEX IF NOT EXISTS ix_est_hist_ref ON estoque_historico (ref_cod, importado_em DESC)`,
     // Lista de importações e leitura de um snapshot inteiro.
     sql`CREATE INDEX IF NOT EXISTS ix_est_hist_data ON estoque_historico (importado_em DESC)`,
-    // BOM: explosão por referência (cálculo) e "onde se usa" por componente.
-    sql`CREATE INDEX IF NOT EXISTS ix_bom_ref ON bom_itens (ref_cod)`,
-    sql`CREATE INDEX IF NOT EXISTS ix_bom_mat ON bom_itens (material_id)`,
-    sql`CREATE INDEX IF NOT EXISTS ix_ped_mes ON pedidos_compra (mes_ano, material_id)`,
   ]);
 
   // Fase 3: normalização de dados legados em paralelo
