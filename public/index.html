@@ -501,6 +501,7 @@
                   <th rowspan="2" style="text-align:right">Total Est.</th>
                   <th colspan="4" style="text-align:center;background:rgba(139,92,246,.1);border-bottom:2px solid #8b5cf6;color:#8b5cf6;letter-spacing:1px">FORECAST MI</th>
                   <th rowspan="2" style="text-align:right;background:rgba(16,185,129,.06);color:var(--green)">FC Externo</th>
+                  <th rowspan="2" style="text-align:right;font-weight:700" title="Forecast MI Somado + FC Externo — é este o valor que entra no cálculo de Dias Est.">FC Total</th>
                   <th rowspan="2" style="text-align:right">Dias Est.</th>
                 </tr>
                 <tr>
@@ -1880,13 +1881,13 @@ async function renderEstoque() {
   const mes = mesSel?.value || curMes();
 
   const tbody = document.getElementById('est-body');
-  tbody.innerHTML = `<tr><td colspan="16" class="empty"><span class="loading"></span></td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="17" class="empty"><span class="loading"></span></td></tr>`;
   try {
     _estRows = await GET('estoque?mes=' + mes);
     document.getElementById('est-busca').value = '';
     filterEstoque();
   } catch(e) {
-    tbody.innerHTML = `<tr><td colspan="16" class="empty" style="color:var(--red)">${e.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="17" class="empty" style="color:var(--red)">${e.message}</td></tr>`;
   }
 }
 
@@ -1904,7 +1905,7 @@ function renderEstoqueTable(rows) {
   const diasMes = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
 
   if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="16" class="empty"><div class="ei">▣</div>Nenhum registro encontrado.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="17" class="empty"><div class="ei">▣</div>Nenhum registro encontrado.</td></tr>`;
     return;
   }
   tbody.innerHTML = rows.map((r, i) => {
@@ -1921,6 +1922,10 @@ function renderEstoqueTable(rows) {
     const miSomado = miPe + miSp + miMtz;
     const me       = +r.forecast_me    || 0;
     const forecast = +r.forecast_mensal || (miSomado + me);
+    // forecast_mensal também é gravado pelo modal de edição da referência e por
+    // planilhas só com a coluna FORECAST total — nesses casos ele não é
+    // recalculado a partir das parcelas e pode não bater com o que está na tela.
+    const fcDiverge = forecast !== (miSomado + me);
     const programa = +r.meta_total || 0;
 
     let diasHtml = '—';
@@ -1947,6 +1952,7 @@ function renderEstoqueTable(rows) {
       <td style="text-align:right;background:rgba(139,92,246,.04);font-size:11px">${fmtN(miMtz)}</td>
       <td style="text-align:right;background:rgba(139,92,246,.1);font-weight:700">${fmtN(miSomado)}</td>
       <td style="text-align:right;background:rgba(16,185,129,.06);color:var(--green);font-size:11px">${fmtN(me)}</td>
+      <td style="text-align:right;font-weight:700"${fcDiverge ? ` title="Divergente: a soma das parcelas dá ${fmtN(miSomado + me)}, mas forecast_mensal está gravado como ${fmtN(forecast)}"` : ''}>${fmtN(forecast)}${fcDiverge ? ' <span style="color:#f59e0b">⚠</span>' : ''}</td>
       <td style="text-align:right">${diasHtml}</td>
     </tr>`;
   }).join('');
