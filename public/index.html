@@ -990,7 +990,7 @@ async function showApp() {
 // ═══════════════════════════════════════
 async function loadMeses() {
   try {
-    _meses = await GET('meses');
+    _meses = await GET('dashboard?recurso=meses');
     const cur = curMes();
     ['dash-mes','prog-mes','graf-mes','op-mes'].forEach(id => {
       const sel = document.getElementById(id);
@@ -2823,7 +2823,7 @@ async function salvarSenha() {
   if (nova.length < 6) { toast('A nova senha deve ter pelo menos 6 caracteres.', 'err'); return; }
   if (nova !== conf) { toast('As senhas não coincidem.', 'err'); return; }
   try {
-    await POST('senha', { senha_atual: atual, nova_senha: nova });
+    await POST('usuarios?recurso=senha', { senha_atual: atual, nova_senha: nova });
     document.getElementById('modal-senha').style.display = 'none';
     toast('Senha alterada com sucesso!');
   } catch(e) { if (!e.sessionExpired) toast('Erro: ' + e.message, 'err'); }
@@ -2844,7 +2844,7 @@ async function salvarResetSenha() {
   if (nova.length < 6) { toast('A senha deve ter pelo menos 6 caracteres.', 'err'); return; }
   if (nova !== conf) { toast('As senhas não coincidem.', 'err'); return; }
   try {
-    await POST('senha', { login: _resetSenhaLogin, nova_senha: nova });
+    await POST('usuarios?recurso=senha', { login: _resetSenhaLogin, nova_senha: nova });
     document.getElementById('modal-reset-senha').style.display = 'none';
     toast('Senha de ' + _resetSenhaLogin + ' redefinida com sucesso!');
   } catch(e) { if (!e.sessionExpired) toast('Erro: ' + e.message, 'err'); }
@@ -2856,7 +2856,7 @@ async function salvarResetSenha() {
 async function init() {
   if (TOKEN) {
     try {
-      USER = await GET('me');
+      USER = await GET('usuarios?recurso=me');
       showApp();
     } catch { TOKEN = null; localStorage.removeItem('sp_token'); }
   }
