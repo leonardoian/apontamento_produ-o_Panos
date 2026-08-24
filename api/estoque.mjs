@@ -61,40 +61,60 @@ export default async function handler(req, res) {
         await Promise.all(items.slice(i, i + BATCH).map(fn));
       }
     };
+    // quantidade/forecast são INT no banco: a planilha traz decimais
+    // ("5892.328") e o Postgres recusa o valor inteiro.
+    const toInt = v => {
+      const n = Math.round(Number(v));
+      return Number.isFinite(n) ? n : 0;
+    };
     try {
+      const regs = Array.isArray(registros) ? registros.filter(r => r?.ref_cod) : [];
+      const fc   = Array.isArray(forecast)  ? forecast.filter(f => f?.ref_cod)  : [];
+
+      // O UPDATE de forecast casa por `cod`: sem a linha em referencias ele
+      // atinge 0 registros e não acusa erro. Levanta os códigos ausentes numa
+      // query só para poder avisar quem importou, em vez de perder o dado.
+      const existentes = new Set((await sql`SELECT cod FROM referencias`).map(r => String(r.cod).toUpperCase()));
+      const codigos = [...new Set([...regs, ...fc].map(x => String(x.ref_cod).toUpperCase()))];
+      const naoCadastradas = codigos.filter(c => !existentes.has(c));
+
       // Upsert saldos em paralelo (batches de 50)
-      if (Array.isArray(registros)) {
-        await runBatch(registros, r =>
-          sql`INSERT INTO estoque (ref_cod, cd, deposito, quantidade, atualizado_em)
-            VALUES (${r.ref_cod}, ${r.cd}, ${r.deposito}, ${r.quantidade ?? 0}, NOW())
-            ON CONFLICT (ref_cod, cd, deposito) DO UPDATE
-            SET quantidade = EXCLUDED.quantidade, atualizado_em = NOW()`
-        );
-      }
+      await runBatch(regs, r =>
+        sql`INSERT INTO estoque (ref_cod, cd, deposito, quantidade, atualizado_em)
+          VALUES (${String(r.ref_cod).toUpperCase()}, ${r.cd}, ${r.deposito}, ${toInt(r.quantidade)}, NOW())
+          ON CONFLICT (ref_cod, cd, deposito) DO UPDATE
+          SET quantidade = EXCLUDED.quantidade, atualizado_em = NOW()`
+      );
+
       // Atualiza forecast nas referências em paralelo (batches de 50)
-      if (Array.isArray(forecast)) {
-        const fc = forecast.filter(f => f.ref_cod);
-        await runBatch(fc, f => {
-          const hasBreakdown = f.forecast_mi_pe != null || f.forecast_mi_sp != null || f.forecast_mi_mtz != null || f.forecast_me != null;
-          if (hasBreakdown) {
-            const pe  = +f.forecast_mi_pe  || 0;
-            const sp  = +f.forecast_mi_sp  || 0;
-            const mtz = +f.forecast_mi_mtz || 0;
-            const me  = +f.forecast_me     || 0;
-            return sql`UPDATE referencias SET
-              forecast_mi_pe  = ${pe},
-              forecast_mi_sp  = ${sp},
-              forecast_mi_mtz = ${mtz},
-              forecast_me     = ${me},
-              forecast_mensal = ${pe + sp + mtz + me}
-              WHERE cod = ${f.ref_cod}`;
-          } else if (f.forecast_mensal != null) {
-            return sql`UPDATE referencias SET forecast_mensal = ${f.forecast_mensal} WHERE cod = ${f.ref_cod}`;
-          }
-          return Promise.resolve();
-        });
-      }
-      return res.status(200).json({ ok: true });
+      await runBatch(fc, f => {
+        const cod = String(f.ref_cod).toUpperCase();
+        const hasBreakdown = f.forecast_mi_pe != null || f.forecast_mi_sp != null || f.forecast_mi_mtz != null || f.forecast_me != null;
+        if (hasBreakdown) {
+          const pe  = toInt(f.forecast_mi_pe);
+          const sp  = toInt(f.forecast_mi_sp);
+          const mtz = toInt(f.forecast_mi_mtz);
+          const me  = toInt(f.forecast_me);
+          return sql`UPDATE referencias SET
+            forecast_mi_pe  = ${pe},
+            forecast_mi_sp  = ${sp},
+            forecast_mi_mtz = ${mtz},
+            forecast_me     = ${me},
+            forecast_mensal = ${pe + sp + mtz + me}
+            WHERE UPPER(cod) = ${cod}`;
+        } else if (f.forecast_mensal != null) {
+          return sql`UPDATE referencias SET forecast_mensal = ${toInt(f.forecast_mensal)} WHERE UPPER(cod) = ${cod}`;
+        }
+        return Promise.resolve();
+      });
+
+      return res.status(200).json({
+        ok: true,
+        saldos: regs.length,
+        forecast: fc.filter(f => existentes.has(String(f.ref_cod).toUpperCase())).length,
+        nao_cadastradas: naoCadastradas.slice(0, 20),
+        nao_cadastradas_total: naoCadastradas.length,
+      });
     } catch (e) {
       return res.status(500).json({ error: e.message });
     }
