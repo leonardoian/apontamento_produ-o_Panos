@@ -13,6 +13,32 @@ export default async function handler(req, res) {
 
   if (req.method === "GET") {
     const mes = req.query?.mes || "";
+
+    // ?historico=1&ref=COD -> série daquela referência
+    // ?historico=1         -> importações registradas, com o total consolidado
+    if (req.query?.historico) {
+      const ref = String(req.query?.ref || "").toUpperCase();
+      try {
+        const rows = ref
+          ? await sql`
+            SELECT importado_em, mtz_0860, mtz_0803, mtz_0802, sp_0803, pe_0803, total, forecast_mensal
+            FROM estoque_historico
+            WHERE UPPER(ref_cod) = ${ref}
+            ORDER BY importado_em`
+          : await sql`
+            SELECT importado_em,
+                   COUNT(*)::int        AS referencias,
+                   SUM(total)::int      AS total_geral
+            FROM estoque_historico
+            GROUP BY importado_em
+            ORDER BY importado_em DESC
+            LIMIT 60`;
+        return res.status(200).json(rows);
+      } catch (e) {
+        return res.status(500).json({ error: e.message });
+      }
+    }
+
     try {
       const rows = mes
         ? await sql`
@@ -88,7 +114,30 @@ export default async function handler(req, res) {
           UPDATE estoque SET quantidade = 0
           WHERE atualizado_em < ${marcador} AND quantidade <> 0
           RETURNING 1`;
-        return res.status(200).json({ ok: true, zeradas: zeradas.length });
+
+        // Snapshot depois da varredura, para registrar o estado final de fato.
+        // Uma linha por referência (não por depósito): mantém o histórico leve
+        // e ainda preserva a quebra por CD nas colunas.
+        const snap = await sql`
+          INSERT INTO estoque_historico
+            (importado_em, ref_cod, mtz_0860, mtz_0803, mtz_0802, sp_0803, pe_0803, total, forecast_mensal)
+          SELECT
+            ${marcador}, r.cod,
+            COALESCE(SUM(CASE WHEN e.cd='CD-MTZ' AND e.deposito='0860' THEN e.quantidade END), 0)::int,
+            COALESCE(SUM(CASE WHEN e.cd='CD-MTZ' AND e.deposito='0803' THEN e.quantidade END), 0)::int,
+            COALESCE(SUM(CASE WHEN e.cd='CD-MTZ' AND e.deposito='0802' THEN e.quantidade END), 0)::int,
+            COALESCE(SUM(CASE WHEN e.cd='CD-SP'  AND e.deposito='0803' THEN e.quantidade END), 0)::int,
+            COALESCE(SUM(CASE WHEN e.cd='CD-PE'  AND e.deposito='0803' THEN e.quantidade END), 0)::int,
+            COALESCE(SUM(e.quantidade), 0)::int,
+            r.forecast_mensal
+          FROM referencias r
+          LEFT JOIN estoque e ON e.ref_cod = r.cod
+          WHERE r.ativo = true
+          GROUP BY r.cod, r.forecast_mensal
+          ON CONFLICT (importado_em, ref_cod) DO NOTHING
+          RETURNING 1`;
+
+        return res.status(200).json({ ok: true, zeradas: zeradas.length, historico: snap.length });
       } catch (e) {
         return res.status(500).json({ error: e.message });
       }
