@@ -2121,6 +2121,11 @@ async function importarEstoqueFile(input) {
       const fcPorCod = new Map(forecast.map(f => [f.ref_cod, f]));
       const codigos  = [...regPorCod.keys()];
 
+      // Marcador do relógio do banco: tudo que não for gravado a partir daqui
+      // é saldo antigo e será zerado no final. Pedido ao servidor para não
+      // depender do relógio da máquina de quem importa.
+      const { marcador } = await POST('estoque', { iniciar: true });
+
       const LOTE = 100;
       const totalLotes = Math.ceil(codigos.length / LOTE);
       const barra = document.getElementById('est-prog-bar');
@@ -2147,10 +2152,16 @@ async function importarEstoqueFile(input) {
         semCadastroTotal += resp?.nao_cadastradas_total || 0;
         if (resp?.nao_cadastradas?.length && semCadastro.length < 5) semCadastro.push(...resp.nao_cadastradas);
       }
+      // Só chega aqui se todos os lotes passaram — uma falha acima lança e
+      // pula a varredura, deixando o estoque como estava em vez de zerá-lo.
+      _estProgSet(97, 'Zerando saldos ausentes da planilha...');
+      const { zeradas } = await POST('estoque', { finalizar: true, marcador });
+
       barra?.classList.remove('sending');
       _estProgSet(100, `Concluído!`);
       const fcMsg = fcSalvos ? ` · ${fcSalvos} previsões salvas` : ' · sem colunas de forecast no arquivo';
-      toast(`Estoque atualizado: ${registros.length} saldos${fcMsg}`, 'ok');
+      const zeroMsg = zeradas ? ` · ${zeradas} saldo(s) ausentes da planilha zerados` : '';
+      toast(`Estoque atualizado: ${registros.length} saldos${fcMsg}${zeroMsg}`, 'ok');
       if (!forecast.length) {
         toast('Nenhuma coluna de forecast reconhecida (FC_MI_PE, FC_MI_SP, FC_MI_MTZ, FC_ME).', 'info', 6000);
       } else if (semCadastroTotal) {
