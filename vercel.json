@@ -3,6 +3,9 @@
     "api/**/*.mjs": { "maxDuration": 60 }
   },
   "rewrites": [
+    { "source": "/api/me", "destination": "/api/usuarios?recurso=me" },
+    { "source": "/api/senha", "destination": "/api/usuarios?recurso=senha" },
+    { "source": "/api/meses", "destination": "/api/dashboard?recurso=meses" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }
