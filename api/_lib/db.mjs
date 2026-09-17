@@ -129,6 +129,29 @@ export async function initDB(sql) {
       criado_em TIMESTAMP DEFAULT NOW(),
       ativo BOOLEAN DEFAULT true
     )`,
+    // Estado da tarefa por pessoa. Existe SEMPRE uma linha por participante
+    // (inclusive o dono), então a agenda do dia é uma só consulta, igual para
+    // tarefa solo e compartilhada. O que muda é a propagação da ação:
+    // tarefas.status_individual = false -> marcar/adiar vale para todas as linhas
+    // tarefas.status_individual = true  -> vale só para a linha de quem clicou
+    sql`CREATE TABLE IF NOT EXISTS tarefa_participantes (
+      id SERIAL PRIMARY KEY,
+      tarefa_id INT NOT NULL,
+      usuario_login VARCHAR(50) NOT NULL,
+      data DATE NOT NULL,
+      status VARCHAR(12) DEFAULT 'pendente',
+      obs_status TEXT,
+      adiamentos INT DEFAULT 0,
+      concluida_em TIMESTAMP,
+      UNIQUE(tarefa_id, usuario_login)
+    )`,
+    // Participantes de uma meta de grupo (o dono também entra aqui).
+    sql`CREATE TABLE IF NOT EXISTS meta_participantes (
+      id SERIAL PRIMARY KEY,
+      meta_id INT NOT NULL,
+      usuario_login VARCHAR(50) NOT NULL,
+      UNIQUE(meta_id, usuario_login)
+    )`,
     sql`CREATE TABLE IF NOT EXISTS metas_usuario (
       id SERIAL PRIMARY KEY,
       usuario_login VARCHAR(50) NOT NULL,
@@ -176,6 +199,16 @@ export async function initDB(sql) {
     sql`CREATE INDEX IF NOT EXISTS idx_tarefas_user_data ON tarefas(usuario_login, data)`,
     sql`CREATE INDEX IF NOT EXISTS idx_tarefas_data      ON tarefas(data)`,
     sql`CREATE INDEX IF NOT EXISTS idx_metas_user        ON metas_usuario(usuario_login, ativo)`,
+    // Tarefa compartilhada: quem marcou como feita leva o crédito nas
+    // estatísticas e nas metas — sem isso uma tarefa de 3 pessoas fechada
+    // uma vez contaria 3×.
+    sql`ALTER TABLE tarefas ADD COLUMN IF NOT EXISTS status_individual BOOLEAN DEFAULT false`,
+    sql`ALTER TABLE tarefas ADD COLUMN IF NOT EXISTS concluida_por VARCHAR(50) DEFAULT NULL`,
+    // A agenda do dia entra sempre por (usuario_login, data) desta tabela.
+    sql`CREATE INDEX IF NOT EXISTS idx_tpart_user_data ON tarefa_participantes(usuario_login, data)`,
+    sql`CREATE INDEX IF NOT EXISTS idx_tpart_tarefa    ON tarefa_participantes(tarefa_id)`,
+    sql`CREATE INDEX IF NOT EXISTS idx_mpart_user      ON meta_participantes(usuario_login)`,
+    sql`CREATE INDEX IF NOT EXISTS idx_mpart_meta      ON meta_participantes(meta_id)`,
     // Série de uma referência ao longo do tempo (tela de evolução).
     sql`CREATE INDEX IF NOT EXISTS ix_est_hist_ref ON estoque_historico (ref_cod, importado_em DESC)`,
     // Lista de importações e leitura de um snapshot inteiro.
@@ -206,6 +239,14 @@ export async function initDB(sql) {
     sql`UPDATE programa SET celula = 'RevendaIndustrial'  WHERE LOWER(REPLACE(celula,' ','')) = 'revendaindustrial'`,
     sql`UPDATE programa SET celula = 'BettaninIndustrial' WHERE LOWER(REPLACE(celula,' ','')) = 'bettaninindustrial'`,
     sql`UPDATE programa    SET celula = 'ImportacaoManual'  WHERE LOWER(REPLACE(celula,' ','')) IN ('importacaomanual','importaçãotrabalho','importacaotrabalho')`,
+    // Tarefas/metas criadas antes dos participantes ganham a linha do dono.
+    // ON CONFLICT torna isto idempotente — roda a cada cold start sem efeito.
+    sql`INSERT INTO tarefa_participantes (tarefa_id, usuario_login, data, status, obs_status, adiamentos, concluida_em)
+        SELECT id, usuario_login, data, status, obs_status, adiamentos, concluida_em FROM tarefas
+        ON CONFLICT (tarefa_id, usuario_login) DO NOTHING`,
+    sql`INSERT INTO meta_participantes (meta_id, usuario_login)
+        SELECT id, usuario_login FROM metas_usuario
+        ON CONFLICT (meta_id, usuario_login) DO NOTHING`,
   ]);
 
   // Fase 4: usuário admin padrão

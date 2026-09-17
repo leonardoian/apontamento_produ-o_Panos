@@ -65,7 +65,7 @@ Acesse `http://localhost:3000`.
 │   ├── _lib/
 │   │   └── db.mjs           # Conexão Neon, helpers de auth, CORS e initDB
 │   ├── login.mjs            # POST /api/login
-│   ├── usuarios.mjs         # CRUD de usuários + /api/me + /api/senha (?recurso=)
+│   ├── usuarios.mjs         # CRUD + /api/me + /api/senha + colegas (?recurso=)
 │   ├── referencias.mjs      # CRUD de referências de produtos
 │   ├── programa.mjs         # Programa mensal por célula
 │   ├── lancamentos.mjs      # Apontamentos (GET / POST / PUT / DELETE)
@@ -176,6 +176,23 @@ Módulo de organização do dia a dia, separado da produção de máquina. Uma a
 **Metas** — cada usuário cria as suas; o admin também pode atribuir metas a qualquer pessoa. Dois tipos:
 - `tarefas`: alvo em quantidade de tarefas concluídas no dia/semana/mês, com filtro opcional por célula — **o progresso sobe sozinho** conforme as tarefas são marcadas como feitas
 - `numerica`: alvo livre (ex: "reduzir refugo para 2%") com o valor atual atualizado à mão no próprio card
+
+#### Tarefas e metas de mais de uma pessoa
+
+Qualquer usuário pode marcar colegas ao criar uma tarefa ou meta (a lista de nomes vem de `usuarios?recurso=colegas`, que devolve só login e nome).
+
+**Tarefa compartilhada** tem dois modos, escolhidos no checkbox *"cada participante marca o seu"*:
+
+| Modo | Comportamento |
+|------|---------------|
+| **Trabalho único** (padrão) | Quem marcar como feita fecha para todos, e a linha ganha o selo *feita por Maria*. Adiar também move o dia de todo mundo. |
+| **Cada um o seu** | Cada participante tem status e adiamento próprios. A linha mostra `✔ João ○ Maria ○ Pedro` e o contador *1 concluiu*. |
+
+**Meta de grupo**: um alvo só, e o progresso é a soma da contribuição de todos — o card mostra a quebra por pessoa (`👥 João 30 · Maria 25 · Pedro 13`).
+
+> **Crédito:** numa tarefa de trabalho único, o "feita" conta para quem marcou (`tarefas.concluida_por`). Sem essa regra, uma tarefa de 3 pessoas fechada uma vez contaria **3×** no comparativo da equipe e na meta do grupo. Na agenda de quem não marcou ela some das pendências e aparece no gráfico como *fechadas por colegas*, fora do total.
+
+> **Quem pode o quê:** participante age no próprio status, adia e pode **sair** da tarefa (o `DELETE` dele remove só a própria participação). Editar, trocar a equipe ou excluir de vez é do admin, de quem criou ou do responsável. O responsável nunca é removido da própria tarefa.
 
 **Gráfico** — evolução das atividades no período (7 dias, 30 dias, mês ou intervalo livre):
 - Barras empilhadas por dia (feitas / não feitas / pendentes)
@@ -328,9 +345,38 @@ As tabelas são criadas automaticamente na primeira requisição via `initDB()`.
 | `adiamentos` | INT | Quantas vezes já foi adiada |
 | `concluida_em` | TIMESTAMP | Quando foi marcada como feita |
 | `criado_por` | VARCHAR | Quem criou (admin, quando atribuída) |
+| `status_individual` | BOOLEAN | `true` = cada participante marca o seu; `false` = trabalho único |
+| `concluida_por` | VARCHAR | Quem fechou (trabalho único) — é quem leva o crédito |
 | `ativo` | BOOLEAN | Soft-delete |
 
+> `status`, `obs_status`, `adiamentos` e `concluida_em` em `tarefas` são **legado**: a agenda lê tudo de `tarefa_participantes`. Só `data`, `data_original` e `concluida_por` continuam sendo consultados aqui.
+
+### `tarefa_participantes`
+
+O estado da tarefa **por pessoa**. Existe sempre uma linha por participante, inclusive o responsável — assim a agenda do dia é uma consulta só, igual para tarefa solo e de equipe.
+
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| `id` | SERIAL PK | |
+| `tarefa_id` | INT | Tarefa |
+| `usuario_login` | VARCHAR | Participante |
+| `data` | DATE | O dia **dela** — no modo individual cada um adia o seu |
+| `status` | VARCHAR | `pendente`, `feita` ou `nao_feita` |
+| `obs_status` | TEXT | Motivo do "não feita" |
+| `adiamentos` | INT | Adiamentos desta pessoa |
+| `concluida_em` | TIMESTAMP | Quando ela concluiu |
+| | | `UNIQUE(tarefa_id, usuario_login)` |
+
 > Pendentes com `data` anterior ao dia consultado voltam como **atrasadas** — nada se perde de vista.
+
+### `meta_participantes`
+
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| `id` | SERIAL PK | |
+| `meta_id` | INT | Meta |
+| `usuario_login` | VARCHAR | Participante (o responsável também entra) |
+| | | `UNIQUE(meta_id, usuario_login)` |
 
 ### `metas_usuario`
 
@@ -445,6 +491,15 @@ Body: { "senha_atual": "atual", "nova_senha": "nova123" }
 Body: { "login": "operador1", "nova_senha": "nova123" }
 ```
 
+### Colegas (seletor de participantes)
+
+```
+GET /api/usuarios?recurso=colegas
+Response: [{ "login": "joao", "nome": "João Silva" }, ...]
+```
+
+> Liberado para **qualquer usuário logado** — é o que alimenta o seletor de participantes da Agenda. Devolve só login e nome dos ativos, ordenados por nome: sem perfil, sem hash. O CRUD de `/api/usuarios` continua exigindo admin.
+
 ### Meses disponíveis
 
 ```
@@ -475,25 +530,32 @@ GET    /api/agenda?recurso=tarefas&de=2026-09-01&ate=2026-09-30[&usuario=joao]
 POST   /api/agenda?recurso=tarefas
 Body:  { "titulo": "Conferir contagem do CD 03", "data": "2026-09-17",
          "descricao": "", "celula": "Panos", "prioridade": "alta",
-         "usuario_login": "joao" }   # usuario_login: só admin
+         "usuario_login": "joao",          # responsável: só admin define outro
+         "participantes": ["maria","pedro"],  # qualquer um pode chamar colegas
+         "status_individual": false }      # true = cada um marca o seu
 
 PUT    /api/agenda?recurso=tarefas
 Body:  { "id": 1, "status": "feita" }                              # feita | nao_feita | pendente
 Body:  { "id": 1, "status": "nao_feita", "obs_status": "faltou material" }
 Body:  { "id": 1, "acao": "adiar", "nova_data": "2026-09-18" }     # +1 em adiamentos
-Body:  { "id": 1, "titulo": "...", "data": "...", "prioridade": "media", "celula": null }
+Body:  { "id": 1, "titulo": "...", "data": "...", "prioridade": "media", "celula": null,
+         "participantes": ["maria"], "status_individual": true }   # edita a equipe
 
 DELETE /api/agenda?recurso=tarefas
-Body:  { "id": 1 }                                                 # soft-delete
+Body:  { "id": 1 }
+# admin / criador / responsável -> soft-delete da tarefa (para todos)
+# participante comum          -> remove só a própria participação ({ saiu: true })
 ```
 
 ```
 # Metas com progresso já calculado
 GET    /api/agenda?recurso=metas&mes=2026-09&hoje=2026-09-17[&usuario=joao]
+# cada meta traz `progresso` (soma) e `por_pessoa`: [{ login, nome, progresso }]
 
 POST   /api/agenda?recurso=metas
 Body:  { "titulo": "Concluir 40 tarefas", "tipo": "tarefas", "periodo": "mes",
-         "mes_ano": "2026-09", "alvo": 40, "celula": "Panos" }
+         "mes_ano": "2026-09", "alvo": 40, "celula": "Panos",
+         "participantes": ["maria","pedro"] }   # meta do grupo: progresso somado
 Body:  { "titulo": "Reduzir refugo p/ 2%", "tipo": "numerica", "periodo": "mes",
          "mes_ano": "2026-09", "alvo": 2, "atual": 1.2, "unidade": "%" }
 
@@ -509,7 +571,8 @@ GET /api/agenda?recurso=stats&de=2026-09-01&ate=2026-09-30[&usuario=joao|TODOS][
 Response: {
   "de", "ate",
   "serie":      [{ "data", "feitas", "nao_feitas", "pendentes" }],
-  "resumo":     { "total", "feitas", "nao_feitas", "pendentes", "adiamentos" },
+  "resumo":     { "total", "feitas", "feitas_equipe", "nao_feitas", "pendentes",
+                  "adiamentos", "compartilhadas" },
   "por_celula": [{ "celula", "feitas", "total" }],
   "equipe":     [{ "usuario_login", "nome", "total", "feitas", ... }]
 }
@@ -525,7 +588,7 @@ O plano Hobby permite **12 funções serverless por deploy**. Por isso alguns ha
 
 | Arquivo | Endpoints |
 |---------|-----------|
-| `usuarios.mjs` | `/api/usuarios` · `?recurso=me` · `?recurso=senha` |
+| `usuarios.mjs` | `/api/usuarios` · `?recurso=me` · `?recurso=senha` · `?recurso=colegas` |
 | `dashboard.mjs` | `/api/dashboard` · `?recurso=meses` |
 | `agenda.mjs` | `?recurso=tarefas` · `?recurso=metas` · `?recurso=stats` |
 

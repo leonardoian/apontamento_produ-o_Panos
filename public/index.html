@@ -775,6 +775,8 @@
                     <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Não feitas</span><span id="ag-r-nao" style="font:600 12px var(--fb);color:var(--red)">—</span></div>
                     <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Pendentes</span><span id="ag-r-pend" style="font:600 12px var(--fb)">—</span></div>
                     <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:8px"><span style="color:var(--muted);font-size:11px">Adiamentos</span><span id="ag-r-adi" style="font:600 12px var(--fb);color:var(--orange)">—</span></div>
+                    <div style="display:flex;justify-content:space-between" title="Tarefas compartilhadas que um colega fechou — não entram no seu total"><span style="color:var(--muted);font-size:11px">Fechadas por colegas</span><span id="ag-r-equipe" style="font:600 12px var(--fb);color:var(--blue)">—</span></div>
+                    <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Compartilhadas</span><span id="ag-r-comp" style="font:600 12px var(--fb)">—</span></div>
                   </div>
                 </div>
               </div>
@@ -996,7 +998,18 @@
         <select id="t-prio"><option value="alta">Alta</option><option value="media" selected>Média</option><option value="baixa">Baixa</option></select>
       </div>
       <div class="fi"><label>Célula (opcional)</label><select id="t-celula"><option value="">— Sem célula —</option></select></div>
-      <div class="fi" id="t-user-wrap" style="display:none"><label>Para o usuário</label><select id="t-user"></select></div>
+      <div class="fi" id="t-user-wrap" style="display:none"><label>Responsável</label><select id="t-user" onchange="renderPartPicker('t')"></select></div>
+      <div class="fi" style="grid-column:1/-1">
+        <label>Participantes <span style="color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0">— marque quem mais entra nesta tarefa</span></label>
+        <input type="text" id="t-part-filtro" placeholder="Filtrar por nome ou login…" oninput="filtraPartPicker('t')"
+               style="background:var(--surface);border:1px solid var(--border);color:var(--text);padding:8px 11px;font:13px var(--fb);outline:none;margin-bottom:5px">
+        <div class="partbox" id="t-part-lista"></div>
+        <label class="partchk" id="t-individual-wrap">
+          <input type="checkbox" id="t-individual" onchange="dicaIndividual()">
+          <span>Cada participante marca o seu</span>
+        </label>
+        <div class="dica" id="t-individual-dica" style="font-size:11px;color:var(--muted)"></div>
+      </div>
     </div>
     <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:20px">
       <button class="btn bs bsm" onclick="document.getElementById('modal-tarefa').style.display='none'">Cancelar</button>
@@ -1027,7 +1040,13 @@
       <div class="fi" id="m-atual-wrap" style="display:none"><label>Valor Atual</label><input type="number" id="m-atual" min="0" step="0.01" placeholder="0"></div>
       <div class="fi" id="m-unid-wrap" style="display:none"><label>Unidade</label><input type="text" id="m-unid" placeholder="Ex: %, peças, kg" maxlength="20"></div>
       <div class="fi" id="m-celula-wrap"><label>Só tarefas da célula (opcional)</label><select id="m-celula"><option value="">— Todas as células —</option></select></div>
-      <div class="fi" id="m-user-wrap" style="display:none"><label>Para o usuário</label><select id="m-user"></select></div>
+      <div class="fi" id="m-user-wrap" style="display:none"><label>Responsável</label><select id="m-user" onchange="renderPartPicker('m')"></select></div>
+      <div class="fi" style="grid-column:1/-1">
+        <label>Participantes <span style="color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0">— meta do grupo: o progresso soma o de todos</span></label>
+        <input type="text" id="m-part-filtro" placeholder="Filtrar por nome ou login…" oninput="filtraPartPicker('m')"
+               style="background:var(--surface);border:1px solid var(--border);color:var(--text);padding:8px 11px;font:13px var(--fb);outline:none;margin-bottom:5px">
+        <div class="partbox" id="m-part-lista"></div>
+      </div>
     </div>
     <div id="m-hint" style="font-size:11px;color:var(--muted);margin-top:12px"></div>
     <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">
@@ -3050,7 +3069,10 @@ let _agDia   = null;
 let _agStats = null;
 let _agMetas = [];
 let _agUsers = [];
+let _agNomes = {};   // login -> nome, para os selos de participante
 let _adiarId = null, _naoFeitaId = null, _tarefaEditId = null, _metaEditId = null;
+const nomeDe = login => _agNomes[login] || login;
+const primeiroNome = login => nomeDe(login).split(' ')[0];
 
 const corPct = p => p >= 100 ? 'var(--green)' : p >= 60 ? 'var(--orange)' : 'var(--red)';
 const corHex = p => p >= 100 ? '#10b981'      : p >= 60 ? '#f97316'       : '#CC0000';
@@ -3079,21 +3101,77 @@ function agInit() {
   document.getElementById('ag-mes').value      = mesLocal();
   document.getElementById('ag-meta-mes').value = mesLocal();
   document.getElementById('ag-cal-dow').innerHTML = DOW.map(d => `<div class="caldow">${d}</div>`).join('');
-  if (USER?.perfil === 'admin') loadAgendaUsers();
+  loadAgendaUsers();   // todo mundo precisa da lista para montar equipe
   atualizaBadgeAgenda();
 }
 
+// Quem "sou eu" na agenda aberta: o admin pode estar vendo a de outra pessoa,
+// e é nessa linha que as ações dele recaem.
+function agEu() {
+  return agUser() || USER.login;
+}
+
+// `usuarios?recurso=colegas` devolve só login e nome e é liberado para qualquer
+// usuário logado — o CRUD de usuários continua exigindo admin.
 async function loadAgendaUsers() {
   try {
-    _agUsers = (await GET('usuarios')).filter(x => x.ativo !== false);
-    const opts = _agUsers.map(x => `<option value="${esc(x.login)}"${x.login === USER.login ? ' selected' : ''}>${esc(x.nome)} (${esc(x.login)})</option>`).join('');
-    document.getElementById('ag-user').innerHTML = opts;
-    document.getElementById('t-user').innerHTML  = opts;
-    document.getElementById('m-user').innerHTML  = opts;
-    document.getElementById('ag-graf-user').innerHTML = '<option value="TODOS">Toda a equipe</option>' + opts;
-    document.getElementById('ag-graf-user').value = USER.login;
-    ['ag-admin-bar','t-user-wrap','m-user-wrap','ag-graf-user-wrap'].forEach(id => document.getElementById(id).style.display = '');
-  } catch(e) { console.warn('Erro ao carregar usuários da agenda:', e); }
+    _agUsers = await GET('usuarios?recurso=colegas');
+    _agNomes = {};
+    _agUsers.forEach(x => _agNomes[x.login] = x.nome);
+    // Seletores de responsável / "Agenda de" só existem para o admin
+    if (USER?.perfil === 'admin') {
+      const opts = _agUsers.map(x => `<option value="${esc(x.login)}"${x.login === USER.login ? ' selected' : ''}>${esc(x.nome)} (${esc(x.login)})</option>`).join('');
+      document.getElementById('ag-user').innerHTML = opts;
+      document.getElementById('t-user').innerHTML  = opts;
+      document.getElementById('m-user').innerHTML  = opts;
+      document.getElementById('ag-graf-user').innerHTML = '<option value="TODOS">Toda a equipe</option>' + opts;
+      document.getElementById('ag-graf-user').value = USER.login;
+      ['ag-admin-bar','t-user-wrap','m-user-wrap','ag-graf-user-wrap'].forEach(id => document.getElementById(id).style.display = '');
+    }
+    renderPartPicker('t');
+    renderPartPicker('m');
+  } catch(e) { console.warn('Erro ao carregar colegas da agenda:', e); }
+}
+
+// ── SELETOR DE PARTICIPANTES ──
+// O responsável entra sempre (a API garante isso), então a linha dele fica
+// marcada e travada — não dá para "tirar o dono" da própria tarefa.
+function renderPartPicker(pfx, selecionados) {
+  const box = document.getElementById(pfx + '-part-lista');
+  if (!box) return;
+  const sel  = new Set(selecionados || partSelecionados(pfx));
+  const resp = respModal(pfx);
+  box.innerHTML = _agUsers.map(x => {
+    const fixo = x.login === resp;
+    return `<label class="partitem${fixo ? ' fixo' : ''}" data-busca="${esc((x.nome + ' ' + x.login).toLowerCase())}">
+      <input type="checkbox" value="${esc(x.login)}"${fixo || sel.has(x.login) ? ' checked' : ''}${fixo ? ' disabled' : ''}>
+      <span class="pnome">${esc(x.nome)}</span>
+      <span class="tag">${fixo ? 'responsável' : esc(x.login)}</span>
+    </label>`;
+  }).join('') || `<div style="padding:10px;color:var(--muted);font-size:12px">Nenhum colega cadastrado.</div>`;
+}
+
+function respModal(pfx) {
+  const sel = document.getElementById(pfx + '-user');
+  return (USER?.perfil === 'admin' && sel && sel.value) ? sel.value : USER?.login;
+}
+
+function partSelecionados(pfx) {
+  return [...document.querySelectorAll(`#${pfx}-part-lista input[type=checkbox]:checked`)].map(i => i.value);
+}
+
+function filtraPartPicker(pfx) {
+  const t = document.getElementById(pfx + '-part-filtro').value.trim().toLowerCase();
+  document.querySelectorAll(`#${pfx}-part-lista .partitem`).forEach(el => {
+    el.style.display = (!t || el.dataset.busca.includes(t)) ? '' : 'none';
+  });
+}
+
+function dicaIndividual() {
+  document.getElementById('t-individual-dica').textContent =
+    document.getElementById('t-individual').checked
+      ? 'Cada um marca e adia o seu. Serve para o que todos precisam fazer (treinamento, leitura de procedimento).'
+      : 'Trabalho único: quem marcar como feita fecha para todos, e o crédito fica com quem marcou.';
 }
 
 function renderAgenda() {
@@ -3190,12 +3268,37 @@ async function renderAgendaDia() {
 function tarefaRow(x, atrasada) {
   const cls  = x.status === 'feita' ? ' done' : x.status === 'nao_feita' ? ' nope' : '';
   const mark = x.status === 'feita' ? '✔'     : x.status === 'nao_feita' ? '✕' : '';
+  const eu        = agEu();
+  const time      = x.participantes || [];
+  const emEquipe  = +x.n_participantes > 1;
+  const souDono   = x.responsavel === eu || x.criado_por === eu || USER.perfil === 'admin';
+
   const meta = [`<span class="pri pri-${x.prioridade || 'media'}">${PRIO_LBL[x.prioridade] || 'MÉDIA'}</span>`];
   if (x.celula) meta.push(`<span class="tag">${esc(_CELULA_LABEL[x.celula] || x.celula)}</span>`);
   if (atrasada) meta.push(`<span class="tag" style="border-color:var(--red);color:var(--red)">de ${dataBR(x.data)}</span>`);
   if (+x.adiamentos > 0) meta.push(`<span class="tag" style="border-color:var(--orange);color:var(--orange)">adiada ${x.adiamentos}×</span>`);
-  if (x.criado_por && x.criado_por !== x.usuario_login) meta.push(`<span class="tag" style="border-color:var(--blue);color:var(--blue)">atribuída por ${esc(x.criado_por)}</span>`);
+  if (x.criado_por && x.criado_por !== x.usuario_login) meta.push(`<span class="tag" style="border-color:var(--blue);color:var(--blue)">atribuída por ${esc(nomeDe(x.criado_por))}</span>`);
+  if (emEquipe) meta.push(`<span class="tag" style="border-color:var(--blue);color:var(--blue)">${x.status_individual ? 'cada um o seu' : 'trabalho único'}</span>`);
+  // Trabalho único já fechado: mostra quem levou o crédito
+  if (emEquipe && !x.status_individual && x.status === 'feita' && x.concluida_por)
+    meta.push(`<span class="tag" style="border-color:var(--green);color:var(--green)">feita por ${esc(nomeDe(x.concluida_por))}</span>`);
   if (x.status === 'nao_feita' && x.obs_status) meta.push(`<span class="tag" style="border-color:var(--red);color:var(--red)">motivo: ${esc(x.obs_status)}</span>`);
+
+  // Equipe: no modo individual cada nome mostra o próprio status; no trabalho
+  // único é só a lista de quem está envolvido.
+  let linhaTime = '';
+  if (emEquipe) {
+    const nConcl = time.filter(p => p.status === 'feita').length;
+    const chips  = time.map(p => {
+      const c = p.status === 'feita' ? ' feito' : p.status === 'nao_feita' ? ' nfeito' : '';
+      const ic = x.status_individual ? (p.status === 'feita' ? '✔ ' : p.status === 'nao_feita' ? '✕ ' : '○ ') : '';
+      return `<span class="pquem${x.status_individual ? c : ''}${p.login === eu ? ' eu' : ''}" title="${esc(p.nome)}">${ic}${esc(primeiroNome(p.login))}</span>`;
+    }).join('');
+    linhaTime = `<div class="tkmeta">
+      <span style="font-size:11px;color:var(--muted)">👥 ${x.n_participantes} pessoas${x.status_individual ? ` · ${nConcl} concluiu` : ''}</span>
+      ${chips}
+    </div>`;
+  }
 
   return `<div class="tk${cls}">
     <div class="tkmark">${mark}</div>
@@ -3203,6 +3306,7 @@ function tarefaRow(x, atrasada) {
       <div class="tkt">${esc(x.titulo)}</div>
       ${x.descricao ? `<div class="tkd">${esc(x.descricao)}</div>` : ''}
       <div class="tkmeta">${meta.join('')}</div>
+      ${linhaTime}
     </div>
     <div class="tkacts">
       ${x.status === 'feita'
@@ -3210,15 +3314,17 @@ function tarefaRow(x, atrasada) {
         : `<button class="btn bs bsm" onclick="setStatusTarefa(${x.id},'feita')" title="Marcar como feita">✔ Feita</button>`}
       ${x.status !== 'nao_feita' ? `<button class="btn bs bsm" onclick="openModalNaoFeita(${x.id})" title="Não consegui fazer">✕ Não feita</button>` : ''}
       <button class="btn bs bsm" onclick="openModalAdiar(${x.id})" title="Deixar para outro dia">→ Adiar</button>
-      <button class="btn bs bsm" onclick="openModalTarefa(${x.id})" title="Editar">✎</button>
-      <button class="btn bd bsm" onclick="delTarefa(${x.id})" title="Excluir">🗑</button>
+      ${souDono ? `<button class="btn bs bsm" onclick="openModalTarefa(${x.id})" title="Editar">✎</button>` : ''}
+      ${souDono
+        ? `<button class="btn bd bsm" onclick="delTarefa(${x.id})" title="Excluir para todos">🗑</button>`
+        : `<button class="btn bd bsm" onclick="delTarefa(${x.id})" title="Sair desta tarefa (os outros continuam com ela)">⤴ Sair</button>`}
     </div>
   </div>`;
 }
 
 async function setStatusTarefa(id, status, obs) {
   try {
-    await PUT('agenda?recurso=tarefas', { id, status, obs_status: obs || '' });
+    await PUT('agenda?recurso=tarefas' + agQS(), { id, status, obs_status: obs || '' });
     toast(status === 'feita' ? 'Tarefa concluída!' : status === 'nao_feita' ? 'Marcada como não feita.' : 'Tarefa reaberta.');
     renderAgendaDia();
   } catch(e) { if (!e.sessionExpired) toast('Erro: ' + e.message, 'err'); }
@@ -3232,17 +3338,25 @@ async function addTarefaRapida() {
   const alvo = agUser();
   if (alvo) body.usuario_login = alvo;
   try {
-    await POST('agenda?recurso=tarefas', body);
+    await POST('agenda?recurso=tarefas' + agQS(), body);
     inp.value = '';
     renderAgendaDia();
   } catch(e) { if (!e.sessionExpired) toast('Erro: ' + e.message, 'err'); }
 }
 
 async function delTarefa(id) {
-  if (!confirm('Excluir esta tarefa?')) return;
+  const x        = agTarefa(id);
+  const eu       = agEu();
+  const souDono  = USER.perfil === 'admin' || x?.responsavel === eu || x?.criado_por === eu;
+  const emEquipe = +x?.n_participantes > 1;
+  // Participante comum não apaga o trabalho dos outros — só sai da tarefa.
+  const pergunta = souDono
+    ? (emEquipe ? `Excluir esta tarefa para todos os ${x.n_participantes} participantes?` : 'Excluir esta tarefa?')
+    : 'Sair desta tarefa? Ela continua com os outros participantes.';
+  if (!confirm(pergunta)) return;
   try {
-    await DELETE('agenda?recurso=tarefas', { id });
-    toast('Tarefa excluída.');
+    const r = await DELETE('agenda?recurso=tarefas' + agQS(), { id });
+    toast(r?.saiu ? 'Você saiu da tarefa.' : 'Tarefa excluída.');
     renderAgendaDia();
   } catch(e) { if (!e.sessionExpired) toast('Erro: ' + e.message, 'err'); }
 }
@@ -3253,7 +3367,7 @@ async function trazerAtrasadas() {
   if (!atr.length) return;
   if (!confirm(`Trazer ${atr.length} tarefa(s) atrasada(s) para ${dataBR(data)}?`)) return;
   try {
-    await Promise.all(atr.map(x => PUT('agenda?recurso=tarefas', { id: x.id, acao: 'adiar', nova_data: data })));
+    await Promise.all(atr.map(x => PUT('agenda?recurso=tarefas' + agQS(), { id: x.id, acao: 'adiar', nova_data: data })));
     toast(atr.length + ' tarefa(s) trazida(s) para ' + dataBR(data) + '.');
     renderAgendaDia();
   } catch(e) { if (!e.sessionExpired) toast('Erro: ' + e.message, 'err'); }
@@ -3270,9 +3384,14 @@ function openModalTarefa(id) {
   document.getElementById('t-prio').value   = t?.prioridade || 'media';
   document.getElementById('t-celula').value = t?.celula || '';
   if (USER.perfil === 'admin') {
-    document.getElementById('t-user').value    = t?.usuario_login || agUser() || USER.login;
-    document.getElementById('t-user').disabled = !!id;   // ao editar, o dono não muda
+    document.getElementById('t-user').value    = t?.responsavel || agUser() || USER.login;
+    document.getElementById('t-user').disabled = !!id;   // ao editar, o responsável não muda
   }
+  document.getElementById('t-individual').checked = !!t?.status_individual;
+  document.getElementById('t-part-filtro').value  = '';
+  renderPartPicker('t', (t?.participantes || []).map(p => p.login));
+  filtraPartPicker('t');
+  dicaIndividual();
   document.getElementById('modal-tarefa').style.display = 'flex';
   setTimeout(() => document.getElementById('t-titulo').focus(), 60);
 }
@@ -3282,22 +3401,28 @@ async function salvarTarefa() {
   const data   = document.getElementById('t-data').value;
   if (!titulo) { toast('Informe o título da tarefa.', 'err'); return; }
   if (!data)   { toast('Informe a data.', 'err'); return; }
+  const time = partSelecionados('t');
   const body = {
     titulo, data,
-    descricao:  document.getElementById('t-desc').value.trim(),
-    prioridade: document.getElementById('t-prio').value,
-    celula:     document.getElementById('t-celula').value || null,
+    descricao:         document.getElementById('t-desc').value.trim(),
+    prioridade:        document.getElementById('t-prio').value,
+    celula:            document.getElementById('t-celula').value || null,
+    participantes:     time,
+    status_individual: document.getElementById('t-individual').checked,
   };
   try {
     if (_tarefaEditId) {
       body.id = _tarefaEditId;
-      await PUT('agenda?recurso=tarefas', body);
+      await PUT('agenda?recurso=tarefas' + agQS(), body);
     } else {
       if (USER.perfil === 'admin') body.usuario_login = document.getElementById('t-user').value;
-      await POST('agenda?recurso=tarefas', body);
+      await POST('agenda?recurso=tarefas' + agQS(), body);
     }
     document.getElementById('modal-tarefa').style.display = 'none';
-    toast(_tarefaEditId ? 'Tarefa atualizada!' : 'Tarefa criada!');
+    const nOutros = time.filter(l => l !== respModal('t')).length;
+    toast(_tarefaEditId
+      ? 'Tarefa atualizada!'
+      : nOutros ? `Tarefa criada e compartilhada com ${nOutros} pessoa(s)!` : 'Tarefa criada!');
     document.getElementById('ag-data').value = data;   // segue para o dia da tarefa
     renderAgendaDia();
   } catch(e) { if (!e.sessionExpired) toast('Erro: ' + e.message, 'err'); }
@@ -3338,7 +3463,7 @@ async function confirmarAdiar() {
   const nova = document.getElementById('adiar-data').value;
   if (!nova) { toast('Escolha a nova data.', 'err'); return; }
   try {
-    await PUT('agenda?recurso=tarefas', { id: _adiarId, acao: 'adiar', nova_data: nova });
+    await PUT('agenda?recurso=tarefas' + agQS(), { id: _adiarId, acao: 'adiar', nova_data: nova });
     document.getElementById('modal-adiar').style.display = 'none';
     toast('Tarefa adiada para ' + dataBR(nova) + '.');
     renderAgendaDia();
@@ -3400,25 +3525,38 @@ async function renderMetas() {
       const cor  = corPct(praw);
       const per  = { dia:'no dia', semana:'na semana', mes:'no mês' }[m.periodo] || '';
       const und  = m.unidade ? ' ' + esc(m.unidade) : '';
-      return `<div class="metacard tipo-${m.tipo}">
+      const eu      = agEu();
+      const time    = m.por_pessoa || [];
+      const grupo   = time.length > 1;
+      const souDono = USER.perfil === 'admin' || m.usuario_login === eu || m.criado_por === eu;
+      // Meta de grupo: mostra de onde veio cada pedaço do progresso
+      const quebra = grupo ? `<div class="tkmeta" style="margin-top:10px">
+          <span style="font-size:11px;color:var(--muted)">👥 ${time.length} pessoas</span>
+          ${time.map(p => `<span class="pquem${p.login === eu ? ' eu' : ''}" title="${esc(p.nome)}">${esc(primeiroNome(p.login))}${m.tipo === 'tarefas' ? ' ' + fmt(p.progresso) : ''}</span>`).join('')}
+        </div>` : '';
+      return `<div class="metacard tipo-${m.tipo}"${grupo ? ' style="border-left-color:var(--green)"' : ''}>
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
           <div style="font:600 14px/1.3 var(--fb)">${esc(m.titulo)}</div>
           <div style="display:flex;gap:4px;flex-shrink:0">
-            <button class="btn bs bsm" onclick="openModalMeta(${m.id})" title="Editar">✎</button>
-            <button class="btn bd bsm" onclick="delMeta(${m.id})" title="Excluir">🗑</button>
+            ${souDono ? `<button class="btn bs bsm" onclick="openModalMeta(${m.id})" title="Editar">✎</button>` : ''}
+            ${souDono
+              ? `<button class="btn bd bsm" onclick="delMeta(${m.id})" title="Excluir para todos">🗑</button>`
+              : `<button class="btn bd bsm" onclick="delMeta(${m.id})" title="Sair desta meta">⤴</button>`}
           </div>
         </div>
         <div class="tkmeta" style="margin-top:8px">
           <span class="tag">${m.tipo === 'tarefas' ? 'tarefas concluídas' : 'meta numérica'}</span>
           <span class="tag">${per}${m.periodo === 'mes' && m.mes_ano ? ' · ' + mesL(m.mes_ano) : ''}</span>
+          ${grupo ? `<span class="tag" style="border-color:var(--green);color:var(--green)">meta do grupo</span>` : ''}
           ${m.celula ? `<span class="tag">${esc(_CELULA_LABEL[m.celula] || m.celula)}</span>` : ''}
-          ${m.usuario_login !== USER.login ? `<span class="tag" style="border-color:var(--blue);color:var(--blue)">${esc(m.usuario_login)}</span>` : ''}
+          ${!grupo && m.usuario_login !== eu ? `<span class="tag" style="border-color:var(--blue);color:var(--blue)">${esc(nomeDe(m.usuario_login))}</span>` : ''}
         </div>
         <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:14px">
           <div style="font:900 24px/1 var(--fh);color:${cor}">${praw.toFixed(0)}%</div>
           <div style="font:600 13px var(--fb);color:var(--muted)">${fmt(prog)} / ${fmt(alvo)}${und}</div>
         </div>
         <div class="pw" style="height:7px;margin-top:8px"><div class="pf" style="width:${Math.min(praw,100)}%;background:${corHex(praw)}"></div></div>
+        ${quebra}
         ${m.tipo === 'numerica' ? `
           <div style="display:flex;gap:6px;margin-top:12px">
             <input type="number" id="mp-${m.id}" value="${prog}" step="0.01" min="0" style="flex:1;min-width:0;background:var(--surface);border:1px solid var(--border);color:var(--text);padding:6px 9px;font:13px var(--fb);outline:none">
@@ -3459,6 +3597,9 @@ function openModalMeta(id) {
     document.getElementById('m-user').value    = m?.usuario_login || agUser() || USER.login;
     document.getElementById('m-user').disabled = !!id;
   }
+  document.getElementById('m-part-filtro').value = '';
+  renderPartPicker('m', (m?.por_pessoa || []).map(p => p.login));
+  filtraPartPicker('m');
   toggleMetaTipo();
   document.getElementById('modal-meta').style.display = 'flex';
   setTimeout(() => document.getElementById('m-titulo').focus(), 60);
@@ -3477,17 +3618,21 @@ async function salvarMeta() {
     atual:   tipo === 'numerica' ? +document.getElementById('m-atual').value || 0 : 0,
     unidade: tipo === 'numerica' ? document.getElementById('m-unid').value.trim() : 'tarefas',
     celula:  tipo === 'tarefas'  ? (document.getElementById('m-celula').value || null) : null,
+    participantes: partSelecionados('m'),
   };
   try {
     if (_metaEditId) {
       body.id = _metaEditId;
-      await PUT('agenda?recurso=metas', body);
+      await PUT('agenda?recurso=metas' + agQS(), body);
     } else {
       if (USER.perfil === 'admin') body.usuario_login = document.getElementById('m-user').value;
-      await POST('agenda?recurso=metas', body);
+      await POST('agenda?recurso=metas' + agQS(), body);
     }
     document.getElementById('modal-meta').style.display = 'none';
-    toast(_metaEditId ? 'Meta atualizada!' : 'Meta criada!');
+    const nOutros = body.participantes.filter(l => l !== respModal('m')).length;
+    toast(_metaEditId
+      ? 'Meta atualizada!'
+      : nOutros ? `Meta do grupo criada com ${nOutros + 1} pessoas!` : 'Meta criada!');
     renderMetas();
   } catch(e) { if (!e.sessionExpired) toast('Erro: ' + e.message, 'err'); }
 }
@@ -3495,17 +3640,24 @@ async function salvarMeta() {
 async function atualizarProgressoMeta(id) {
   const atual = +document.getElementById('mp-' + id).value || 0;
   try {
-    await PUT('agenda?recurso=metas', { id, atual });
+    await PUT('agenda?recurso=metas' + agQS(), { id, atual });
     toast('Progresso atualizado!');
     renderMetas();
   } catch(e) { if (!e.sessionExpired) toast('Erro: ' + e.message, 'err'); }
 }
 
 async function delMeta(id) {
-  if (!confirm('Excluir esta meta?')) return;
+  const m       = _agMetas.find(x => x.id === id);
+  const eu      = agEu();
+  const souDono = USER.perfil === 'admin' || m?.usuario_login === eu || m?.criado_por === eu;
+  const grupo   = (m?.por_pessoa || []).length > 1;
+  const pergunta = souDono
+    ? (grupo ? 'Excluir esta meta do grupo para todos os participantes?' : 'Excluir esta meta?')
+    : 'Sair desta meta? Ela continua com os outros participantes.';
+  if (!confirm(pergunta)) return;
   try {
-    await DELETE('agenda?recurso=metas', { id });
-    toast('Meta excluída.');
+    const r = await DELETE('agenda?recurso=metas' + agQS(), { id });
+    toast(r?.saiu ? 'Você saiu da meta.' : 'Meta excluída.');
     renderMetas();
   } catch(e) { if (!e.sessionExpired) toast('Erro: ' + e.message, 'err'); }
 }
@@ -3562,6 +3714,8 @@ async function renderAgendaGrafico() {
     document.getElementById('ag-r-nao').textContent    = fmt(r.nao_feitas);
     document.getElementById('ag-r-pend').textContent   = fmt(r.pendentes);
     document.getElementById('ag-r-adi').textContent    = fmt(r.adiamentos);
+    document.getElementById('ag-r-equipe').textContent = fmt(r.feitas_equipe);
+    document.getElementById('ag-r-comp').textContent   = fmt(r.compartilhadas);
 
     agChartSerie(d.serie || []);
     agChartRosca(taxa, r.total);

@@ -211,6 +211,22 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 .cc-n { background: rgba(239,68,68,.15);   color: var(--red); }
 .cc-p { background: rgba(136,136,136,.15); color: var(--muted); }
 
+/* participantes */
+.partbox { max-height: 148px; overflow-y: auto; border: 1px solid var(--border); background: var(--surface); padding: 4px; }
+.partitem { display: flex; align-items: center; gap: 8px; padding: 6px 8px; cursor: pointer; font: 13px var(--fb); border-radius: 3px; }
+.partitem:hover { background: var(--card); }
+.partitem input { accent-color: var(--accent); cursor: pointer; flex-shrink: 0; }
+.partitem.fixo { opacity: .65; cursor: default; }
+.partitem .pnome { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.partchk { display: flex; align-items: center; gap: 8px; font: 13px var(--fb); cursor: pointer; padding: 8px 0 0; }
+.partchk input { accent-color: var(--accent); cursor: pointer; }
+.partchk .dica { font-size: 11px; color: var(--muted); }
+.pquem { display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px; font: 600 10px/1.5 var(--fb); border-radius: 2px;
+         background: rgba(59,130,246,.12); border: 1px solid rgba(59,130,246,.3); color: var(--blue); }
+.pquem.feito { background: rgba(16,185,129,.12); border-color: rgba(16,185,129,.35); color: var(--green); }
+.pquem.nfeito { background: rgba(239,68,68,.12); border-color: rgba(239,68,68,.35); color: var(--red); }
+.pquem.eu { font-weight: 700; }
+
 /* metas */
 .metacard { background: var(--card); border: 1px solid var(--border); border-left: 3px solid var(--blue); padding: 16px 18px; }
 .metacard.tipo-tarefas { border-left-color: var(--accent); }

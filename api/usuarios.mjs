@@ -24,6 +24,19 @@ export default async function handler(req, res) {
 
   if (recurso === "senha") return trocarSenha(req, res, sql, u);
 
+  // Lista mínima para o seletor de participantes da Agenda: qualquer usuário
+  // logado precisa montar equipe. Devolve SÓ login e nome — nada de perfil,
+  // hash ou flag de ativo. O CRUD completo abaixo continua exigindo admin.
+  if (recurso === "colegas") {
+    if (req.method !== "GET") return res.status(405).json({ error: "Método não permitido" });
+    try {
+      const rows = await sql`SELECT login, nome FROM usuarios WHERE ativo = true ORDER BY nome`;
+      return res.status(200).json(rows);
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
   if (u.perfil !== "admin") return res.status(403).json({ error: "Acesso negado" });
 
   if (req.method === "GET") {
