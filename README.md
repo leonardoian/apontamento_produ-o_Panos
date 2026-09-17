@@ -65,17 +65,15 @@ Acesse `http://localhost:3000`.
 │   ├── _lib/
 │   │   └── db.mjs           # Conexão Neon, helpers de auth, CORS e initDB
 │   ├── login.mjs            # POST /api/login
-│   ├── me.mjs               # GET /api/me e GET /api/me?r=meses
-│   ├── usuarios.mjs         # CRUD de usuários
+│   ├── usuarios.mjs         # CRUD de usuários + /api/me + /api/senha (?recurso=)
 │   ├── referencias.mjs      # CRUD de referências de produtos
 │   ├── programa.mjs         # Programa mensal por célula
 │   ├── lancamentos.mjs      # Apontamentos (GET / POST / PUT / DELETE)
 │   ├── ordens.mjs           # Ordens de produção (GET / POST / DELETE)
-│   ├── senha.mjs            # Alteração de senha (POST)
-│   ├── dashboard.mjs        # KPIs e dados consolidados
+│   ├── dashboard.mjs        # KPIs e dados consolidados + /api/meses (?recurso=)
 │   ├── operadores.mjs       # Eficiência por operador
-│   ├── estoque.mjs          # Estoque por CD / depósito
-│   └── agenda.mjs           # Agenda: tarefas, metas e estatísticas (?r=tarefas|metas|stats)
+│   ├── estoque.mjs          # Estoque por CD / depósito + histórico
+│   └── agenda.mjs           # Agenda: tarefas, metas e estatísticas (?recurso=tarefas|metas|stats)
 └── public/
     ├── index.html           # Aplicação principal (SPA)
     ├── style.css            # Estilos (dark theme, responsivo)
@@ -450,64 +448,64 @@ Body: { "login": "operador1", "nova_senha": "nova123" }
 ### Meses disponíveis
 
 ```
-GET /api/me?r=meses
+GET /api/meses
 Response: ["2026-07", "2026-06", ...]
 ```
 
-> Fica no mesmo handler do `/api/me` por causa do limite de 12 funções serverless do plano Hobby da Vercel — veja a nota no fim deste arquivo.
+> Atendido por `dashboard.mjs?recurso=meses` via *rewrite* no `vercel.json` — veja a nota no fim deste arquivo.
 
 ### Agenda (tarefas, metas e gráfico)
 
-Tudo em uma única função (`api/agenda.mjs`), roteada por `?r=`.
+Tudo em uma única função (`api/agenda.mjs`), roteada por `?recurso=`.
 Operador enxerga e altera **apenas a própria agenda** — o parâmetro `usuario` é ignorado para ele.
 Admin pode ler e escrever a agenda de qualquer usuário.
 
 ```
 # Tarefas do dia (+ pendentes atrasadas de dias anteriores)
-GET    /api/agenda?r=tarefas&data=2026-09-17[&usuario=joao]
+GET    /api/agenda?recurso=tarefas&data=2026-09-17[&usuario=joao]
 Response: { "data", "tarefas": [...], "atrasadas": [...] }
 
 # Resumo por dia do mês (calendário)
-GET    /api/agenda?r=tarefas&mes=2026-09[&usuario=joao]
+GET    /api/agenda?recurso=tarefas&mes=2026-09[&usuario=joao]
 Response: { "dias": [{ "data", "feitas", "nao_feitas", "pendentes" }] }
 
 # Intervalo livre
-GET    /api/agenda?r=tarefas&de=2026-09-01&ate=2026-09-30[&usuario=joao]
+GET    /api/agenda?recurso=tarefas&de=2026-09-01&ate=2026-09-30[&usuario=joao]
 
-POST   /api/agenda?r=tarefas
+POST   /api/agenda?recurso=tarefas
 Body:  { "titulo": "Conferir contagem do CD 03", "data": "2026-09-17",
          "descricao": "", "celula": "Panos", "prioridade": "alta",
          "usuario_login": "joao" }   # usuario_login: só admin
 
-PUT    /api/agenda?r=tarefas
+PUT    /api/agenda?recurso=tarefas
 Body:  { "id": 1, "status": "feita" }                              # feita | nao_feita | pendente
 Body:  { "id": 1, "status": "nao_feita", "obs_status": "faltou material" }
 Body:  { "id": 1, "acao": "adiar", "nova_data": "2026-09-18" }     # +1 em adiamentos
 Body:  { "id": 1, "titulo": "...", "data": "...", "prioridade": "media", "celula": null }
 
-DELETE /api/agenda?r=tarefas
+DELETE /api/agenda?recurso=tarefas
 Body:  { "id": 1 }                                                 # soft-delete
 ```
 
 ```
 # Metas com progresso já calculado
-GET    /api/agenda?r=metas&mes=2026-09&hoje=2026-09-17[&usuario=joao]
+GET    /api/agenda?recurso=metas&mes=2026-09&hoje=2026-09-17[&usuario=joao]
 
-POST   /api/agenda?r=metas
+POST   /api/agenda?recurso=metas
 Body:  { "titulo": "Concluir 40 tarefas", "tipo": "tarefas", "periodo": "mes",
          "mes_ano": "2026-09", "alvo": 40, "celula": "Panos" }
 Body:  { "titulo": "Reduzir refugo p/ 2%", "tipo": "numerica", "periodo": "mes",
          "mes_ano": "2026-09", "alvo": 2, "atual": 1.2, "unidade": "%" }
 
-PUT    /api/agenda?r=metas
+PUT    /api/agenda?recurso=metas
 Body:  { "id": 1, "atual": 1.8 }        # atualização rápida do progresso manual
-DELETE /api/agenda?r=metas
+DELETE /api/agenda?recurso=metas
 Body:  { "id": 1 }
 ```
 
 ```
 # Estatísticas do gráfico de atividades
-GET /api/agenda?r=stats&de=2026-09-01&ate=2026-09-30[&usuario=joao|TODOS][&celula=Panos]
+GET /api/agenda?recurso=stats&de=2026-09-01&ate=2026-09-30[&usuario=joao|TODOS][&celula=Panos]
 Response: {
   "de", "ate",
   "serie":      [{ "data", "feitas", "nao_feitas", "pendentes" }],
@@ -523,13 +521,14 @@ Response: {
 
 ## Limite de funções serverless (Vercel Hobby)
 
-O plano Hobby permite **12 funções serverless por deploy** e o projeto está exatamente nesse teto (`api/*.mjs`).
-
-Por isso dois handlers acumulam mais de um endpoint, roteando por `?r=`:
+O plano Hobby permite **12 funções serverless por deploy**. Por isso alguns handlers acumulam mais de um endpoint, roteados pelo parâmetro **`?recurso=`**:
 
 | Arquivo | Endpoints |
 |---------|-----------|
-| `me.mjs` | `/api/me` · `/api/me?r=meses` |
-| `agenda.mjs` | `/api/agenda?r=tarefas` · `?r=metas` · `?r=stats` |
+| `usuarios.mjs` | `/api/usuarios` · `?recurso=me` · `?recurso=senha` |
+| `dashboard.mjs` | `/api/dashboard` · `?recurso=meses` |
+| `agenda.mjs` | `?recurso=tarefas` · `?recurso=metas` · `?recurso=stats` |
 
-**Antes de criar um novo arquivo em `api/`, confira a contagem** (`ls api/*.mjs | wc -l`). Se já estiver em 12, acrescente o endpoint a um handler existente por `?r=` em vez de criar outro arquivo — ou migre para o plano Pro. Pelo mesmo motivo, não separe `me.mjs` de volta em dois arquivos.
+Os endpoints antigos (`/api/me`, `/api/senha`, `/api/meses`) continuam valendo por **rewrites** no [vercel.json](vercel.json), então o frontend não precisou mudar quando eles foram consolidados. A agenda é nova e chama `?recurso=` direto, sem rewrite.
+
+**Antes de criar um novo arquivo em `api/`, confira a contagem** (`ls api/*.mjs | wc -l`). Perto do teto, acrescente o endpoint a um handler existente por `?recurso=` em vez de criar outro arquivo — ou migre para o plano Pro.

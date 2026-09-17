@@ -1,6 +1,6 @@
 import { setCors, handleOptions, getAuth, getBody, getSQL, initDB } from "./_lib/db.mjs";
 
-// Módulo Agenda — tudo num arquivo só (?r=tarefas|metas|stats) para não estourar
+// Módulo Agenda — tudo num arquivo só (?recurso=tarefas|metas|stats) para não estourar
 // o limite de funções serverless da Vercel.
 
 const PRIORIDADES = ["baixa", "media", "alta"];
@@ -25,11 +25,11 @@ export default async function handler(req, res) {
   const alvo    = (isAdmin && q.usuario && q.usuario !== "TODOS") ? q.usuario : u.login;
 
   try {
-    switch (q.r) {
+    switch (q.recurso) {
       case "tarefas": return await tarefas(req, res, sql, u, q, isAdmin, alvo);
       case "metas":   return await metas(req, res, sql, u, q, isAdmin, alvo);
       case "stats":   return await stats(req, res, sql, u, q, isAdmin);
-      default:        return res.status(400).json({ error: "Recurso inválido (use ?r=tarefas|metas|stats)" });
+      default:        return res.status(400).json({ error: "Recurso inválido (use ?recurso=tarefas|metas|stats)" });
     }
   } catch (e) {
     return res.status(500).json({ error: "Erro agenda: " + e.message });

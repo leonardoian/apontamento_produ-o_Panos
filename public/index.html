@@ -170,7 +170,7 @@
           <div style="overflow-x:auto"><table><thead><tr>
             <th>Cód.</th><th>Descrição</th><th>Meta/Turno</th><th>Nº Turnos</th><th>Meta Total</th>
             <th style="color:var(--accent)">Real. T1</th><th style="color:var(--blue)">Real. T2</th><th style="color:var(--green)">Real. ADM</th>
-            <th>Total Real.</th><th>Falta</th><th>%</th><th title="(Programa + Estoque + Forecast) / (Forecast ÷ 30)">Dias Est.</th><th id="th-prog-ac" style="display:none">Ações</th>
+            <th>Total Real.</th><th>Falta</th><th>%</th><th id="th-prog-ac" style="display:none">Ações</th>
           </tr></thead><tbody id="prog-body"></tbody></table></div>
         </div>
       </div>
@@ -478,8 +478,9 @@
         <!-- instruções formato -->
         <div id="est-fmt-info" style="display:none;background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.25);padding:12px 16px;margin-bottom:12px;font-size:12px;color:var(--muted);line-height:1.8">
           <strong style="color:var(--text)">Formato da planilha de estoque (aba ESTOQUE):</strong><br>
-          Colunas obrigatórias: <code>COD_REF · MTZ_0860 · MTZ_0803 · SP_0803 · PE_0803</code><br>
-          Colunas opcionais de forecast: <code>FC_MI_PE</code>, <code>FC_MI_SP</code>, <code>FC_MI_MTZ</code>, <code>FC_ME</code>
+          Colunas obrigatórias: <code>COD_REF · MTZ_0860 · MTZ_0803 · MTZ_0802 · SP_0803 · PE_0803</code><br>
+          Colunas opcionais de forecast: <code>FC_MI_PE</code>, <code>FC_MI_SP</code>, <code>FC_MI_MTZ</code>, <code>FC_ME</code><br>
+          O cabeçalho pode estar em qualquer uma das 15 primeiras linhas. Valores decimais são arredondados.
           <button class="btn bs bsm" style="margin-left:12px" onclick="downloadModeloEstoque()">⬇ Baixar Modelo</button>
         </div>
 
@@ -501,6 +502,7 @@
                   <th rowspan="2" style="text-align:right">Total Est.</th>
                   <th colspan="4" style="text-align:center;background:rgba(139,92,246,.1);border-bottom:2px solid #8b5cf6;color:#8b5cf6;letter-spacing:1px">FORECAST MI</th>
                   <th rowspan="2" style="text-align:right;background:rgba(16,185,129,.06);color:var(--green)">FC Externo</th>
+                  <th rowspan="2" style="text-align:right;font-weight:700" title="Forecast MI Somado + FC Externo — é este o valor que entra no cálculo de Dias Est.">FC Total</th>
                   <th rowspan="2" style="text-align:right">Dias Est.</th>
                 </tr>
                 <tr>
@@ -938,6 +940,18 @@
   </div>
 </div>
 
+<!-- MODAL EVOLUÇÃO DO ESTOQUE -->
+<div id="modal-hist" style="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:none;align-items:center;justify-content:center">
+  <div style="background:var(--surface);border:1px solid var(--border);border-top:3px solid var(--accent);width:760px;max-width:95vw;max-height:90vh;overflow-y:auto;padding:26px">
+    <div style="font:700 20px/1 var(--fh);margin-bottom:4px" id="modal-hist-title">EVOLUÇÃO DO ESTOQUE</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:18px" id="modal-hist-sub"></div>
+    <div id="modal-hist-body"></div>
+    <div style="display:flex;justify-content:flex-end;margin-top:20px">
+      <button class="btn bs bsm" onclick="closeModalHist()">Fechar</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL ALTERAR SENHA (própria) -->
 <div id="modal-senha" style="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:none;align-items:center;justify-content:center">
   <div style="background:var(--surface);border:1px solid var(--border);border-top:3px solid var(--blue);width:400px;max-width:95vw;padding:26px">
@@ -1078,7 +1092,17 @@ async function api(method, path, body) {
   };
   if (body) opts.body = JSON.stringify(body);
   const r = await fetch(API + '/' + path, opts);
-  const data = await r.json();
+  // A Vercel devolve HTML (não JSON) em timeout/erro de plataforma — não deixa o
+  // SyntaxError do parse mascarar a causa real.
+  const raw = await r.text();
+  let data;
+  try { data = raw ? JSON.parse(raw) : {}; }
+  catch {
+    if (r.status === 504 || /FUNCTION_INVOCATION_TIMEOUT/i.test(raw))
+      throw new Error('O servidor demorou demais e cancelou a operação (timeout). Tente com menos linhas por vez.');
+    if (r.status === 413) throw new Error('Arquivo grande demais para enviar de uma vez.');
+    throw new Error('Resposta inesperada do servidor (HTTP ' + r.status + ').');
+  }
   if (r.status === 401 && path !== 'login') {
     doLogout();
     toast('Sua sessão expirou. Faça login novamente.', 'info', 5000);
@@ -1196,7 +1220,7 @@ async function showApp() {
 // ═══════════════════════════════════════
 async function loadMeses() {
   try {
-    _meses = await GET('me?r=meses');
+    _meses = await GET('dashboard?recurso=meses');
     const cur = curMes();
     ['dash-mes','prog-mes','graf-mes','op-mes'].forEach(id => {
       const sel = document.getElementById(id);
@@ -1442,12 +1466,6 @@ function renderProgTable(termo) {
     const rADM = _progLancs.filter(l=>l.ref_cod===r.ref_cod&&l.turno==='ADM').reduce((s,l)=>s+(+l.realizado||0),0);
     const rT = rT1+rT2+rADM; const p = mT>0?rT/mT:0;
     const alerta = mesAtual && diasRestantes <= 10 && diasRestantes >= 0 && p < 0.6;
-    const refDat = _refs.find(x => x.cod === r.ref_cod);
-    const estoque  = +(refDat?.estoque_atual  || 0);
-    const forecast = +(refDat?.forecast_mensal || 0);
-    const dias = forecast > 0 ? ((mT + estoque + forecast) * 30 / forecast) : null;
-    const diasHtml = dias == null ? '<td style="color:var(--muted)">—</td>'
-      : `<td style="font-weight:600;color:${dias>=30?'var(--green)':dias>=15?'#f59e0b':'var(--red)'}">${dias.toFixed(1)}d</td>`;
     return `<tr style="${alerta?'background:rgba(204,0,0,.08);outline:1px solid rgba(204,0,0,.3)':''}">
         <td style="font-family:monospace;font-size:11px">${r.ref_cod}</td>
         <td style="max-width:220px;font-size:12px">${alerta?`<span title="Abaixo de 60% com ${diasRestantes} dia(s) restantes" style="color:var(--red);margin-right:4px">⚠</span>`:''}${r.descricao}</td>
@@ -1460,7 +1478,6 @@ function renderProgTable(termo) {
         <td><strong>${fmt(rT)}</strong></td>
         <td style="color:${mT-rT<=0?'var(--green)':'var(--red)'}">${mT-rT>0?fmt(mT-rT):'✓'}</td>
         <td class="${p>=1?'ok':p>=.8?'warn':'bad'}">${pct(rT,mT)}</td>
-        ${diasHtml}
         ${isAdmin?`<td><div style="display:flex;gap:4px"><button class="btn bs bsm" onclick="openEditProg('${r.ref_cod}',${+r.meta_turno||0},${+r.num_turnos||2})" title="Editar">✎</button><button class="btn bd bsm" onclick="deleteProg('${r.ref_cod}','${mes}','${celula}')" title="Remover">✕</button></div></td>`:''}
       </tr>`;
   }).join('');
@@ -1478,13 +1495,13 @@ function renderProgTable(termo) {
         <td style="color:var(--blue)">${fmt(rT2)}</td>
         <td style="color:var(--green)">${fmt(rADM)}</td>
         <td><strong>${fmt(rT)}</strong></td>
-        <td>—</td><td>—</td><td>—</td>
+        <td>—</td><td>—</td>
         ${isAdmin?'<td></td>':''}
       </tr>`;
   }).join('');
 
   tbody.innerHTML = !rowsF.length && !semProgF.length
-    ? `<tr><td colspan="12" class="empty"><div class="ei">☰</div>${t ? 'Nenhuma referência encontrada para "' + termo + '".' : 'Nenhuma referência no programa. ' + (isAdmin?'Clique em "+ Adicionar Referência".':'')}</td></tr>`
+    ? `<tr><td colspan="11" class="empty"><div class="ei">☰</div>${t ? 'Nenhuma referência encontrada para "' + termo + '".' : 'Nenhuma referência no programa. ' + (isAdmin?'Clique em "+ Adicionar Referência".':'')}</td></tr>`
     : rowProgHtml + rowSemProgHtml;
 }
 
@@ -2100,13 +2117,13 @@ async function renderEstoque() {
   const mes = mesSel?.value || curMes();
 
   const tbody = document.getElementById('est-body');
-  tbody.innerHTML = `<tr><td colspan="16" class="empty"><span class="loading"></span></td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="17" class="empty"><span class="loading"></span></td></tr>`;
   try {
     _estRows = await GET('estoque?mes=' + mes);
     document.getElementById('est-busca').value = '';
     filterEstoque();
   } catch(e) {
-    tbody.innerHTML = `<tr><td colspan="16" class="empty" style="color:var(--red)">${e.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="17" class="empty" style="color:var(--red)">${e.message}</td></tr>`;
   }
 }
 
@@ -2124,7 +2141,7 @@ function renderEstoqueTable(rows) {
   const diasMes = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
 
   if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="16" class="empty"><div class="ei">▣</div>Nenhum registro encontrado.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="17" class="empty"><div class="ei">▣</div>Nenhum registro encontrado.</td></tr>`;
     return;
   }
   tbody.innerHTML = rows.map((r, i) => {
@@ -2141,11 +2158,15 @@ function renderEstoqueTable(rows) {
     const miSomado = miPe + miSp + miMtz;
     const me       = +r.forecast_me    || 0;
     const forecast = +r.forecast_mensal || (miSomado + me);
-    const programa = +r.meta_total || 0;
+    // forecast_mensal também é gravado pelo modal de edição da referência e por
+    // planilhas só com a coluna FORECAST total — nesses casos ele não é
+    // recalculado a partir das parcelas e pode não bater com o que está na tela.
+    const fcDiverge = forecast !== (miSomado + me);
 
     let diasHtml = '—';
     if (forecast > 0) {
-      const dias = (programa + total + forecast) / (forecast / 30);
+      // Cobertura depois de descontar a demanda do mês: negativo = já falta.
+      const dias = (total - forecast) / (forecast / 30);
       const cor = dias >= 30 ? 'var(--green)' : dias >= 15 ? '#f59e0b' : 'var(--red)';
       diasHtml = `<span style="font-weight:700;color:${cor}">${dias.toFixed(1)}</span>`;
     }
@@ -2153,7 +2174,11 @@ function renderEstoqueTable(rows) {
     const fmtN = n => n > 0 ? fmt(n) : '<span style="color:var(--muted)">—</span>';
     return `<tr>
       <td style="color:var(--muted);font-size:11px">${i+1}</td>
-      <td style="font-family:monospace;font-size:11px;font-weight:600">${r.cod}</td>
+      <td style="font-family:monospace;font-size:11px;font-weight:600">
+        <span onclick="verHistoricoEstoque('${r.cod}')"
+              title="Ver evolução do estoque"
+              style="cursor:pointer;border-bottom:1px dotted var(--muted)">${r.cod}</span>
+      </td>
       <td style="font-size:11px;max-width:200px">${r.descricao||''}</td>
       <td style="text-align:right;background:rgba(6,182,212,.04)">${fmtN(mtz0860)}</td>
       <td style="text-align:right;background:rgba(6,182,212,.04)">${fmtN(mtz0803)}</td>
@@ -2167,9 +2192,104 @@ function renderEstoqueTable(rows) {
       <td style="text-align:right;background:rgba(139,92,246,.04);font-size:11px">${fmtN(miMtz)}</td>
       <td style="text-align:right;background:rgba(139,92,246,.1);font-weight:700">${fmtN(miSomado)}</td>
       <td style="text-align:right;background:rgba(16,185,129,.06);color:var(--green);font-size:11px">${fmtN(me)}</td>
+      <td style="text-align:right;font-weight:700"${fcDiverge ? ` title="Divergente: a soma das parcelas dá ${fmtN(miSomado + me)}, mas forecast_mensal está gravado como ${fmtN(forecast)}"` : ''}>${fmtN(forecast)}${fcDiverge ? ' <span style="color:#f59e0b">⚠</span>' : ''}</td>
       <td style="text-align:right">${diasHtml}</td>
     </tr>`;
   }).join('');
+}
+
+function closeModalHist() {
+  document.getElementById('modal-hist').style.display = 'none';
+}
+
+// Série do estoque de uma referência, um ponto por importação.
+async function verHistoricoEstoque(cod) {
+  const modal = document.getElementById('modal-hist');
+  // Descrição vem de _estRows em vez do onclick: evita quebrar o atributo
+  // quando ela contém aspas.
+  const descricao = (_estRows.find(r => r.cod === cod) || {}).descricao || '';
+  document.getElementById('modal-hist-title').textContent = cod;
+  document.getElementById('modal-hist-sub').textContent = descricao;
+  document.getElementById('modal-hist-body').innerHTML =
+    '<div style="padding:30px;text-align:center"><span class="loading"></span></div>';
+  modal.style.display = 'flex';
+
+  let serie;
+  try {
+    serie = await GET('estoque?historico=1&ref=' + encodeURIComponent(cod));
+  } catch (e) {
+    document.getElementById('modal-hist-body').innerHTML =
+      `<div style="color:var(--red);padding:20px">${e.message}</div>`;
+    return;
+  }
+
+  if (!serie.length) {
+    document.getElementById('modal-hist-body').innerHTML =
+      `<div style="color:var(--muted);padding:24px;line-height:1.7">
+        Nenhum histórico ainda para esta referência.<br>
+        O histórico começa a ser registrado a partir da próxima importação de estoque.
+      </div>`;
+    return;
+  }
+
+  const dt = s => new Date(s).toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'2-digit' });
+  const dias = (t, f) => f > 0 ? (t - f) / (f / 30) : null;
+
+  // ── Gráfico: estoque x forecast. Onde a linha do estoque cruza abaixo da
+  // linha do forecast, a referência está em ruptura (Dias Est. negativo).
+  let grafico = '';
+  if (serie.length > 1) {
+    const W = 700, H = 190, P = 34;
+    const vals = serie.flatMap(s => [+s.total || 0, +s.forecast_mensal || 0]);
+    const max  = Math.max(...vals, 1);
+    const x = i => P + i * (W - P * 2) / (serie.length - 1);
+    const y = v => H - P - (v / max) * (H - P * 2);
+    const pts = f => serie.map((s, i) => `${x(i)},${y(f(s))}`).join(' ');
+    grafico = `
+      <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;margin-bottom:18px">
+        <line x1="${P}" y1="${H-P}" x2="${W-P}" y2="${H-P}" stroke="var(--border)"/>
+        <line x1="${P}" y1="${P}"   x2="${P}"   y2="${H-P}" stroke="var(--border)"/>
+        <text x="${P-6}" y="${P+4}"   text-anchor="end" fill="var(--muted)" font-size="10">${fmt(max)}</text>
+        <text x="${P-6}" y="${H-P+4}" text-anchor="end" fill="var(--muted)" font-size="10">0</text>
+        <polyline fill="none" stroke="#8b5cf6" stroke-width="1.5" stroke-dasharray="4 3"
+                  points="${pts(s => +s.forecast_mensal || 0)}"/>
+        <polyline fill="none" stroke="var(--accent)" stroke-width="2"
+                  points="${pts(s => +s.total || 0)}"/>
+        ${serie.map((s, i) => `<circle cx="${x(i)}" cy="${y(+s.total||0)}" r="3" fill="var(--accent)"><title>${dt(s.importado_em)}: ${fmt(s.total)}</title></circle>`).join('')}
+      </svg>
+      <div style="display:flex;gap:18px;font-size:11px;color:var(--muted);margin-bottom:16px">
+        <span><span style="display:inline-block;width:14px;height:2px;background:var(--accent);vertical-align:middle"></span> Estoque total</span>
+        <span><span style="display:inline-block;width:14px;height:2px;background:#8b5cf6;vertical-align:middle"></span> Forecast — abaixo desta linha há ruptura</span>
+      </div>`;
+  }
+
+  const linhas = [...serie].reverse().map(s => {
+    const d = dias(+s.total || 0, +s.forecast_mensal || 0);
+    const cor = d == null ? 'var(--muted)' : d >= 30 ? 'var(--green)' : d >= 15 ? '#f59e0b' : 'var(--red)';
+    return `<tr>
+      <td>${dt(s.importado_em)}</td>
+      <td style="text-align:right">${fmt(s.mtz_0860)}</td>
+      <td style="text-align:right">${fmt(s.mtz_0803)}</td>
+      <td style="text-align:right">${fmt(s.mtz_0802)}</td>
+      <td style="text-align:right">${fmt(s.sp_0803)}</td>
+      <td style="text-align:right">${fmt(s.pe_0803)}</td>
+      <td style="text-align:right;font-weight:700">${fmt(s.total)}</td>
+      <td style="text-align:right">${s.forecast_mensal != null ? fmt(s.forecast_mensal) : '—'}</td>
+      <td style="text-align:right;font-weight:700;color:${cor}">${d == null ? '—' : d.toFixed(1)}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('modal-hist-body').innerHTML = grafico + `
+    <div style="overflow-x:auto"><table style="width:100%;font-size:12px">
+      <thead><tr>
+        <th style="text-align:left">Importação</th>
+        <th style="text-align:right">0860</th><th style="text-align:right">0803</th>
+        <th style="text-align:right">0802</th><th style="text-align:right">SP</th>
+        <th style="text-align:right">PE</th><th style="text-align:right">Total</th>
+        <th style="text-align:right">Forecast</th><th style="text-align:right">Dias Est.</th>
+      </tr></thead>
+      <tbody>${linhas}</tbody>
+    </table></div>`;
 }
 
 function downloadModeloEstoque() {
@@ -2215,7 +2335,7 @@ async function importarEstoqueFile(input) {
       const wb = XLSX.read(e.target.result, { type: 'array' });
       const sheetName = wb.SheetNames.find(n => n.toUpperCase().includes('ESTOQUE')) || wb.SheetNames[0];
       const ws   = wb.Sheets[sheetName];
-      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', blankrows: false });
       if (rows.length < 2) {
         _estProgSet(0); _estProgHide();
         if (btn) { btn.disabled = false; btn.style.opacity = ''; }
@@ -2223,43 +2343,99 @@ async function importarEstoqueFile(input) {
       }
       _estProgSet(35, 'Lendo referências...');
 
-      const normH = s => String(s||'').trim().toUpperCase().replace(/[\s\-_.]/g,'');
-      const hdr = rows[0].map(normH);
-      const ci = k => hdr.findIndex(h => h === k);
-      const ciAny = ks => { for (const k of ks) { const i = ci(k); if (i>=0) return i; } return -1; };
-      const iCod  = ci('CODREF'); if (iCod < 0) { _estProgSet(0); _estProgHide(); if (btn) { btn.disabled=false; btn.style.opacity=''; } toast('Coluna COD_REF não encontrada.','err'); return; }
-      const iM60  = ci('MTZ0860');
-      const iM03  = ci('MTZ0803');
-      const iM02  = ci('MTZ0802');
-      const iSP   = ci('SP0803');
-      const iPE   = ci('PE0803');
-      const iFcPe  = ciAny(['FCMIPE','FORECASTMIPE','FORECASTMERCADOINTERNOPE']);
-      const iFcSp  = ciAny(['FCMISP','FCMICDSP','FORECASTMISP','FORECASTMERCADOINTERNOIDSP','FORECASTMICDSP']);
-      const iFcMtz = ciAny(['FCMIMTZ','FORECASTMIMTZ','FORECASTMERCADOINTERNOMTZ']);
-      const iFcMe  = ciAny(['FCME','FORECASTME','FORECASTMERCADOEXTERNO','FORECASTEXTERNO']);
-      const iFc    = ciAny(['FORECAST','FORECASTTOTAL','PREVISAO','PREVISÃO']);
+      // Tira acentos e pontuação: "Forecast M.I. - PE" → "FORECASTMIPE"
+      const normH = s => String(s||'').trim().toUpperCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+        .replace(/[^A-Z0-9]/g,'');
+
+      // O cabeçalho nem sempre está na primeira linha (título, logo, linha em
+      // branco). Pega, entre as 15 primeiras, a que tiver mais palavras-chave.
+      const HKEYS = ['CODREF','CODIGO','MTZ0860','MTZ0803','MTZ0802','SP0803','PE0803','FORECAST','FCMI'];
+      let hi = 0, hiScore = 0;
+      for (let i = 0; i < Math.min(rows.length, 15); i++) {
+        const joined = rows[i].map(normH).join('|');
+        const score = HKEYS.reduce((s,k) => s + (joined.includes(k) ? 1 : 0), 0);
+        if (score > hiScore) { hiScore = score; hi = i; }
+      }
+      if (!hiScore) {
+        _estProgSet(0); _estProgHide();
+        if (btn) { btn.disabled = false; btn.style.opacity = ''; }
+        toast('Não encontrei a linha de cabeçalho (COD_REF, MTZ_0860...).', 'err'); return;
+      }
+      const hdr = rows[hi].map(normH);
+
+      // Igualdade primeiro, depois "começa com" e "contém". O `used` impede que
+      // a coluna genérica FORECAST roube uma coluna de breakdown.
+      const used = new Set();
+      const findCol = keys => {
+        const tests = [(h,k) => h === k, (h,k) => h.startsWith(k), (h,k) => h.includes(k)];
+        for (const test of tests) {
+          for (const k of keys) {
+            const i = hdr.findIndex((h, ix) => h && !used.has(ix) && test(h, k));
+            if (i >= 0) { used.add(i); return i; }
+          }
+        }
+        return -1;
+      };
+
+      const iCod = findCol(['CODREF','CODIGOREF','CODPRODUTO','REFERENCIA','CODIGO','COD']);
+      if (iCod < 0) {
+        _estProgSet(0); _estProgHide();
+        if (btn) { btn.disabled = false; btn.style.opacity = ''; }
+        toast('Coluna COD_REF não encontrada.','err'); return;
+      }
+      const iM60 = findCol(['MTZ0860','CDMTZ0860','MATRIZ0860','0860']);
+      const iM03 = findCol(['MTZ0803','CDMTZ0803','MATRIZ0803']);
+      const iM02 = findCol(['MTZ0802','CDMTZ0802','MATRIZ0802','0802']);
+      const iSP  = findCol(['SP0803','CDSP0803','CDSP']);
+      const iPE  = findCol(['PE0803','CDPE0803','CDPE']);
+      // Breakdown antes do total: a chave genérica FORECAST casaria com qualquer um.
+      const iFcPe  = findCol(['FCMIPE','FORECASTMIPE','FORECASTMERCADOINTERNOPE','FCPE']);
+      const iFcSp  = findCol(['FCMISP','FCMICDSP','FORECASTMISP','FORECASTMICDSP','FORECASTMERCADOINTERNOSP','FORECASTMERCADOINTERNOCDSP','FCSP']);
+      const iFcMtz = findCol(['FCMIMTZ','FORECASTMIMTZ','FORECASTMERCADOINTERNOMTZ','FCMTZ']);
+      const iFcMe  = findCol(['FCME','FORECASTME','FORECASTMERCADOEXTERNO','FORECASTEXTERNO','MERCADOEXTERNO']);
+      const iFc    = findCol(['FORECASTTOTAL','FORECASTMENSAL','FORECAST','PREVISAO','PREVVENDA']);
+
+      if (iM60 < 0 && iM03 < 0 && iM02 < 0 && iSP < 0 && iPE < 0) {
+        _estProgSet(0); _estProgHide();
+        if (btn) { btn.disabled = false; btn.style.opacity = ''; }
+        toast('Nenhuma coluna de depósito encontrada (MTZ_0860, MTZ_0803, SP_0803...).','err'); return;
+      }
+
+      // Relatórios do SAP trazem "12.500" / "12.500,75" como texto: +"12.500"
+      // é NaN e zerava o valor sem avisar.
+      const toNum = v => {
+        if (v == null || v === '') return 0;
+        if (typeof v === 'number') return Math.round(v);
+        let s = String(v).trim().replace(/[^\d,.\-]/g, '');
+        if (!s || s === '-') return 0;
+        if (s.includes(',')) s = s.replace(/\./g, '').replace(',', '.');
+        else if (/^-?\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, '');
+        const n = parseFloat(s);
+        return isNaN(n) ? 0 : Math.round(n);
+      };
+      const hasBreakdown = iFcPe >= 0 || iFcSp >= 0 || iFcMtz >= 0 || iFcMe >= 0;
 
       const registros = [];
       const forecast  = [];
-      for (let r = 1; r < rows.length; r++) {
+      for (let r = hi + 1; r < rows.length; r++) {
         const cod = String(rows[r][iCod]||'').trim().toUpperCase();
         if (!cod) continue;
-        if (iM60 >= 0) registros.push({ ref_cod: cod, cd: 'CD-MTZ', deposito: '0860', quantidade: +rows[r][iM60]||0 });
-        if (iM03 >= 0) registros.push({ ref_cod: cod, cd: 'CD-MTZ', deposito: '0803', quantidade: +rows[r][iM03]||0 });
-        if (iM02 >= 0) registros.push({ ref_cod: cod, cd: 'CD-MTZ', deposito: '0802', quantidade: +rows[r][iM02]||0 });
-        if (iSP  >= 0) registros.push({ ref_cod: cod, cd: 'CD-SP',  deposito: '0803', quantidade: +rows[r][iSP] ||0 });
-        if (iPE  >= 0) registros.push({ ref_cod: cod, cd: 'CD-PE',  deposito: '0803', quantidade: +rows[r][iPE] ||0 });
-        const hasBreakdown = iFcPe>=0 || iFcSp>=0 || iFcMtz>=0 || iFcMe>=0;
+        if (iM60 >= 0) registros.push({ ref_cod: cod, cd: 'CD-MTZ', deposito: '0860', quantidade: toNum(rows[r][iM60]) });
+        if (iM03 >= 0) registros.push({ ref_cod: cod, cd: 'CD-MTZ', deposito: '0803', quantidade: toNum(rows[r][iM03]) });
+        if (iM02 >= 0) registros.push({ ref_cod: cod, cd: 'CD-MTZ', deposito: '0802', quantidade: toNum(rows[r][iM02]) });
+        if (iSP  >= 0) registros.push({ ref_cod: cod, cd: 'CD-SP',  deposito: '0803', quantidade: toNum(rows[r][iSP]) });
+        if (iPE  >= 0) registros.push({ ref_cod: cod, cd: 'CD-PE',  deposito: '0803', quantidade: toNum(rows[r][iPE]) });
         if (hasBreakdown) {
           forecast.push({
             ref_cod: cod,
-            forecast_mi_pe:  iFcPe  >= 0 ? +rows[r][iFcPe]  || 0 : null,
-            forecast_mi_sp:  iFcSp  >= 0 ? +rows[r][iFcSp]  || 0 : null,
-            forecast_mi_mtz: iFcMtz >= 0 ? +rows[r][iFcMtz] || 0 : null,
-            forecast_me:     iFcMe  >= 0 ? +rows[r][iFcMe]  || 0 : null,
+            forecast_mi_pe:  iFcPe  >= 0 ? toNum(rows[r][iFcPe])  : null,
+            forecast_mi_sp:  iFcSp  >= 0 ? toNum(rows[r][iFcSp])  : null,
+            forecast_mi_mtz: iFcMtz >= 0 ? toNum(rows[r][iFcMtz]) : null,
+            forecast_me:     iFcMe  >= 0 ? toNum(rows[r][iFcMe])  : null,
           });
-        } else if (iFc >= 0 && rows[r][iFc] !== '') {
-          forecast.push({ ref_cod: cod, forecast_mensal: +rows[r][iFc]||0 });
+        } else if (iFc >= 0 && String(rows[r][iFc]).trim() !== '') {
+          forecast.push({ ref_cod: cod, forecast_mensal: toNum(rows[r][iFc]) });
         }
       }
 
@@ -2268,14 +2444,65 @@ async function importarEstoqueFile(input) {
         if (btn) { btn.disabled = false; btn.style.opacity = ''; }
         toast('Nenhuma linha válida encontrada.', 'err'); return;
       }
-      _estProgSet(50, `Enviando ${registros.length} registros de estoque${forecast.length ? ' e ' + forecast.length + ' previsões' : ''}...`);
-      document.getElementById('est-prog-bar')?.classList.add('sending');
-      await POST('estoque', { registros, forecast });
-      document.getElementById('est-prog-bar')?.classList.remove('sending');
+
+      // Envia em lotes: um POST único com milhares de upserts estourava o tempo
+      // da função serverless e a Vercel devolvia HTML de timeout no lugar do JSON.
+      const regPorCod = new Map();
+      for (const x of registros) {
+        if (!regPorCod.has(x.ref_cod)) regPorCod.set(x.ref_cod, []);
+        regPorCod.get(x.ref_cod).push(x);
+      }
+      const fcPorCod = new Map(forecast.map(f => [f.ref_cod, f]));
+      const codigos  = [...regPorCod.keys()];
+
+      // Marcador do relógio do banco: tudo que não for gravado a partir daqui
+      // é saldo antigo e será zerado no final. Pedido ao servidor para não
+      // depender do relógio da máquina de quem importa.
+      const { marcador } = await POST('estoque', { iniciar: true });
+
+      const LOTE = 100;
+      const totalLotes = Math.ceil(codigos.length / LOTE);
+      const barra = document.getElementById('est-prog-bar');
+      const semCadastro = [];          // amostra p/ exibir
+      let semCadastroTotal = 0;        // contagem real (a amostra vem truncada)
+      let fcSalvos = 0;
+      barra?.classList.add('sending');
+      for (let i = 0; i < codigos.length; i += LOTE) {
+        const grupo   = codigos.slice(i, i + LOTE);
+        const nLote   = Math.floor(i / LOTE) + 1;
+        const loteReg = grupo.flatMap(c => regPorCod.get(c) || []);
+        const loteFc  = grupo.map(c => fcPorCod.get(c)).filter(Boolean);
+        _estProgSet(40 + Math.round(nLote / totalLotes * 55),
+          `Enviando lote ${nLote}/${totalLotes} — ${Math.min(i + LOTE, codigos.length)}/${codigos.length} referências...`);
+        let resp;
+        try {
+          resp = await POST('estoque', { registros: loteReg, forecast: loteFc });
+        } catch (e) {
+          // Os lotes anteriores já foram gravados: deixa claro que parou no meio.
+          e.message = `${e.message} (parou no lote ${nLote} de ${totalLotes}; os ${i} primeiros códigos já foram gravados)`;
+          throw e;
+        }
+        fcSalvos += resp?.forecast || 0;
+        semCadastroTotal += resp?.nao_cadastradas_total || 0;
+        if (resp?.nao_cadastradas?.length && semCadastro.length < 5) semCadastro.push(...resp.nao_cadastradas);
+      }
+      // Só chega aqui se todos os lotes passaram — uma falha acima lança e
+      // pula a varredura, deixando o estoque como estava em vez de zerá-lo.
+      _estProgSet(97, 'Zerando saldos ausentes da planilha...');
+      const { zeradas } = await POST('estoque', { finalizar: true, marcador });
+
+      barra?.classList.remove('sending');
       _estProgSet(100, `Concluído!`);
-      const fcMsg = forecast.length ? ` · ${forecast.length} previsões salvas` : ' · sem colunas de forecast no arquivo';
-      toast(`Estoque atualizado: ${registros.length} saldos${fcMsg}`, 'ok');
-      if (!forecast.length) toast('Para importar o forecast, use a tela de Importar (importar.html)', 'info', 6000);
+      const fcMsg = fcSalvos ? ` · ${fcSalvos} previsões salvas` : ' · sem colunas de forecast no arquivo';
+      const zeroMsg = zeradas ? ` · ${zeradas} saldo(s) ausentes da planilha zerados` : '';
+      toast(`Estoque atualizado: ${registros.length} saldos${fcMsg}${zeroMsg}`, 'ok');
+      if (!forecast.length) {
+        toast('Nenhuma coluna de forecast reconhecida (FC_MI_PE, FC_MI_SP, FC_MI_MTZ, FC_ME).', 'info', 6000);
+      } else if (semCadastroTotal) {
+        // Sem linha em `referencias` o forecast não tem onde ser gravado e a
+        // referência nem aparece nesta tela.
+        toast(`${semCadastroTotal} código(s) não estão cadastrados em Referências e ficaram sem forecast: ${semCadastro.slice(0,5).join(', ')}${semCadastroTotal>5?'...':''}`, 'err', 12000);
+      }
       _estProgHide();
       if (btn) { btn.disabled = false; btn.style.opacity = ''; }
       renderEstoque();
@@ -2903,7 +3130,7 @@ function agAbrirDia(iso) {
 
 async function atualizaBadgeAgenda() {
   try {
-    const d = await GET('agenda?r=tarefas&data=' + hojeLocal());
+    const d = await GET('agenda?recurso=tarefas&data=' + hojeLocal());
     const n = (d.tarefas || []).filter(x => x.status === 'pendente').length + (d.atrasadas || []).length;
     const b = document.getElementById('ni-agenda-badge');
     b.textContent = n;
@@ -2918,7 +3145,7 @@ async function renderAgendaDia() {
   lista.innerHTML = `<div class="empty"><span class="loading"></span></div>`;
   document.getElementById('ag-atrasadas').innerHTML = '';
   try {
-    const d = await GET('agenda?r=tarefas&data=' + data + agQS());
+    const d = await GET('agenda?recurso=tarefas&data=' + data + agQS());
     _agDia = d;
     const t      = d.tarefas || [];
     const feitas = t.filter(x => x.status === 'feita').length;
@@ -2991,7 +3218,7 @@ function tarefaRow(x, atrasada) {
 
 async function setStatusTarefa(id, status, obs) {
   try {
-    await PUT('agenda?r=tarefas', { id, status, obs_status: obs || '' });
+    await PUT('agenda?recurso=tarefas', { id, status, obs_status: obs || '' });
     toast(status === 'feita' ? 'Tarefa concluída!' : status === 'nao_feita' ? 'Marcada como não feita.' : 'Tarefa reaberta.');
     renderAgendaDia();
   } catch(e) { if (!e.sessionExpired) toast('Erro: ' + e.message, 'err'); }
@@ -3005,7 +3232,7 @@ async function addTarefaRapida() {
   const alvo = agUser();
   if (alvo) body.usuario_login = alvo;
   try {
-    await POST('agenda?r=tarefas', body);
+    await POST('agenda?recurso=tarefas', body);
     inp.value = '';
     renderAgendaDia();
   } catch(e) { if (!e.sessionExpired) toast('Erro: ' + e.message, 'err'); }
@@ -3014,7 +3241,7 @@ async function addTarefaRapida() {
 async function delTarefa(id) {
   if (!confirm('Excluir esta tarefa?')) return;
   try {
-    await DELETE('agenda?r=tarefas', { id });
+    await DELETE('agenda?recurso=tarefas', { id });
     toast('Tarefa excluída.');
     renderAgendaDia();
   } catch(e) { if (!e.sessionExpired) toast('Erro: ' + e.message, 'err'); }
@@ -3026,7 +3253,7 @@ async function trazerAtrasadas() {
   if (!atr.length) return;
   if (!confirm(`Trazer ${atr.length} tarefa(s) atrasada(s) para ${dataBR(data)}?`)) return;
   try {
-    await Promise.all(atr.map(x => PUT('agenda?r=tarefas', { id: x.id, acao: 'adiar', nova_data: data })));
+    await Promise.all(atr.map(x => PUT('agenda?recurso=tarefas', { id: x.id, acao: 'adiar', nova_data: data })));
     toast(atr.length + ' tarefa(s) trazida(s) para ' + dataBR(data) + '.');
     renderAgendaDia();
   } catch(e) { if (!e.sessionExpired) toast('Erro: ' + e.message, 'err'); }
@@ -3064,10 +3291,10 @@ async function salvarTarefa() {
   try {
     if (_tarefaEditId) {
       body.id = _tarefaEditId;
-      await PUT('agenda?r=tarefas', body);
+      await PUT('agenda?recurso=tarefas', body);
     } else {
       if (USER.perfil === 'admin') body.usuario_login = document.getElementById('t-user').value;
-      await POST('agenda?r=tarefas', body);
+      await POST('agenda?recurso=tarefas', body);
     }
     document.getElementById('modal-tarefa').style.display = 'none';
     toast(_tarefaEditId ? 'Tarefa atualizada!' : 'Tarefa criada!');
@@ -3111,7 +3338,7 @@ async function confirmarAdiar() {
   const nova = document.getElementById('adiar-data').value;
   if (!nova) { toast('Escolha a nova data.', 'err'); return; }
   try {
-    await PUT('agenda?r=tarefas', { id: _adiarId, acao: 'adiar', nova_data: nova });
+    await PUT('agenda?recurso=tarefas', { id: _adiarId, acao: 'adiar', nova_data: nova });
     document.getElementById('modal-adiar').style.display = 'none';
     toast('Tarefa adiada para ' + dataBR(nova) + '.');
     renderAgendaDia();
@@ -3124,7 +3351,7 @@ async function renderAgendaCalendario() {
   const cal = document.getElementById('ag-cal');
   cal.innerHTML = `<div class="empty" style="grid-column:1/-1"><span class="loading"></span></div>`;
   try {
-    const { dias } = await GET('agenda?r=tarefas&mes=' + mes + agQS());
+    const { dias } = await GET('agenda?recurso=tarefas&mes=' + mes + agQS());
     const map = {};
     (dias || []).forEach(d => map[d.data] = d);
     const [y, m]    = mes.split('-').map(Number);
@@ -3161,7 +3388,7 @@ async function renderMetas() {
   const grid = document.getElementById('ag-metas-grid');
   grid.innerHTML = `<div class="empty" style="grid-column:1/-1"><span class="loading"></span></div>`;
   try {
-    const rows = await GET(`agenda?r=metas&mes=${mes}&hoje=${hojeLocal()}${agQS()}`);
+    const rows = await GET(`agenda?recurso=metas&mes=${mes}&hoje=${hojeLocal()}${agQS()}`);
     _agMetas = rows;
     if (!rows.length) {
       grid.innerHTML = `<div class="empty" style="grid-column:1/-1"><div class="ei">◎</div>Nenhuma meta para ${mesL(mes)}.<br><span style="font-size:12px">Clique em "+ Nova Meta" para criar a sua.</span></div>`;
@@ -3254,10 +3481,10 @@ async function salvarMeta() {
   try {
     if (_metaEditId) {
       body.id = _metaEditId;
-      await PUT('agenda?r=metas', body);
+      await PUT('agenda?recurso=metas', body);
     } else {
       if (USER.perfil === 'admin') body.usuario_login = document.getElementById('m-user').value;
-      await POST('agenda?r=metas', body);
+      await POST('agenda?recurso=metas', body);
     }
     document.getElementById('modal-meta').style.display = 'none';
     toast(_metaEditId ? 'Meta atualizada!' : 'Meta criada!');
@@ -3268,7 +3495,7 @@ async function salvarMeta() {
 async function atualizarProgressoMeta(id) {
   const atual = +document.getElementById('mp-' + id).value || 0;
   try {
-    await PUT('agenda?r=metas', { id, atual });
+    await PUT('agenda?recurso=metas', { id, atual });
     toast('Progresso atualizado!');
     renderMetas();
   } catch(e) { if (!e.sessionExpired) toast('Erro: ' + e.message, 'err'); }
@@ -3277,7 +3504,7 @@ async function atualizarProgressoMeta(id) {
 async function delMeta(id) {
   if (!confirm('Excluir esta meta?')) return;
   try {
-    await DELETE('agenda?r=metas', { id });
+    await DELETE('agenda?recurso=metas', { id });
     toast('Meta excluída.');
     renderMetas();
   } catch(e) { if (!e.sessionExpired) toast('Erro: ' + e.message, 'err'); }
@@ -3311,7 +3538,7 @@ async function renderAgendaGrafico() {
   const celula  = document.getElementById('ag-graf-celula').value;
   const gu      = document.getElementById('ag-graf-user');
   const usuario = (USER.perfil === 'admin' && gu.value) ? gu.value : '';
-  let q = `agenda?r=stats&de=${de}&ate=${ate}`;
+  let q = `agenda?recurso=stats&de=${de}&ate=${ate}`;
   if (usuario) q += '&usuario=' + encodeURIComponent(usuario);
   if (celula)  q += '&celula='  + encodeURIComponent(celula);
 
@@ -3513,7 +3740,7 @@ async function salvarSenha() {
   if (nova.length < 6) { toast('A nova senha deve ter pelo menos 6 caracteres.', 'err'); return; }
   if (nova !== conf) { toast('As senhas não coincidem.', 'err'); return; }
   try {
-    await POST('senha', { senha_atual: atual, nova_senha: nova });
+    await POST('usuarios?recurso=senha', { senha_atual: atual, nova_senha: nova });
     document.getElementById('modal-senha').style.display = 'none';
     toast('Senha alterada com sucesso!');
   } catch(e) { if (!e.sessionExpired) toast('Erro: ' + e.message, 'err'); }
@@ -3534,7 +3761,7 @@ async function salvarResetSenha() {
   if (nova.length < 6) { toast('A senha deve ter pelo menos 6 caracteres.', 'err'); return; }
   if (nova !== conf) { toast('As senhas não coincidem.', 'err'); return; }
   try {
-    await POST('senha', { login: _resetSenhaLogin, nova_senha: nova });
+    await POST('usuarios?recurso=senha', { login: _resetSenhaLogin, nova_senha: nova });
     document.getElementById('modal-reset-senha').style.display = 'none';
     toast('Senha de ' + _resetSenhaLogin + ' redefinida com sucesso!');
   } catch(e) { if (!e.sessionExpired) toast('Erro: ' + e.message, 'err'); }
@@ -3546,7 +3773,7 @@ async function salvarResetSenha() {
 async function init() {
   if (TOKEN) {
     try {
-      USER = await GET('me');
+      USER = await GET('usuarios?recurso=me');
       showApp();
     } catch { TOKEN = null; localStorage.removeItem('sp_token'); }
   }

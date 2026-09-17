@@ -12,6 +12,17 @@ export default async function handler(req, res) {
   try { sql = getSQL(); } catch (e) { return res.status(500).json({ error: e.message }); }
   try { await initDB(sql); } catch (e) { return res.status(500).json({ error: "Erro initDB: " + e.message }); }
 
+  // Antes em api/meses.mjs — consolidado como ?recurso=meses para caber no
+  // limite de 12 Serverless Functions do plano Hobby da Vercel.
+  if (req.query?.recurso === "meses") {
+    try {
+      const rows = await sql`SELECT DISTINCT mes_ano FROM programa WHERE ativo = true ORDER BY mes_ano DESC`;
+      return res.status(200).json(rows.map(r => r.mes_ano));
+    } catch (e) {
+      return res.status(500).json({ error: "Erro meses: " + e.message });
+    }
+  }
+
   const mes    = req.query?.mes    || new Date().toISOString().slice(0, 7);
   const celula = req.query?.celula || null;
 
