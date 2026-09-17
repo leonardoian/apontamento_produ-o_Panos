@@ -112,6 +112,38 @@ export async function initDB(sql) {
       atualizado_em TIMESTAMP DEFAULT NOW(),
       UNIQUE(ref_cod, cd, deposito)
     )`,
+    sql`CREATE TABLE IF NOT EXISTS tarefas (
+      id SERIAL PRIMARY KEY,
+      usuario_login VARCHAR(50) NOT NULL,
+      data DATE NOT NULL,
+      data_original DATE,
+      titulo VARCHAR(200) NOT NULL,
+      descricao TEXT,
+      celula VARCHAR(30),
+      prioridade VARCHAR(10) DEFAULT 'media',
+      status VARCHAR(12) DEFAULT 'pendente',
+      obs_status TEXT,
+      adiamentos INT DEFAULT 0,
+      concluida_em TIMESTAMP,
+      criado_por VARCHAR(50),
+      criado_em TIMESTAMP DEFAULT NOW(),
+      ativo BOOLEAN DEFAULT true
+    )`,
+    sql`CREATE TABLE IF NOT EXISTS metas_usuario (
+      id SERIAL PRIMARY KEY,
+      usuario_login VARCHAR(50) NOT NULL,
+      titulo VARCHAR(200) NOT NULL,
+      tipo VARCHAR(12) DEFAULT 'tarefas',
+      periodo VARCHAR(10) DEFAULT 'mes',
+      mes_ano VARCHAR(7),
+      alvo NUMERIC(12,2) NOT NULL,
+      atual NUMERIC(12,2) DEFAULT 0,
+      unidade VARCHAR(20),
+      celula VARCHAR(30),
+      criado_por VARCHAR(50),
+      criado_em TIMESTAMP DEFAULT NOW(),
+      ativo BOOLEAN DEFAULT true
+    )`,
   ]);
 
   // Fase 2: ALTER TABLE em paralelo (depende das tabelas existirem)
@@ -124,6 +156,9 @@ export async function initDB(sql) {
     sql`ALTER TABLE referencias ADD COLUMN IF NOT EXISTS forecast_mi_sp  INT DEFAULT NULL`,
     sql`ALTER TABLE referencias ADD COLUMN IF NOT EXISTS forecast_mi_mtz INT DEFAULT NULL`,
     sql`ALTER TABLE referencias ADD COLUMN IF NOT EXISTS forecast_me     INT DEFAULT NULL`,
+    sql`CREATE INDEX IF NOT EXISTS idx_tarefas_user_data ON tarefas(usuario_login, data)`,
+    sql`CREATE INDEX IF NOT EXISTS idx_tarefas_data      ON tarefas(data)`,
+    sql`CREATE INDEX IF NOT EXISTS idx_metas_user        ON metas_usuario(usuario_login, ativo)`,
   ]);
 
   // Fase 3: normalização de dados legados em paralelo

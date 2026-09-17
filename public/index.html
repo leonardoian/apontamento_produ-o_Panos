@@ -45,6 +45,7 @@
     <div class="snav">
       <div class="snl">Principal</div>
       <div class="ni active" onclick="goTo('dashboard')"><span class="ic">◈</span>Dashboard</div>
+      <div class="ni" onclick="goTo('agenda')"><span class="ic">▤</span>Agenda<span class="nibadge" id="ni-agenda-badge" style="display:none">0</span></div>
       <div class="ni" onclick="goTo('programa')"><span class="ic">☰</span>Programa do Mês</div>
       <div class="ni" onclick="goTo('ordens')"><span class="ic">⊟</span>Ordens</div>
       <div class="ni" onclick="goTo('lancamento')"><span class="ic">⊕</span>Lançar Produção</div>
@@ -656,6 +657,143 @@
         </div>
       </div>
 
+      <!-- AGENDA -->
+      <div class="ps" id="sec-agenda">
+        <div class="filtbar" id="ag-admin-bar" style="display:none;margin-bottom:12px">
+          <div class="fi"><label>Agenda de</label>
+            <select id="ag-user" onchange="agRenderTabAtual()" style="min-width:210px"></select>
+          </div>
+          <span style="font-size:11px;color:var(--muted);padding-bottom:9px">Como administrador você pode ver e organizar a agenda de qualquer usuário.</span>
+        </div>
+
+        <div class="agtabs">
+          <button class="agtab active" id="agtab-dia"   onclick="agTab('dia')">▤ Dia</button>
+          <button class="agtab"        id="agtab-cal"   onclick="agTab('cal')">▦ Calendário</button>
+          <button class="agtab"        id="agtab-metas" onclick="agTab('metas')">◎ Metas</button>
+          <button class="agtab"        id="agtab-graf"  onclick="agTab('graf')">◍ Gráfico</button>
+        </div>
+
+        <!-- ABA: DIA -->
+        <div class="agpane active" id="agpane-dia">
+          <div class="filtbar">
+            <div class="fi"><label>Data</label>
+              <div style="display:flex;gap:4px;align-items:stretch">
+                <button class="btn bs bsm" onclick="agDiaShift(-1)" title="Dia anterior">‹</button>
+                <input type="date" id="ag-data" onchange="renderAgendaDia()">
+                <button class="btn bs bsm" onclick="agDiaShift(1)" title="Próximo dia">›</button>
+              </div>
+            </div>
+            <button class="btn bs bsm" onclick="agHoje()">Hoje</button>
+            <button class="btn bs bsm" onclick="renderAgendaDia()">↻ Atualizar</button>
+            <button class="btn bp bsm" onclick="openModalTarefa()">+ Nova Tarefa</button>
+          </div>
+
+          <div class="kg" id="ag-kpi"></div>
+          <div id="ag-atrasadas"></div>
+
+          <div class="tw">
+            <div class="th">
+              <div class="tt">TAREFAS DO DIA</div>
+              <span id="ag-dia-lbl" style="font-size:12px;color:var(--muted)"></span>
+            </div>
+            <div style="padding:12px 18px;border-bottom:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap">
+              <input type="text" id="ag-quick" placeholder="Adicionar tarefa rápida e pressionar Enter…" onkeydown="if(event.key==='Enter')addTarefaRapida()"
+                     style="flex:1;min-width:180px;background:var(--surface);border:1px solid var(--border);color:var(--text);padding:9px 12px;font:13px var(--fb);outline:none">
+              <button class="btn bs bsm" onclick="addTarefaRapida()">+ ADICIONAR</button>
+            </div>
+            <div id="ag-lista"></div>
+          </div>
+        </div>
+
+        <!-- ABA: CALENDÁRIO -->
+        <div class="agpane" id="agpane-cal">
+          <div class="filtbar">
+            <div class="fi"><label>Mês</label><input type="month" id="ag-mes" onchange="renderAgendaCalendario()"></div>
+            <button class="btn bs bsm" onclick="renderAgendaCalendario()">↻ Atualizar</button>
+            <div style="display:flex;gap:12px;align-items:center;margin-left:auto;font-size:11px;color:var(--muted);padding-bottom:6px">
+              <span><span class="cc-f" style="padding:3px 6px;border-radius:2px">n</span> feitas</span>
+              <span><span class="cc-n" style="padding:3px 6px;border-radius:2px">n</span> não feitas</span>
+              <span><span class="cc-p" style="padding:3px 6px;border-radius:2px">n</span> pendentes</span>
+            </div>
+          </div>
+          <div class="tw" style="padding:14px 18px">
+            <div class="calgrid" id="ag-cal-dow"></div>
+            <div class="calgrid" id="ag-cal" style="margin-top:4px"></div>
+          </div>
+        </div>
+
+        <!-- ABA: METAS -->
+        <div class="agpane" id="agpane-metas">
+          <div class="filtbar">
+            <div class="fi"><label>Mês</label><input type="month" id="ag-meta-mes" onchange="renderMetas()"></div>
+            <button class="btn bs bsm" onclick="renderMetas()">↻ Atualizar</button>
+            <button class="btn bp bsm" onclick="openModalMeta()">+ Nova Meta</button>
+          </div>
+          <div id="ag-metas-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:14px"></div>
+        </div>
+
+        <!-- ABA: GRÁFICO -->
+        <div class="agpane" id="agpane-graf">
+          <div class="filtbar">
+            <div class="fi"><label>Período</label>
+              <select id="ag-periodo" onchange="agPeriodoChange()" style="min-width:150px">
+                <option value="7">Últimos 7 dias</option>
+                <option value="30" selected>Últimos 30 dias</option>
+                <option value="mes">Mês atual</option>
+                <option value="custom">Intervalo…</option>
+              </select>
+            </div>
+            <div class="fi ag-range" style="display:none"><label>De</label><input type="date" id="ag-de" onchange="renderAgendaGrafico()"></div>
+            <div class="fi ag-range" style="display:none"><label>Até</label><input type="date" id="ag-ate" onchange="renderAgendaGrafico()"></div>
+            <div class="fi" id="ag-graf-user-wrap" style="display:none"><label>Usuário</label>
+              <select id="ag-graf-user" onchange="renderAgendaGrafico()" style="min-width:180px"></select>
+            </div>
+            <div class="fi"><label>Célula</label>
+              <select id="ag-graf-celula" onchange="renderAgendaGrafico()" style="min-width:160px"><option value="">Todas as Células</option></select>
+            </div>
+            <button class="btn bs bsm" onclick="renderAgendaGrafico()">↻ Atualizar</button>
+            <button class="btn bs bsm" onclick="exportAgendaExcel()" title="Exportar para Excel">⬇ Excel</button>
+            <button class="btn bs bsm" onclick="exportAgendaPDF()" title="Exportar para PDF">⬇ PDF</button>
+          </div>
+
+          <div class="kg" id="ag-graf-kpi"></div>
+
+          <div class="sr">
+            <div class="tw" style="flex:1.7">
+              <div class="th"><div class="tt">ATIVIDADES POR DIA</div><span id="ag-graf-lbl" style="font-size:11px;color:var(--muted)"></span></div>
+              <div style="padding:16px;height:300px;position:relative"><canvas id="chart-ag-serie"></canvas></div>
+            </div>
+            <div class="dash-aside" style="width:270px;display:flex;flex-direction:column;gap:14px">
+              <div class="tw" style="margin-bottom:0">
+                <div class="th"><div class="tt">CONCLUSÃO</div></div>
+                <div style="padding:20px">
+                  <div style="position:relative;width:170px;height:170px;margin:0 auto"><canvas id="chart-ag-rosca"></canvas></div>
+                  <div style="margin-top:16px;display:flex;flex-direction:column;gap:6px">
+                    <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Feitas</span><span id="ag-r-feitas" style="font:600 12px var(--fb);color:var(--green)">—</span></div>
+                    <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Não feitas</span><span id="ag-r-nao" style="font:600 12px var(--fb);color:var(--red)">—</span></div>
+                    <div style="display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:11px">Pendentes</span><span id="ag-r-pend" style="font:600 12px var(--fb)">—</span></div>
+                    <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:8px"><span style="color:var(--muted);font-size:11px">Adiamentos</span><span id="ag-r-adi" style="font:600 12px var(--fb);color:var(--orange)">—</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="tw">
+            <div class="th"><div class="tt">TAREFAS FEITAS POR CÉLULA</div></div>
+            <div style="padding:16px;height:250px;position:relative"><canvas id="chart-ag-celula"></canvas></div>
+          </div>
+
+          <div class="tw" id="ag-equipe-wrap" style="display:none">
+            <div class="th"><div class="tt">COMPARATIVO DA EQUIPE</div></div>
+            <div style="overflow-x:auto"><table><thead><tr>
+              <th>#</th><th>Usuário</th><th>Total</th><th style="color:var(--green)">Feitas</th>
+              <th style="color:var(--red)">Não Feitas</th><th>Pendentes</th><th style="color:var(--orange)">Adiamentos</th><th>% Conclusão</th>
+            </tr></thead><tbody id="ag-equipe-body"></tbody></table></div>
+          </div>
+        </div>
+      </div>
+
       <!-- OPERADORES -->
       <div class="ps" id="sec-operadores">
         <div class="filtbar" style="margin-bottom:18px">
@@ -832,6 +970,90 @@
   </div>
 </div>
 
+<!-- MODAL TAREFA -->
+<div id="modal-tarefa" style="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:none;align-items:center;justify-content:center">
+  <div style="background:var(--surface);border:1px solid var(--border);border-top:3px solid var(--accent);width:520px;max-width:95vw;padding:26px;max-height:92vh;overflow-y:auto">
+    <div style="font:700 20px/1 var(--fh);margin-bottom:18px" id="modal-tarefa-title">NOVA TAREFA</div>
+    <div class="fgrid c2">
+      <div class="fi" style="grid-column:1/-1"><label>Título</label><input type="text" id="t-titulo" placeholder="O que precisa ser feito" maxlength="200"></div>
+      <div class="fi" style="grid-column:1/-1"><label>Descrição (opcional)</label><textarea id="t-desc" placeholder="Detalhes, contexto, o que precisa sair pronto…"></textarea></div>
+      <div class="fi"><label>Data</label><input type="date" id="t-data"></div>
+      <div class="fi"><label>Prioridade</label>
+        <select id="t-prio"><option value="alta">Alta</option><option value="media" selected>Média</option><option value="baixa">Baixa</option></select>
+      </div>
+      <div class="fi"><label>Célula (opcional)</label><select id="t-celula"><option value="">— Sem célula —</option></select></div>
+      <div class="fi" id="t-user-wrap" style="display:none"><label>Para o usuário</label><select id="t-user"></select></div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:20px">
+      <button class="btn bs bsm" onclick="document.getElementById('modal-tarefa').style.display='none'">Cancelar</button>
+      <button class="btn bp bsm" onclick="salvarTarefa()">SALVAR</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL META -->
+<div id="modal-meta" style="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:none;align-items:center;justify-content:center">
+  <div style="background:var(--surface);border:1px solid var(--border);border-top:3px solid var(--blue);width:520px;max-width:95vw;padding:26px;max-height:92vh;overflow-y:auto">
+    <div style="font:700 20px/1 var(--fh);margin-bottom:18px" id="modal-meta-title">NOVA META</div>
+    <div class="fgrid c2">
+      <div class="fi" style="grid-column:1/-1"><label>Título da Meta</label><input type="text" id="m-titulo" placeholder="Ex: Concluir 40 tarefas no mês" maxlength="200"></div>
+      <div class="fi"><label>Tipo</label>
+        <select id="m-tipo" onchange="toggleMetaTipo()">
+          <option value="tarefas">Tarefas concluídas (automático)</option>
+          <option value="numerica">Numérica (atualizo à mão)</option>
+        </select>
+      </div>
+      <div class="fi"><label>Período</label>
+        <select id="m-periodo" onchange="toggleMetaTipo()">
+          <option value="mes" selected>Mês</option><option value="semana">Semana</option><option value="dia">Dia</option>
+        </select>
+      </div>
+      <div class="fi" id="m-mes-wrap"><label>Mês/Ano</label><input type="month" id="m-mes"></div>
+      <div class="fi"><label>Alvo</label><input type="number" id="m-alvo" min="0" step="0.01" placeholder="Ex: 40"></div>
+      <div class="fi" id="m-atual-wrap" style="display:none"><label>Valor Atual</label><input type="number" id="m-atual" min="0" step="0.01" placeholder="0"></div>
+      <div class="fi" id="m-unid-wrap" style="display:none"><label>Unidade</label><input type="text" id="m-unid" placeholder="Ex: %, peças, kg" maxlength="20"></div>
+      <div class="fi" id="m-celula-wrap"><label>Só tarefas da célula (opcional)</label><select id="m-celula"><option value="">— Todas as células —</option></select></div>
+      <div class="fi" id="m-user-wrap" style="display:none"><label>Para o usuário</label><select id="m-user"></select></div>
+    </div>
+    <div id="m-hint" style="font-size:11px;color:var(--muted);margin-top:12px"></div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">
+      <button class="btn bs bsm" onclick="document.getElementById('modal-meta').style.display='none'">Cancelar</button>
+      <button class="btn bp bsm" onclick="salvarMeta()">SALVAR</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ADIAR TAREFA -->
+<div id="modal-adiar" style="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:none;align-items:center;justify-content:center">
+  <div style="background:var(--surface);border:1px solid var(--border);border-top:3px solid var(--orange);width:400px;max-width:95vw;padding:26px">
+    <div style="font:700 20px/1 var(--fh);margin-bottom:4px">ADIAR TAREFA</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:18px" id="adiar-info"></div>
+    <div class="brow" style="margin-top:0;margin-bottom:14px">
+      <button class="btn bs bsm" onclick="adiarPara(1)">Amanhã</button>
+      <button class="btn bs bsm" onclick="adiarPara(2)">Depois de amanhã</button>
+      <button class="btn bs bsm" onclick="adiarProxSemana()">Próxima segunda</button>
+    </div>
+    <div class="fi"><label>Ou escolha a data</label><input type="date" id="adiar-data"></div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:20px">
+      <button class="btn bs bsm" onclick="document.getElementById('modal-adiar').style.display='none'">Cancelar</button>
+      <button class="btn bp bsm" onclick="confirmarAdiar()">ADIAR</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL NÃO FEITA -->
+<div id="modal-naofeita" style="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:none;align-items:center;justify-content:center">
+  <div style="background:var(--surface);border:1px solid var(--border);border-top:3px solid var(--red);width:420px;max-width:95vw;padding:26px">
+    <div style="font:700 20px/1 var(--fh);margin-bottom:4px">MARCAR COMO NÃO FEITA</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:18px" id="naofeita-info"></div>
+    <div class="fi"><label>Motivo (opcional)</label><input type="text" id="naofeita-obs" placeholder="Ex: faltou material, máquina parada…" maxlength="200"></div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:20px">
+      <button class="btn bs bsm" onclick="document.getElementById('modal-naofeita').style.display='none'">Cancelar</button>
+      <button class="btn bp bsm" onclick="confirmarNaoFeita()">CONFIRMAR</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast-container"></div>
 
 <script>
@@ -881,6 +1103,13 @@ const eClass= v => v>=1?'ok':v>=.8?'warn':'bad';
 const mesL  = m => { if(!m)return''; const[y,mo]=m.split('-'); return ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][+mo-1]+'/'+y; };
 const today = () => new Date().toISOString().slice(0,10);
 const curMes= () => new Date().toISOString().slice(0,7);
+const esc   = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+// Data local (a agenda é por dia — toISOString() usaria UTC e viraria o dia antes da hora no Brasil)
+const hojeLocal = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0,10); };
+const mesLocal  = () => hojeLocal().slice(0,7);
+const addDias   = (iso, n) => { const d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + n); return hojeLocalDe(d); };
+const hojeLocalDe = d => { const c = new Date(d); c.setMinutes(c.getMinutes() - c.getTimezoneOffset()); return c.toISOString().slice(0,10); };
+const dataBR    = iso => iso ? iso.split('-').reverse().join('/') : '—';
 
 function toast(msg, type='ok', ms=3500) {
   const icons = { ok:'✔', err:'✕', info:'ℹ' };
@@ -958,6 +1187,7 @@ async function showApp() {
   // Carrega dados base
   await Promise.all([loadMeses(), loadRefs()]);
   populateSelects();
+  agInit();
   goTo('dashboard');
 }
 
@@ -966,7 +1196,7 @@ async function showApp() {
 // ═══════════════════════════════════════
 async function loadMeses() {
   try {
-    _meses = await GET('meses');
+    _meses = await GET('me?r=meses');
     const cur = curMes();
     ['dash-mes','prog-mes','graf-mes','op-mes'].forEach(id => {
       const sel = document.getElementById(id);
@@ -1009,7 +1239,7 @@ function closeSidebar() {
 // ═══════════════════════════════════════
 // NAVEGAÇÃO
 // ═══════════════════════════════════════
-const TITLES = { dashboard:'Dashboard', programa:'Programa do Mês', ordens:'Ordens de Produção', lancamento:'Lançar Produção', historico:'Histórico', graficos:'Gráficos por Célula', estoque:'Estoque por CD', operadores:'Operadores', referencias:'Referências', usuarios:'Usuários' };
+const TITLES = { dashboard:'Dashboard', agenda:'Agenda de Tarefas', programa:'Programa do Mês', ordens:'Ordens de Produção', lancamento:'Lançar Produção', historico:'Histórico', graficos:'Gráficos por Célula', estoque:'Estoque por CD', operadores:'Operadores', referencias:'Referências', usuarios:'Usuários' };
 function goTo(p) {
   document.querySelectorAll('.ps').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.ni').forEach(n => n.classList.remove('active'));
@@ -1019,6 +1249,7 @@ function goTo(p) {
   if (window.innerWidth <= 768) closeSidebar();
   if (_dashInterval) { clearInterval(_dashInterval); _dashInterval = null; }
   if (p === 'dashboard')  { renderDashboard(); _dashInterval = setInterval(renderDashboard, 30000); }
+  if (p === 'agenda')     renderAgenda();
   if (p === 'programa')   renderPrograma();
   if (p === 'ordens')     renderOrdens();
   if (p === 'lancamento') { document.getElementById('ldata').value = today(); atualizaRefSel(); }
@@ -2578,6 +2809,692 @@ function imprimirOrdem(id) {
 </body></html>`);
   w.document.close();
   w.focus();
+}
+
+// ═══════════════════════════════════════
+// AGENDA DE TAREFAS
+// ═══════════════════════════════════════
+const PRIO_LBL = { alta:'ALTA', media:'MÉDIA', baixa:'BAIXA' };
+const DOW      = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+const AG_GRID  = '#333333', AG_TICK = '#888888', AG_TEXT = '#f0f0f0';
+
+let _agTab   = 'dia';
+let _agDia   = null;
+let _agStats = null;
+let _agMetas = [];
+let _agUsers = [];
+let _adiarId = null, _naoFeitaId = null, _tarefaEditId = null, _metaEditId = null;
+
+const corPct = p => p >= 100 ? 'var(--green)' : p >= 60 ? 'var(--orange)' : 'var(--red)';
+const corHex = p => p >= 100 ? '#10b981'      : p >= 60 ? '#f97316'       : '#CC0000';
+
+// Usuário cuja agenda está sendo vista (só o admin consegue trocar)
+function agUser() {
+  const sel = document.getElementById('ag-user');
+  return (USER?.perfil === 'admin' && sel && sel.value) ? sel.value : '';
+}
+function agQS() {
+  const u = agUser();
+  return u ? '&usuario=' + encodeURIComponent(u) : '';
+}
+function celulaOpts(placeholder) {
+  return `<option value="">${placeholder}</option>` + CELULAS_GRAF.map(c => `<option value="${c.value}">${c.label}</option>`).join('');
+}
+function agTarefa(id) {
+  return [...(_agDia?.tarefas || []), ...(_agDia?.atrasadas || [])].find(x => x.id === id);
+}
+
+function agInit() {
+  document.getElementById('t-celula').innerHTML       = celulaOpts('— Sem célula —');
+  document.getElementById('m-celula').innerHTML       = celulaOpts('— Todas as células —');
+  document.getElementById('ag-graf-celula').innerHTML = celulaOpts('Todas as Células');
+  document.getElementById('ag-data').value     = hojeLocal();
+  document.getElementById('ag-mes').value      = mesLocal();
+  document.getElementById('ag-meta-mes').value = mesLocal();
+  document.getElementById('ag-cal-dow').innerHTML = DOW.map(d => `<div class="caldow">${d}</div>`).join('');
+  if (USER?.perfil === 'admin') loadAgendaUsers();
+  atualizaBadgeAgenda();
+}
+
+async function loadAgendaUsers() {
+  try {
+    _agUsers = (await GET('usuarios')).filter(x => x.ativo !== false);
+    const opts = _agUsers.map(x => `<option value="${esc(x.login)}"${x.login === USER.login ? ' selected' : ''}>${esc(x.nome)} (${esc(x.login)})</option>`).join('');
+    document.getElementById('ag-user').innerHTML = opts;
+    document.getElementById('t-user').innerHTML  = opts;
+    document.getElementById('m-user').innerHTML  = opts;
+    document.getElementById('ag-graf-user').innerHTML = '<option value="TODOS">Toda a equipe</option>' + opts;
+    document.getElementById('ag-graf-user').value = USER.login;
+    ['ag-admin-bar','t-user-wrap','m-user-wrap','ag-graf-user-wrap'].forEach(id => document.getElementById(id).style.display = '');
+  } catch(e) { console.warn('Erro ao carregar usuários da agenda:', e); }
+}
+
+function renderAgenda() {
+  if (!document.getElementById('ag-data').value) agInit();
+  agRenderTabAtual();
+}
+function agRenderTabAtual() {
+  if (_agTab === 'dia')   renderAgendaDia();
+  if (_agTab === 'cal')   renderAgendaCalendario();
+  if (_agTab === 'metas') renderMetas();
+  if (_agTab === 'graf')  renderAgendaGrafico();
+}
+function agTab(t) {
+  _agTab = t;
+  document.querySelectorAll('#sec-agenda .agpane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('#sec-agenda .agtab').forEach(b => b.classList.remove('active'));
+  document.getElementById('agpane-' + t).classList.add('active');
+  document.getElementById('agtab-' + t).classList.add('active');
+  agRenderTabAtual();
+}
+function agDiaShift(n) {
+  const el = document.getElementById('ag-data');
+  el.value = addDias(el.value || hojeLocal(), n);
+  renderAgendaDia();
+}
+function agHoje() {
+  document.getElementById('ag-data').value = hojeLocal();
+  renderAgendaDia();
+}
+function agAbrirDia(iso) {
+  document.getElementById('ag-data').value = iso;
+  agTab('dia');
+}
+
+async function atualizaBadgeAgenda() {
+  try {
+    const d = await GET('agenda?r=tarefas&data=' + hojeLocal());
+    const n = (d.tarefas || []).filter(x => x.status === 'pendente').length + (d.atrasadas || []).length;
+    const b = document.getElementById('ni-agenda-badge');
+    b.textContent = n;
+    b.style.display = n > 0 ? '' : 'none';
+  } catch(e) { /* badge é secundário — falha em silêncio */ }
+}
+
+// ── ABA DIA ──
+async function renderAgendaDia() {
+  const data  = document.getElementById('ag-data').value || hojeLocal();
+  const lista = document.getElementById('ag-lista');
+  lista.innerHTML = `<div class="empty"><span class="loading"></span></div>`;
+  document.getElementById('ag-atrasadas').innerHTML = '';
+  try {
+    const d = await GET('agenda?r=tarefas&data=' + data + agQS());
+    _agDia = d;
+    const t      = d.tarefas || [];
+    const feitas = t.filter(x => x.status === 'feita').length;
+    const naoF   = t.filter(x => x.status === 'nao_feita').length;
+    const pend   = t.filter(x => x.status === 'pendente').length;
+    const adiad  = t.filter(x => +x.adiamentos > 0).length;
+    const taxa   = t.length ? feitas / t.length * 100 : null;
+    const cor    = taxa === null ? 'var(--muted)' : corPct(taxa);
+
+    document.getElementById('ag-dia-lbl').textContent =
+      new Date(data + 'T12:00:00').toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
+
+    document.getElementById('ag-kpi').innerHTML = `
+      <div class="kc g"><div class="kl">Feitas</div><div class="kv">${feitas}</div><div class="ks">concluídas no dia</div></div>
+      <div class="kc b"><div class="kl">Pendentes</div><div class="kv">${pend}</div><div class="ks">ainda em aberto</div></div>
+      <div class="kc r"><div class="kl">Não Feitas</div><div class="kv">${naoF}</div><div class="ks">não realizadas</div></div>
+      <div class="kc y"><div class="kl">Adiadas</div><div class="kv">${adiad}</div><div class="ks">já foram remarcadas</div></div>
+      <div class="kc" style="border-top:3px solid ${cor}"><div class="kl">% do Dia</div><div class="kv" style="color:${cor}">${taxa === null ? '—' : taxa.toFixed(1) + '%'}</div><div class="ks">${t.length} tarefa(s) no total</div></div>`;
+
+    const atr = d.atrasadas || [];
+    if (atr.length) {
+      document.getElementById('ag-atrasadas').innerHTML = `
+        <div class="tw" style="border-left:3px solid var(--red)">
+          <div class="th">
+            <div class="tt" style="color:var(--red)">⚠ ATRASADAS (${atr.length})</div>
+            <button class="btn bs bsm" onclick="trazerAtrasadas()">↓ Trazer todas para ${dataBR(data)}</button>
+          </div>
+          ${atr.map(x => tarefaRow(x, true)).join('')}
+        </div>`;
+    }
+
+    lista.innerHTML = t.length
+      ? t.map(x => tarefaRow(x, false)).join('')
+      : `<div class="empty"><div class="ei">▤</div>Nenhuma tarefa para este dia.<br><span style="font-size:12px">Use o campo acima para adicionar a primeira.</span></div>`;
+
+    atualizaBadgeAgenda();
+  } catch(e) {
+    if (!e.sessionExpired) lista.innerHTML = `<div class="empty">Erro ao carregar: ${esc(e.message)}</div>`;
+  }
+}
+
+function tarefaRow(x, atrasada) {
+  const cls  = x.status === 'feita' ? ' done' : x.status === 'nao_feita' ? ' nope' : '';
+  const mark = x.status === 'feita' ? '✔'     : x.status === 'nao_feita' ? '✕' : '';
+  const meta = [`<span class="pri pri-${x.prioridade || 'media'}">${PRIO_LBL[x.prioridade] || 'MÉDIA'}</span>`];
+  if (x.celula) meta.push(`<span class="tag">${esc(_CELULA_LABEL[x.celula] || x.celula)}</span>`);
+  if (atrasada) meta.push(`<span class="tag" style="border-color:var(--red);color:var(--red)">de ${dataBR(x.data)}</span>`);
+  if (+x.adiamentos > 0) meta.push(`<span class="tag" style="border-color:var(--orange);color:var(--orange)">adiada ${x.adiamentos}×</span>`);
+  if (x.criado_por && x.criado_por !== x.usuario_login) meta.push(`<span class="tag" style="border-color:var(--blue);color:var(--blue)">atribuída por ${esc(x.criado_por)}</span>`);
+  if (x.status === 'nao_feita' && x.obs_status) meta.push(`<span class="tag" style="border-color:var(--red);color:var(--red)">motivo: ${esc(x.obs_status)}</span>`);
+
+  return `<div class="tk${cls}">
+    <div class="tkmark">${mark}</div>
+    <div class="tkbody">
+      <div class="tkt">${esc(x.titulo)}</div>
+      ${x.descricao ? `<div class="tkd">${esc(x.descricao)}</div>` : ''}
+      <div class="tkmeta">${meta.join('')}</div>
+    </div>
+    <div class="tkacts">
+      ${x.status === 'feita'
+        ? `<button class="btn bs bsm" onclick="setStatusTarefa(${x.id},'pendente')" title="Reabrir">↺ Reabrir</button>`
+        : `<button class="btn bs bsm" onclick="setStatusTarefa(${x.id},'feita')" title="Marcar como feita">✔ Feita</button>`}
+      ${x.status !== 'nao_feita' ? `<button class="btn bs bsm" onclick="openModalNaoFeita(${x.id})" title="Não consegui fazer">✕ Não feita</button>` : ''}
+      <button class="btn bs bsm" onclick="openModalAdiar(${x.id})" title="Deixar para outro dia">→ Adiar</button>
+      <button class="btn bs bsm" onclick="openModalTarefa(${x.id})" title="Editar">✎</button>
+      <button class="btn bd bsm" onclick="delTarefa(${x.id})" title="Excluir">🗑</button>
+    </div>
+  </div>`;
+}
+
+async function setStatusTarefa(id, status, obs) {
+  try {
+    await PUT('agenda?r=tarefas', { id, status, obs_status: obs || '' });
+    toast(status === 'feita' ? 'Tarefa concluída!' : status === 'nao_feita' ? 'Marcada como não feita.' : 'Tarefa reaberta.');
+    renderAgendaDia();
+  } catch(e) { if (!e.sessionExpired) toast('Erro: ' + e.message, 'err'); }
+}
+
+async function addTarefaRapida() {
+  const inp    = document.getElementById('ag-quick');
+  const titulo = inp.value.trim();
+  if (!titulo) return;
+  const body = { titulo, data: document.getElementById('ag-data').value || hojeLocal(), prioridade: 'media' };
+  const alvo = agUser();
+  if (alvo) body.usuario_login = alvo;
+  try {
+    await POST('agenda?r=tarefas', body);
+    inp.value = '';
+    renderAgendaDia();
+  } catch(e) { if (!e.sessionExpired) toast('Erro: ' + e.message, 'err'); }
+}
+
+async function delTarefa(id) {
+  if (!confirm('Excluir esta tarefa?')) return;
+  try {
+    await DELETE('agenda?r=tarefas', { id });
+    toast('Tarefa excluída.');
+    renderAgendaDia();
+  } catch(e) { if (!e.sessionExpired) toast('Erro: ' + e.message, 'err'); }
+}
+
+async function trazerAtrasadas() {
+  const data = document.getElementById('ag-data').value || hojeLocal();
+  const atr  = _agDia?.atrasadas || [];
+  if (!atr.length) return;
+  if (!confirm(`Trazer ${atr.length} tarefa(s) atrasada(s) para ${dataBR(data)}?`)) return;
+  try {
+    await Promise.all(atr.map(x => PUT('agenda?r=tarefas', { id: x.id, acao: 'adiar', nova_data: data })));
+    toast(atr.length + ' tarefa(s) trazida(s) para ' + dataBR(data) + '.');
+    renderAgendaDia();
+  } catch(e) { if (!e.sessionExpired) toast('Erro: ' + e.message, 'err'); }
+}
+
+// ── MODAL: TAREFA ──
+function openModalTarefa(id) {
+  _tarefaEditId = id || null;
+  const t = id ? agTarefa(id) : null;
+  document.getElementById('modal-tarefa-title').textContent = id ? 'EDITAR TAREFA' : 'NOVA TAREFA';
+  document.getElementById('t-titulo').value = t?.titulo || '';
+  document.getElementById('t-desc').value   = t?.descricao || '';
+  document.getElementById('t-data').value   = t?.data || document.getElementById('ag-data').value || hojeLocal();
+  document.getElementById('t-prio').value   = t?.prioridade || 'media';
+  document.getElementById('t-celula').value = t?.celula || '';
+  if (USER.perfil === 'admin') {
+    document.getElementById('t-user').value    = t?.usuario_login || agUser() || USER.login;
+    document.getElementById('t-user').disabled = !!id;   // ao editar, o dono não muda
+  }
+  document.getElementById('modal-tarefa').style.display = 'flex';
+  setTimeout(() => document.getElementById('t-titulo').focus(), 60);
+}
+
+async function salvarTarefa() {
+  const titulo = document.getElementById('t-titulo').value.trim();
+  const data   = document.getElementById('t-data').value;
+  if (!titulo) { toast('Informe o título da tarefa.', 'err'); return; }
+  if (!data)   { toast('Informe a data.', 'err'); return; }
+  const body = {
+    titulo, data,
+    descricao:  document.getElementById('t-desc').value.trim(),
+    prioridade: document.getElementById('t-prio').value,
+    celula:     document.getElementById('t-celula').value || null,
+  };
+  try {
+    if (_tarefaEditId) {
+      body.id = _tarefaEditId;
+      await PUT('agenda?r=tarefas', body);
+    } else {
+      if (USER.perfil === 'admin') body.usuario_login = document.getElementById('t-user').value;
+      await POST('agenda?r=tarefas', body);
+    }
+    document.getElementById('modal-tarefa').style.display = 'none';
+    toast(_tarefaEditId ? 'Tarefa atualizada!' : 'Tarefa criada!');
+    document.getElementById('ag-data').value = data;   // segue para o dia da tarefa
+    renderAgendaDia();
+  } catch(e) { if (!e.sessionExpired) toast('Erro: ' + e.message, 'err'); }
+}
+
+// ── MODAL: NÃO FEITA ──
+function openModalNaoFeita(id) {
+  _naoFeitaId = id;
+  document.getElementById('naofeita-info').textContent = agTarefa(id)?.titulo || '';
+  document.getElementById('naofeita-obs').value = '';
+  document.getElementById('modal-naofeita').style.display = 'flex';
+}
+function confirmarNaoFeita() {
+  const obs = document.getElementById('naofeita-obs').value.trim();
+  document.getElementById('modal-naofeita').style.display = 'none';
+  setStatusTarefa(_naoFeitaId, 'nao_feita', obs);
+}
+
+// ── MODAL: ADIAR ──
+function openModalAdiar(id) {
+  _adiarId = id;
+  const t = agTarefa(id);
+  document.getElementById('adiar-info').textContent = t ? `${t.titulo} — agendada para ${dataBR(t.data)}` : '';
+  document.getElementById('adiar-data').value = addDias(t?.data || hojeLocal(), 1);
+  document.getElementById('modal-adiar').style.display = 'flex';
+}
+function adiarPara(n) {
+  document.getElementById('adiar-data').value = addDias(agTarefa(_adiarId)?.data || hojeLocal(), n);
+  confirmarAdiar();
+}
+function adiarProxSemana() {
+  const base = agTarefa(_adiarId)?.data || hojeLocal();
+  const dow  = new Date(base + 'T12:00:00').getDay();
+  document.getElementById('adiar-data').value = addDias(base, (8 - dow) % 7 || 7);
+  confirmarAdiar();
+}
+async function confirmarAdiar() {
+  const nova = document.getElementById('adiar-data').value;
+  if (!nova) { toast('Escolha a nova data.', 'err'); return; }
+  try {
+    await PUT('agenda?r=tarefas', { id: _adiarId, acao: 'adiar', nova_data: nova });
+    document.getElementById('modal-adiar').style.display = 'none';
+    toast('Tarefa adiada para ' + dataBR(nova) + '.');
+    renderAgendaDia();
+  } catch(e) { if (!e.sessionExpired) toast('Erro: ' + e.message, 'err'); }
+}
+
+// ── ABA CALENDÁRIO ──
+async function renderAgendaCalendario() {
+  const mes = document.getElementById('ag-mes').value || mesLocal();
+  const cal = document.getElementById('ag-cal');
+  cal.innerHTML = `<div class="empty" style="grid-column:1/-1"><span class="loading"></span></div>`;
+  try {
+    const { dias } = await GET('agenda?r=tarefas&mes=' + mes + agQS());
+    const map = {};
+    (dias || []).forEach(d => map[d.data] = d);
+    const [y, m]    = mes.split('-').map(Number);
+    const offset    = new Date(y, m - 1, 1).getDay();
+    const totalDias = new Date(y, m, 0).getDate();
+    const hoje      = hojeLocal();
+
+    let html = '';
+    for (let i = 0; i < offset; i++) html += `<div class="calday out"></div>`;
+    for (let d = 1; d <= totalDias; d++) {
+      const iso = `${mes}-${String(d).padStart(2,'0')}`;
+      const r   = map[iso] || { feitas:0, nao_feitas:0, pendentes:0 };
+      const tot = r.feitas + r.nao_feitas + r.pendentes;
+      const p   = tot ? r.feitas / tot * 100 : 0;
+      html += `<div class="calday${iso === hoje ? ' today' : ''}" onclick="agAbrirDia('${iso}')" title="${tot} tarefa(s)">
+        <div class="caldn">${d}</div>
+        <div class="calcnt">
+          ${r.feitas     ? `<span class="cc-f">${r.feitas}</span>`     : ''}
+          ${r.nao_feitas ? `<span class="cc-n">${r.nao_feitas}</span>` : ''}
+          ${r.pendentes  ? `<span class="cc-p">${r.pendentes}</span>`  : ''}
+        </div>
+        ${tot ? `<div class="pw" style="margin-top:auto"><div class="pf" style="width:${p}%;background:${corHex(p)}"></div></div>` : ''}
+      </div>`;
+    }
+    cal.innerHTML = html;
+  } catch(e) {
+    if (!e.sessionExpired) cal.innerHTML = `<div class="empty" style="grid-column:1/-1">Erro ao carregar: ${esc(e.message)}</div>`;
+  }
+}
+
+// ── ABA METAS ──
+async function renderMetas() {
+  const mes  = document.getElementById('ag-meta-mes').value || mesLocal();
+  const grid = document.getElementById('ag-metas-grid');
+  grid.innerHTML = `<div class="empty" style="grid-column:1/-1"><span class="loading"></span></div>`;
+  try {
+    const rows = await GET(`agenda?r=metas&mes=${mes}&hoje=${hojeLocal()}${agQS()}`);
+    _agMetas = rows;
+    if (!rows.length) {
+      grid.innerHTML = `<div class="empty" style="grid-column:1/-1"><div class="ei">◎</div>Nenhuma meta para ${mesL(mes)}.<br><span style="font-size:12px">Clique em "+ Nova Meta" para criar a sua.</span></div>`;
+      return;
+    }
+    grid.innerHTML = rows.map(m => {
+      const alvo = +m.alvo || 0, prog = +m.progresso || 0;
+      const praw = alvo > 0 ? prog / alvo * 100 : 0;
+      const cor  = corPct(praw);
+      const per  = { dia:'no dia', semana:'na semana', mes:'no mês' }[m.periodo] || '';
+      const und  = m.unidade ? ' ' + esc(m.unidade) : '';
+      return `<div class="metacard tipo-${m.tipo}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+          <div style="font:600 14px/1.3 var(--fb)">${esc(m.titulo)}</div>
+          <div style="display:flex;gap:4px;flex-shrink:0">
+            <button class="btn bs bsm" onclick="openModalMeta(${m.id})" title="Editar">✎</button>
+            <button class="btn bd bsm" onclick="delMeta(${m.id})" title="Excluir">🗑</button>
+          </div>
+        </div>
+        <div class="tkmeta" style="margin-top:8px">
+          <span class="tag">${m.tipo === 'tarefas' ? 'tarefas concluídas' : 'meta numérica'}</span>
+          <span class="tag">${per}${m.periodo === 'mes' && m.mes_ano ? ' · ' + mesL(m.mes_ano) : ''}</span>
+          ${m.celula ? `<span class="tag">${esc(_CELULA_LABEL[m.celula] || m.celula)}</span>` : ''}
+          ${m.usuario_login !== USER.login ? `<span class="tag" style="border-color:var(--blue);color:var(--blue)">${esc(m.usuario_login)}</span>` : ''}
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:14px">
+          <div style="font:900 24px/1 var(--fh);color:${cor}">${praw.toFixed(0)}%</div>
+          <div style="font:600 13px var(--fb);color:var(--muted)">${fmt(prog)} / ${fmt(alvo)}${und}</div>
+        </div>
+        <div class="pw" style="height:7px;margin-top:8px"><div class="pf" style="width:${Math.min(praw,100)}%;background:${corHex(praw)}"></div></div>
+        ${m.tipo === 'numerica' ? `
+          <div style="display:flex;gap:6px;margin-top:12px">
+            <input type="number" id="mp-${m.id}" value="${prog}" step="0.01" min="0" style="flex:1;min-width:0;background:var(--surface);border:1px solid var(--border);color:var(--text);padding:6px 9px;font:13px var(--fb);outline:none">
+            <button class="btn bs bsm" onclick="atualizarProgressoMeta(${m.id})">ATUALIZAR</button>
+          </div>` : ''}
+      </div>`;
+    }).join('');
+  } catch(e) {
+    if (!e.sessionExpired) grid.innerHTML = `<div class="empty" style="grid-column:1/-1">Erro ao carregar: ${esc(e.message)}</div>`;
+  }
+}
+
+function toggleMetaTipo() {
+  const tipo = document.getElementById('m-tipo').value;
+  const per  = document.getElementById('m-periodo').value;
+  document.getElementById('m-atual-wrap').style.display  = tipo === 'numerica' ? '' : 'none';
+  document.getElementById('m-unid-wrap').style.display   = tipo === 'numerica' ? '' : 'none';
+  document.getElementById('m-celula-wrap').style.display = tipo === 'tarefas'  ? '' : 'none';
+  document.getElementById('m-mes-wrap').style.display    = per  === 'mes'      ? '' : 'none';
+  document.getElementById('m-hint').textContent = tipo === 'tarefas'
+    ? 'O progresso é contado sozinho: cada tarefa marcada como feita no período soma 1.'
+    : 'Você atualiza o valor atual à mão, no próprio card da meta.';
+}
+
+function openModalMeta(id) {
+  _metaEditId = id || null;
+  const m = id ? _agMetas.find(x => x.id === id) : null;
+  document.getElementById('modal-meta-title').textContent = id ? 'EDITAR META' : 'NOVA META';
+  document.getElementById('m-titulo').value  = m?.titulo || '';
+  document.getElementById('m-tipo').value    = m?.tipo || 'tarefas';
+  document.getElementById('m-periodo').value = m?.periodo || 'mes';
+  document.getElementById('m-mes').value     = m?.mes_ano || document.getElementById('ag-meta-mes').value || mesLocal();
+  document.getElementById('m-alvo').value    = m ? +m.alvo : '';
+  document.getElementById('m-atual').value   = m ? +m.atual : 0;
+  document.getElementById('m-unid').value    = m?.unidade || '';
+  document.getElementById('m-celula').value  = m?.celula || '';
+  if (USER.perfil === 'admin') {
+    document.getElementById('m-user').value    = m?.usuario_login || agUser() || USER.login;
+    document.getElementById('m-user').disabled = !!id;
+  }
+  toggleMetaTipo();
+  document.getElementById('modal-meta').style.display = 'flex';
+  setTimeout(() => document.getElementById('m-titulo').focus(), 60);
+}
+
+async function salvarMeta() {
+  const titulo = document.getElementById('m-titulo').value.trim();
+  const alvo   = +document.getElementById('m-alvo').value;
+  if (!titulo)    { toast('Informe o título da meta.', 'err'); return; }
+  if (!(alvo > 0)) { toast('O alvo precisa ser maior que zero.', 'err'); return; }
+  const tipo = document.getElementById('m-tipo').value;
+  const body = {
+    titulo, alvo, tipo,
+    periodo: document.getElementById('m-periodo').value,
+    mes_ano: document.getElementById('m-mes').value || null,
+    atual:   tipo === 'numerica' ? +document.getElementById('m-atual').value || 0 : 0,
+    unidade: tipo === 'numerica' ? document.getElementById('m-unid').value.trim() : 'tarefas',
+    celula:  tipo === 'tarefas'  ? (document.getElementById('m-celula').value || null) : null,
+  };
+  try {
+    if (_metaEditId) {
+      body.id = _metaEditId;
+      await PUT('agenda?r=metas', body);
+    } else {
+      if (USER.perfil === 'admin') body.usuario_login = document.getElementById('m-user').value;
+      await POST('agenda?r=metas', body);
+    }
+    document.getElementById('modal-meta').style.display = 'none';
+    toast(_metaEditId ? 'Meta atualizada!' : 'Meta criada!');
+    renderMetas();
+  } catch(e) { if (!e.sessionExpired) toast('Erro: ' + e.message, 'err'); }
+}
+
+async function atualizarProgressoMeta(id) {
+  const atual = +document.getElementById('mp-' + id).value || 0;
+  try {
+    await PUT('agenda?r=metas', { id, atual });
+    toast('Progresso atualizado!');
+    renderMetas();
+  } catch(e) { if (!e.sessionExpired) toast('Erro: ' + e.message, 'err'); }
+}
+
+async function delMeta(id) {
+  if (!confirm('Excluir esta meta?')) return;
+  try {
+    await DELETE('agenda?r=metas', { id });
+    toast('Meta excluída.');
+    renderMetas();
+  } catch(e) { if (!e.sessionExpired) toast('Erro: ' + e.message, 'err'); }
+}
+
+// ── ABA GRÁFICO ──
+function agPeriodoChange() {
+  const v = document.getElementById('ag-periodo').value;
+  document.querySelectorAll('#agpane-graf .ag-range').forEach(el => el.style.display = v === 'custom' ? '' : 'none');
+  if (v === 'custom') {
+    if (!document.getElementById('ag-de').value)  document.getElementById('ag-de').value  = addDias(hojeLocal(), -30);
+    if (!document.getElementById('ag-ate').value) document.getElementById('ag-ate').value = hojeLocal();
+  }
+  renderAgendaGrafico();
+}
+
+function agRange() {
+  const v = document.getElementById('ag-periodo').value;
+  const hoje = hojeLocal();
+  if (v === 'custom') return { de: document.getElementById('ag-de').value || addDias(hoje,-30), ate: document.getElementById('ag-ate').value || hoje };
+  if (v === 'mes') {
+    const m   = mesLocal();
+    const ult = new Date(+m.slice(0,4), +m.slice(5,7), 0).getDate();
+    return { de: m + '-01', ate: `${m}-${String(ult).padStart(2,'0')}` };
+  }
+  return { de: addDias(hoje, -(+v - 1)), ate: hoje };
+}
+
+async function renderAgendaGrafico() {
+  const { de, ate } = agRange();
+  const celula  = document.getElementById('ag-graf-celula').value;
+  const gu      = document.getElementById('ag-graf-user');
+  const usuario = (USER.perfil === 'admin' && gu.value) ? gu.value : '';
+  let q = `agenda?r=stats&de=${de}&ate=${ate}`;
+  if (usuario) q += '&usuario=' + encodeURIComponent(usuario);
+  if (celula)  q += '&celula='  + encodeURIComponent(celula);
+
+  document.getElementById('ag-graf-kpi').innerHTML = `<div class="kc y"><div class="kl">Carregando</div><div class="kv"><span class="loading"></span></div></div>`;
+  try {
+    const d = await GET(q);
+    _agStats = d;
+    const r    = d.resumo || { total:0, feitas:0, nao_feitas:0, pendentes:0, adiamentos:0 };
+    const taxa = r.total ? r.feitas / r.total * 100 : 0;
+    const cor  = r.total ? corPct(taxa) : 'var(--muted)';
+
+    document.getElementById('ag-graf-lbl').textContent = dataBR(de) + ' a ' + dataBR(ate);
+    document.getElementById('ag-graf-kpi').innerHTML = `
+      <div class="kc g"><div class="kl">Feitas</div><div class="kv">${fmt(r.feitas)}</div><div class="ks">no período</div></div>
+      <div class="kc r"><div class="kl">Não Feitas</div><div class="kv">${fmt(r.nao_feitas)}</div><div class="ks">não realizadas</div></div>
+      <div class="kc b"><div class="kl">Pendentes</div><div class="kv">${fmt(r.pendentes)}</div><div class="ks">ainda em aberto</div></div>
+      <div class="kc y"><div class="kl">Adiamentos</div><div class="kv">${fmt(r.adiamentos)}</div><div class="ks">vezes remarcadas</div></div>
+      <div class="kc" style="border-top:3px solid ${cor}"><div class="kl">Conclusão</div><div class="kv" style="color:${cor}">${r.total ? taxa.toFixed(1)+'%' : '—'}</div><div class="ks">${fmt(r.total)} tarefa(s)</div></div>`;
+
+    document.getElementById('ag-r-feitas').textContent = fmt(r.feitas);
+    document.getElementById('ag-r-nao').textContent    = fmt(r.nao_feitas);
+    document.getElementById('ag-r-pend').textContent   = fmt(r.pendentes);
+    document.getElementById('ag-r-adi').textContent    = fmt(r.adiamentos);
+
+    agChartSerie(d.serie || []);
+    agChartRosca(taxa, r.total);
+    agChartCelula(d.por_celula || []);
+
+    const wrap = document.getElementById('ag-equipe-wrap');
+    const eq   = d.equipe || [];
+    if (eq.length) {
+      wrap.style.display = '';
+      document.getElementById('ag-equipe-body').innerHTML = eq.map((x, i) => {
+        const p = x.total ? x.feitas / x.total * 100 : 0;
+        return `<tr><td>${i+1}</td><td>${esc(x.nome)}</td><td>${fmt(x.total)}</td>
+          <td class="ok">${fmt(x.feitas)}</td><td class="bad">${fmt(x.nao_feitas)}</td>
+          <td>${fmt(x.pendentes)}</td><td class="warn">${fmt(x.adiamentos)}</td>
+          <td style="color:${corPct(p)};font-weight:600">${p.toFixed(1)}%
+            <div class="pw"><div class="pf" style="width:${Math.min(p,100)}%;background:${corHex(p)}"></div></div></td></tr>`;
+      }).join('');
+    } else {
+      wrap.style.display = 'none';
+    }
+  } catch(e) {
+    if (!e.sessionExpired) document.getElementById('ag-graf-kpi').innerHTML = `<div class="kc r"><div class="kl">Erro</div><div class="kv" style="font-size:15px">${esc(e.message)}</div></div>`;
+  }
+}
+
+function agDestroy(k) { if (_chartInstances[k]) { _chartInstances[k].destroy(); delete _chartInstances[k]; } }
+
+function agChartSerie(serie) {
+  agDestroy('ag-serie');
+  _chartInstances['ag-serie'] = new Chart(document.getElementById('chart-ag-serie').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: serie.map(s => dataBR(s.data).slice(0, 5)),
+      datasets: [
+        { label:'Feitas',     data: serie.map(s => s.feitas),     backgroundColor:'#10b981' },
+        { label:'Não feitas', data: serie.map(s => s.nao_feitas), backgroundColor:'#ef4444' },
+        { label:'Pendentes',  data: serie.map(s => s.pendentes),  backgroundColor:'#6b7280' },
+      ],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: {
+        x: { stacked:true, grid:{ color:AG_GRID }, ticks:{ color:AG_TICK, maxRotation:0, autoSkipPadding:14 } },
+        y: { stacked:true, beginAtZero:true, grid:{ color:AG_GRID }, ticks:{ color:AG_TICK, precision:0 } },
+      },
+      plugins: { legend: { labels: { color:AG_TEXT, boxWidth:12, font:{ family:'Barlow', size:12 } } } },
+    },
+  });
+}
+
+function agChartRosca(taxa, total) {
+  agDestroy('ag-rosca');
+  const cor   = total ? corHex(taxa) : '#888888';
+  const label = total ? taxa.toFixed(1) + '%' : '—';
+  // mesmo plugin de rótulo central usado nos gráficos por célula
+  const pluginCentro = {
+    id: 'centro_agenda',
+    afterDraw(chart) {
+      const { ctx, chartArea: { left, top, width, height } } = chart;
+      ctx.save();
+      ctx.font = '700 26px "Barlow Condensed", sans-serif';
+      ctx.fillStyle = cor;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(label, left + width / 2, top + height / 2);
+      ctx.restore();
+    },
+  };
+  _chartInstances['ag-rosca'] = new Chart(document.getElementById('chart-ag-rosca').getContext('2d'), {
+    type: 'doughnut',
+    data: { datasets: [{
+      data: total ? [taxa, Math.max(100 - taxa, 0)] : [1, 0],
+      backgroundColor: total ? [cor, '#2a2f3d'] : ['#2a2f3d', '#1e222d'],
+      borderWidth: 0,
+    }]},
+    options: { cutout:'72%', responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false}, tooltip:{enabled:false} }, animation:{ animateRotate:true, duration:800 } },
+    plugins: [pluginCentro],
+  });
+}
+
+function agChartCelula(rows) {
+  agDestroy('ag-celula');
+  const dados = rows.filter(r => +r.feitas > 0);
+  _chartInstances['ag-celula'] = new Chart(document.getElementById('chart-ag-celula').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: dados.map(r => _CELULA_LABEL[r.celula] || r.celula),
+      datasets: [{ label:'Tarefas feitas', data: dados.map(r => +r.feitas), backgroundColor:'#3b82f6', borderWidth:0 }],
+    },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      scales: {
+        x: { beginAtZero:true, grid:{ color:AG_GRID }, ticks:{ color:AG_TICK, precision:0 } },
+        y: { grid:{ display:false }, ticks:{ color:AG_TICK } },
+      },
+      plugins: { legend: { display:false } },
+    },
+  });
+}
+
+function exportAgendaExcel() {
+  if (!_agStats) { toast('Carregue os dados antes de exportar.', 'err'); return; }
+  const d  = _agStats;
+  const wb = XLSX.utils.book_new();
+
+  const serie = [['Data', 'Feitas', 'Não Feitas', 'Pendentes', 'Total', '% Conclusão']];
+  (d.serie || []).forEach(s => {
+    const t = s.feitas + s.nao_feitas + s.pendentes;
+    serie.push([dataBR(s.data), s.feitas, s.nao_feitas, s.pendentes, t, t ? (s.feitas / t * 100).toFixed(1) + '%' : '—']);
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(serie), 'Por Dia');
+
+  const cel = [['Célula', 'Feitas', 'Total']];
+  (d.por_celula || []).forEach(c => cel.push([_CELULA_LABEL[c.celula] || c.celula, c.feitas, c.total]));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(cel), 'Por Célula');
+
+  if ((d.equipe || []).length) {
+    const eq = [['Usuário', 'Total', 'Feitas', 'Não Feitas', 'Pendentes', 'Adiamentos', '% Conclusão']];
+    d.equipe.forEach(x => eq.push([x.nome, x.total, x.feitas, x.nao_feitas, x.pendentes, x.adiamentos, x.total ? (x.feitas / x.total * 100).toFixed(1) + '%' : '—']));
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(eq), 'Equipe');
+  }
+  XLSX.writeFile(wb, `agenda_${d.de}_a_${d.ate}.xlsx`);
+}
+
+function exportAgendaPDF() {
+  if (!_agStats) { toast('Carregue os dados antes de exportar.', 'err'); return; }
+  const d = _agStats;
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  const r = d.resumo || {};
+
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text('SuperPro — Agenda de Atividades', 14, 18);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Período: ${dataBR(d.de)} a ${dataBR(d.ate)}`, 14, 26);
+  doc.text(`Feitas: ${r.feitas || 0}   Nao feitas: ${r.nao_feitas || 0}   Pendentes: ${r.pendentes || 0}   Adiamentos: ${r.adiamentos || 0}`, 14, 32);
+
+  doc.autoTable({
+    startY: 38,
+    head: [['Data', 'Feitas', 'Não Feitas', 'Pendentes', 'Total', '% Conclusão']],
+    body: (d.serie || []).map(s => {
+      const t = s.feitas + s.nao_feitas + s.pendentes;
+      return [dataBR(s.data), s.feitas, s.nao_feitas, s.pendentes, t, t ? (s.feitas / t * 100).toFixed(1) + '%' : '—'];
+    }),
+    theme: 'grid',
+    headStyles: { fillColor: [204, 0, 0], textColor: 255 },
+  });
+
+  if ((d.equipe || []).length) {
+    doc.autoTable({
+      startY: doc.lastAutoTable.finalY + 8,
+      head: [['Usuário', 'Total', 'Feitas', 'Não Feitas', 'Pendentes', 'Adiamentos', '% Conclusão']],
+      body: d.equipe.map(x => [x.nome, x.total, x.feitas, x.nao_feitas, x.pendentes, x.adiamentos, x.total ? (x.feitas / x.total * 100).toFixed(1) + '%' : '—']),
+      theme: 'grid',
+      headStyles: { fillColor: [59, 130, 246], textColor: 255 },
+    });
+  }
+  doc.save(`agenda_${d.de}_a_${d.ate}.pdf`);
 }
 
 // ═══════════════════════════════════════

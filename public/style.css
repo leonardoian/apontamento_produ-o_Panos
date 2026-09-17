@@ -167,6 +167,54 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 .sr .tw { flex: 1; }
 .filtbar { background: var(--card); border: 1px solid var(--border); padding: 12px 18px; margin-bottom: 14px; display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
 
+/* ── AGENDA ── */
+.agtabs { display: flex; gap: 3px; border-bottom: 1px solid var(--border); margin-bottom: 18px; flex-wrap: wrap; }
+.agtab { padding: 9px 18px; font: 700 13px/1 var(--fh); letter-spacing: 1px; text-transform: uppercase; color: var(--muted); cursor: pointer; background: transparent; border: 1px solid transparent; border-bottom: none; transition: all .15s; }
+.agtab:hover { color: var(--text); }
+.agtab.active { color: var(--accent); background: var(--card); border-color: var(--border); box-shadow: inset 0 2px 0 var(--accent); }
+.agpane { display: none; }
+.agpane.active { display: block; animation: fu .2s ease; }
+.nibadge { margin-left: auto; background: var(--accent); color: #fff; font: 700 10px/1 var(--fh); padding: 3px 6px; border-radius: 9px; min-width: 15px; text-align: center; }
+
+/* linha de tarefa */
+.tk { display: flex; align-items: flex-start; gap: 12px; padding: 13px 18px; border-bottom: 1px solid var(--border); transition: background .15s; }
+.tk:last-child { border-bottom: none; }
+.tk:hover { background: rgba(255,255,255,.02); }
+.tk.done .tkt { text-decoration: line-through; color: var(--muted); }
+.tk.nope .tkt { color: var(--muted); }
+.tkmark { width: 22px; height: 22px; flex-shrink: 0; border: 1px solid var(--border); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; margin-top: 1px; }
+.tk.done .tkmark { border-color: var(--green); color: var(--green); background: rgba(16,185,129,.12); }
+.tk.nope .tkmark { border-color: var(--red);   color: var(--red);   background: rgba(239,68,68,.12); }
+.tkbody { flex: 1; min-width: 0; }
+.tkt { font: 600 14px/1.35 var(--fb); word-break: break-word; }
+.tkd { font-size: 12px; color: var(--muted); margin-top: 3px; word-break: break-word; }
+.tkmeta { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-top: 7px; }
+.tkacts { display: flex; gap: 5px; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
+.pri { display: inline-block; padding: 2px 7px; font: 700 10px/1.4 var(--fh); border-radius: 2px; letter-spacing: .5px; }
+.pri-alta  { background: rgba(239,68,68,.15);   color: var(--red); }
+.pri-media { background: rgba(249,115,22,.15);  color: var(--orange); }
+.pri-baixa { background: rgba(136,136,136,.15); color: var(--muted); }
+.tag { display: inline-block; padding: 2px 7px; font: 600 10px/1.5 var(--fb); border-radius: 2px; background: var(--surface); border: 1px solid var(--border); color: var(--muted); }
+
+/* calendário */
+.calgrid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.caldow { font: 700 10px/1 var(--fh); letter-spacing: 2px; color: var(--muted); text-transform: uppercase; text-align: center; padding: 6px 0; }
+.calday { background: var(--surface); border: 1px solid var(--border); min-height: 78px; padding: 6px 7px; cursor: pointer; transition: all .15s; display: flex; flex-direction: column; gap: 4px; }
+.calday:hover { border-color: var(--accent); }
+.calday.out { opacity: .25; cursor: default; }
+.calday.out:hover { border-color: var(--border); }
+.calday.today { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.caldn { font: 700 13px/1 var(--fh); }
+.calcnt { display: flex; gap: 4px; flex-wrap: wrap; font: 600 10px/1 var(--fb); }
+.calcnt span { padding: 3px 5px; border-radius: 2px; }
+.cc-f { background: rgba(16,185,129,.15);  color: var(--green); }
+.cc-n { background: rgba(239,68,68,.15);   color: var(--red); }
+.cc-p { background: rgba(136,136,136,.15); color: var(--muted); }
+
+/* metas */
+.metacard { background: var(--card); border: 1px solid var(--border); border-left: 3px solid var(--blue); padding: 16px 18px; }
+.metacard.tipo-tarefas { border-left-color: var(--accent); }
+
 @media (max-width: 1400px) {
   .kg { grid-template-columns: repeat(3, 1fr); }
 }
@@ -239,6 +287,14 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   .brow .btn { width: 100%; justify-content: center; }
 
   .lbox { width: 94vw; padding: 32px 24px; }
+
+  .agtab { flex: 1; padding: 9px 6px; font-size: 11px; text-align: center; }
+  .tk { flex-wrap: wrap; padding: 12px 14px; }
+  .tkacts { width: 100%; justify-content: flex-start; }
+  .tkacts .btn { flex: 1; justify-content: center; }
+  .calgrid { gap: 3px; }
+  .calday { min-height: 56px; padding: 4px; }
+  .caldow { font-size: 9px; letter-spacing: 1px; }
 }
 
 @media (max-width: 480px) {

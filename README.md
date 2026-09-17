@@ -65,7 +65,7 @@ Acesse `http://localhost:3000`.
 │   ├── _lib/
 │   │   └── db.mjs           # Conexão Neon, helpers de auth, CORS e initDB
 │   ├── login.mjs            # POST /api/login
-│   ├── me.mjs               # GET /api/me
+│   ├── me.mjs               # GET /api/me e GET /api/me?r=meses
 │   ├── usuarios.mjs         # CRUD de usuários
 │   ├── referencias.mjs      # CRUD de referências de produtos
 │   ├── programa.mjs         # Programa mensal por célula
@@ -74,7 +74,8 @@ Acesse `http://localhost:3000`.
 │   ├── senha.mjs            # Alteração de senha (POST)
 │   ├── dashboard.mjs        # KPIs e dados consolidados
 │   ├── operadores.mjs       # Eficiência por operador
-│   └── meses.mjs            # Meses com programa ativo
+│   ├── estoque.mjs          # Estoque por CD / depósito
+│   └── agenda.mjs           # Agenda: tarefas, metas e estatísticas (?r=tarefas|metas|stats)
 └── public/
     ├── index.html           # Aplicação principal (SPA)
     ├── style.css            # Estilos (dark theme, responsivo)
@@ -159,6 +160,32 @@ Aba visível a todos os usuários. Admin cria as ordens; operadores visualizam e
 - Filtro por célula
 - Colunas: Matrícula, Nome, Total Realizado, Lançamentos, Eficiência Média, Realizado T1/T2/ADM, Refugo
 - **Exportação para Excel e PDF**
+
+### Agenda de Tarefas
+
+Módulo de organização do dia a dia, separado da produção de máquina. Uma aba na sidebar com quatro visões:
+
+**Dia** — a agenda do dia escolhido (setas ‹ › e botão *Hoje* para navegar):
+- Campo de **adição rápida**: digita o título, aperta Enter e a tarefa entra no dia
+- Modal completo para título, descrição, data, prioridade (alta/média/baixa) e célula opcional
+- Três ações por tarefa: **✔ Feita**, **✕ Não feita** (com motivo) e **→ Adiar** (amanhã, depois de amanhã, próxima segunda ou data escolhida)
+- Adiar empurra a data e soma em `adiamentos` — o selo *adiada 2×* fica visível e a `data_original` é preservada
+- Faixa **⚠ Atrasadas**: pendentes de dias anteriores, com botão para trazer todas para o dia atual
+- 5 KPIs do dia: Feitas, Pendentes, Não Feitas, Adiadas e % de conclusão
+
+**Calendário** — grade mensal com os contadores de cada dia (verde/vermelho/cinza) e barra de conclusão; clicar num dia abre aquele dia na aba Dia.
+
+**Metas** — cada usuário cria as suas; o admin também pode atribuir metas a qualquer pessoa. Dois tipos:
+- `tarefas`: alvo em quantidade de tarefas concluídas no dia/semana/mês, com filtro opcional por célula — **o progresso sobe sozinho** conforme as tarefas são marcadas como feitas
+- `numerica`: alvo livre (ex: "reduzir refugo para 2%") com o valor atual atualizado à mão no próprio card
+
+**Gráfico** — evolução das atividades no período (7 dias, 30 dias, mês ou intervalo livre):
+- Barras empilhadas por dia (feitas / não feitas / pendentes)
+- Rosca de conclusão do período com o percentual no centro
+- Barras horizontais de tarefas feitas por célula
+- **Admin**: comparativo da equipe inteira (`Toda a equipe`) e exportação para Excel e PDF
+
+> **Visibilidade:** o operador vê e altera apenas a própria agenda — se enviar `usuario=outro` na API, o parâmetro é ignorado. O admin tem um seletor *Agenda de* para abrir a agenda de qualquer usuário.
 
 ### Referências (admin)
 
@@ -286,6 +313,46 @@ As tabelas são criadas automaticamente na primeira requisição via `initDB()`.
 | `usuario_login` | VARCHAR | Login de quem registrou |
 | `criado_em` | TIMESTAMP | Timestamp automático |
 
+### `tarefas`
+
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| `id` | SERIAL PK | |
+| `usuario_login` | VARCHAR | Dono da tarefa (quem executa) |
+| `data` | DATE | Dia agendado — muda a cada adiamento |
+| `data_original` | DATE | Primeiro dia agendado (preservado) |
+| `titulo` | VARCHAR | O que precisa ser feito |
+| `descricao` | TEXT | Detalhes (opcional) |
+| `celula` | VARCHAR | Célula vinculada (opcional) |
+| `prioridade` | VARCHAR | `baixa`, `media` ou `alta` |
+| `status` | VARCHAR | `pendente`, `feita` ou `nao_feita` |
+| `obs_status` | TEXT | Motivo do "não feita" |
+| `adiamentos` | INT | Quantas vezes já foi adiada |
+| `concluida_em` | TIMESTAMP | Quando foi marcada como feita |
+| `criado_por` | VARCHAR | Quem criou (admin, quando atribuída) |
+| `ativo` | BOOLEAN | Soft-delete |
+
+> Pendentes com `data` anterior ao dia consultado voltam como **atrasadas** — nada se perde de vista.
+
+### `metas_usuario`
+
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| `id` | SERIAL PK | |
+| `usuario_login` | VARCHAR | Dono da meta |
+| `titulo` | VARCHAR | Nome da meta |
+| `tipo` | VARCHAR | `tarefas` (progresso automático) ou `numerica` (manual) |
+| `periodo` | VARCHAR | `dia`, `semana` ou `mes` |
+| `mes_ano` | VARCHAR | Mês de referência (quando `periodo = 'mes'`) |
+| `alvo` | NUMERIC(12,2) | Valor a atingir |
+| `atual` | NUMERIC(12,2) | Valor atual — só usado no tipo `numerica` |
+| `unidade` | VARCHAR | `tarefas`, `%`, `peças`… |
+| `celula` | VARCHAR | Conta só tarefas desta célula (opcional) |
+| `criado_por` | VARCHAR | Quem criou |
+| `ativo` | BOOLEAN | Soft-delete |
+
+> No tipo `tarefas` o progresso **não é armazenado**: é contado na hora a partir das tarefas com `status = 'feita'` no período.
+
 ---
 
 ## API
@@ -304,6 +371,7 @@ Response: { "token": "...", "usuario": { "login", "nome", "perfil" } }
 
 ```
 GET /api/me
+Response: { "login", "nome", "perfil" }
 ```
 
 ### Referências
@@ -382,6 +450,86 @@ Body: { "login": "operador1", "nova_senha": "nova123" }
 ### Meses disponíveis
 
 ```
-GET /api/meses
+GET /api/me?r=meses
 Response: ["2026-07", "2026-06", ...]
 ```
+
+> Fica no mesmo handler do `/api/me` por causa do limite de 12 funções serverless do plano Hobby da Vercel — veja a nota no fim deste arquivo.
+
+### Agenda (tarefas, metas e gráfico)
+
+Tudo em uma única função (`api/agenda.mjs`), roteada por `?r=`.
+Operador enxerga e altera **apenas a própria agenda** — o parâmetro `usuario` é ignorado para ele.
+Admin pode ler e escrever a agenda de qualquer usuário.
+
+```
+# Tarefas do dia (+ pendentes atrasadas de dias anteriores)
+GET    /api/agenda?r=tarefas&data=2026-09-17[&usuario=joao]
+Response: { "data", "tarefas": [...], "atrasadas": [...] }
+
+# Resumo por dia do mês (calendário)
+GET    /api/agenda?r=tarefas&mes=2026-09[&usuario=joao]
+Response: { "dias": [{ "data", "feitas", "nao_feitas", "pendentes" }] }
+
+# Intervalo livre
+GET    /api/agenda?r=tarefas&de=2026-09-01&ate=2026-09-30[&usuario=joao]
+
+POST   /api/agenda?r=tarefas
+Body:  { "titulo": "Conferir contagem do CD 03", "data": "2026-09-17",
+         "descricao": "", "celula": "Panos", "prioridade": "alta",
+         "usuario_login": "joao" }   # usuario_login: só admin
+
+PUT    /api/agenda?r=tarefas
+Body:  { "id": 1, "status": "feita" }                              # feita | nao_feita | pendente
+Body:  { "id": 1, "status": "nao_feita", "obs_status": "faltou material" }
+Body:  { "id": 1, "acao": "adiar", "nova_data": "2026-09-18" }     # +1 em adiamentos
+Body:  { "id": 1, "titulo": "...", "data": "...", "prioridade": "media", "celula": null }
+
+DELETE /api/agenda?r=tarefas
+Body:  { "id": 1 }                                                 # soft-delete
+```
+
+```
+# Metas com progresso já calculado
+GET    /api/agenda?r=metas&mes=2026-09&hoje=2026-09-17[&usuario=joao]
+
+POST   /api/agenda?r=metas
+Body:  { "titulo": "Concluir 40 tarefas", "tipo": "tarefas", "periodo": "mes",
+         "mes_ano": "2026-09", "alvo": 40, "celula": "Panos" }
+Body:  { "titulo": "Reduzir refugo p/ 2%", "tipo": "numerica", "periodo": "mes",
+         "mes_ano": "2026-09", "alvo": 2, "atual": 1.2, "unidade": "%" }
+
+PUT    /api/agenda?r=metas
+Body:  { "id": 1, "atual": 1.8 }        # atualização rápida do progresso manual
+DELETE /api/agenda?r=metas
+Body:  { "id": 1 }
+```
+
+```
+# Estatísticas do gráfico de atividades
+GET /api/agenda?r=stats&de=2026-09-01&ate=2026-09-30[&usuario=joao|TODOS][&celula=Panos]
+Response: {
+  "de", "ate",
+  "serie":      [{ "data", "feitas", "nao_feitas", "pendentes" }],
+  "resumo":     { "total", "feitas", "nao_feitas", "pendentes", "adiamentos" },
+  "por_celula": [{ "celula", "feitas", "total" }],
+  "equipe":     [{ "usuario_login", "nome", "total", "feitas", ... }]
+}
+```
+
+> `equipe` só vem preenchido para o admin em modo "toda a equipe" (`usuario=TODOS` ou omitido).
+
+---
+
+## Limite de funções serverless (Vercel Hobby)
+
+O plano Hobby permite **12 funções serverless por deploy** e o projeto está exatamente nesse teto (`api/*.mjs`).
+
+Por isso dois handlers acumulam mais de um endpoint, roteando por `?r=`:
+
+| Arquivo | Endpoints |
+|---------|-----------|
+| `me.mjs` | `/api/me` · `/api/me?r=meses` |
+| `agenda.mjs` | `/api/agenda?r=tarefas` · `?r=metas` · `?r=stats` |
+
+**Antes de criar um novo arquivo em `api/`, confira a contagem** (`ls api/*.mjs | wc -l`). Se já estiver em 12, acrescente o endpoint a um handler existente por `?r=` em vez de criar outro arquivo — ou migre para o plano Pro. Pelo mesmo motivo, não separe `me.mjs` de volta em dois arquivos.
