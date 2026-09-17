@@ -705,6 +705,14 @@
             </div>
             <div id="ag-lista"></div>
           </div>
+
+          <div class="tw" id="ag-series-wrap" style="display:none">
+            <div class="th">
+              <div class="tt">↻ SÉRIES ATIVAS</div>
+              <span style="font-size:11px;color:var(--muted)">tarefas que se repetem — as ocorrências entram sozinhas na agenda</span>
+            </div>
+            <div id="ag-series"></div>
+          </div>
         </div>
 
         <!-- ABA: CALENDÁRIO -->
@@ -1009,6 +1017,38 @@
           <span>Cada participante marca o seu</span>
         </label>
         <div class="dica" id="t-individual-dica" style="font-size:11px;color:var(--muted)"></div>
+      </div>
+      <div class="fi" style="grid-column:1/-1" id="t-rep-wrap">
+        <label>Repetir</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <select id="t-repetir" onchange="toggleRepetir()" style="min-width:180px">
+            <option value="nao">Não repete</option>
+            <option value="diaria">Todo dia</option>
+            <option value="uteis">Dias úteis (seg–sex)</option>
+            <option value="semanal">Dias da semana…</option>
+            <option value="mensal">Todo mês</option>
+          </select>
+          <div id="t-rep-dias" style="display:none;gap:4px;flex-wrap:wrap">
+            <label class="dowchk"><input type="checkbox" value="0">D</label>
+            <label class="dowchk"><input type="checkbox" value="1">S</label>
+            <label class="dowchk"><input type="checkbox" value="2">T</label>
+            <label class="dowchk"><input type="checkbox" value="3">Q</label>
+            <label class="dowchk"><input type="checkbox" value="4">Q</label>
+            <label class="dowchk"><input type="checkbox" value="5">S</label>
+            <label class="dowchk"><input type="checkbox" value="6">S</label>
+          </div>
+          <div id="t-rep-mes" style="display:none;align-items:center;gap:6px;font-size:12px;color:var(--muted)">
+            dia <input type="number" id="t-dia-mes" min="1" max="31" style="width:64px;background:var(--surface);border:1px solid var(--border);color:var(--text);padding:7px 9px;font:13px var(--fb);outline:none"> do mês
+          </div>
+          <div id="t-rep-fim" style="display:none;align-items:center;gap:6px;font-size:12px;color:var(--muted)">
+            até <input type="date" id="t-fim" style="background:var(--surface);border:1px solid var(--border);color:var(--text);padding:7px 9px;font:13px var(--fb);outline:none"> <span>(opcional)</span>
+          </div>
+        </div>
+        <div id="t-rep-dica" style="font-size:11px;color:var(--muted);margin-top:2px"></div>
+      </div>
+      <div class="alert ai" id="t-serie-info" style="display:none;grid-column:1/-1;margin-bottom:0;align-items:center;gap:10px;flex-wrap:wrap">
+        <span>↻ Faz parte de uma série: <b id="t-serie-desc"></b>. Editar aqui muda <b>só este dia</b>.</span>
+        <button class="btn bd bsm" type="button" onclick="encerrarSerie(_serieEditId)" style="margin-left:auto">Encerrar série</button>
       </div>
     </div>
     <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:20px">
@@ -3073,6 +3113,19 @@ let _agNomes = {};   // login -> nome, para os selos de participante
 let _adiarId = null, _naoFeitaId = null, _tarefaEditId = null, _metaEditId = null;
 const nomeDe = login => _agNomes[login] || login;
 const primeiroNome = login => nomeDe(login).split(' ')[0];
+let _serieEditId = null;   // série da ocorrência aberta no modal (para "Encerrar série")
+
+// Mesma descrição que a API monta em descreveRegra() — usada na linha da tarefa
+function descRegra(freq, dias, diaMes) {
+  if (freq === 'diaria') return 'todo dia';
+  if (freq === 'semanal') {
+    const d = String(dias || '').split(',').filter(Boolean).map(Number);
+    if (d.join(',') === '1,2,3,4,5') return 'dias úteis';
+    return 'toda ' + d.map(i => DOW[i].toLowerCase()).join(', ');
+  }
+  if (freq === 'mensal') return 'todo dia ' + diaMes;
+  return '';
+}
 
 const corPct = p => p >= 100 ? 'var(--green)' : p >= 60 ? 'var(--orange)' : 'var(--red)';
 const corHex = p => p >= 100 ? '#10b981'      : p >= 60 ? '#f97316'       : '#CC0000';
@@ -3260,6 +3313,7 @@ async function renderAgendaDia() {
       : `<div class="empty"><div class="ei">▤</div>Nenhuma tarefa para este dia.<br><span style="font-size:12px">Use o campo acima para adicionar a primeira.</span></div>`;
 
     atualizaBadgeAgenda();
+    renderSeries();
   } catch(e) {
     if (!e.sessionExpired) lista.innerHTML = `<div class="empty">Erro ao carregar: ${esc(e.message)}</div>`;
   }
@@ -3279,6 +3333,7 @@ function tarefaRow(x, atrasada) {
   if (+x.adiamentos > 0) meta.push(`<span class="tag" style="border-color:var(--orange);color:var(--orange)">adiada ${x.adiamentos}×</span>`);
   if (x.criado_por && x.criado_por !== x.usuario_login) meta.push(`<span class="tag" style="border-color:var(--blue);color:var(--blue)">atribuída por ${esc(nomeDe(x.criado_por))}</span>`);
   if (emEquipe) meta.push(`<span class="tag" style="border-color:var(--blue);color:var(--blue)">${x.status_individual ? 'cada um o seu' : 'trabalho único'}</span>`);
+  if (x.serie_id) meta.push(`<span class="tag" title="Tarefa recorrente${x.serie_fim ? ' · até ' + dataBR(x.serie_fim) : ''}">↻ ${esc(descRegra(x.serie_frequencia, x.serie_dias, x.serie_dia_mes))}</span>`);
   // Trabalho único já fechado: mostra quem levou o crédito
   if (emEquipe && !x.status_individual && x.status === 'feita' && x.concluida_por)
     meta.push(`<span class="tag" style="border-color:var(--green);color:var(--green)">feita por ${esc(nomeDe(x.concluida_por))}</span>`);
@@ -3392,6 +3447,26 @@ function openModalTarefa(id) {
   renderPartPicker('t', (t?.participantes || []).map(p => p.login));
   filtraPartPicker('t');
   dicaIndividual();
+
+  // Repetição só se escolhe ao criar. Ao editar uma ocorrência, o que se vê é
+  // o aviso de série — a edição vale só para aquele dia.
+  _serieEditId = t?.serie_id || null;
+  document.getElementById('t-rep-wrap').style.display = id ? 'none' : '';
+  const info = document.getElementById('t-serie-info');
+  if (_serieEditId) {
+    document.getElementById('t-serie-desc').textContent =
+      descRegra(t.serie_frequencia, t.serie_dias, t.serie_dia_mes) + (t.serie_fim ? ' · até ' + dataBR(t.serie_fim) : '');
+    info.style.display = 'flex';
+  } else {
+    info.style.display = 'none';
+  }
+  if (!id) {
+    document.getElementById('t-repetir').value = 'nao';
+    document.getElementById('t-fim').value     = '';
+    document.getElementById('t-dia-mes').value = '';
+    document.querySelectorAll('#t-rep-dias input').forEach(i => i.checked = false);
+    toggleRepetir();
+  }
   document.getElementById('modal-tarefa').style.display = 'flex';
   setTimeout(() => document.getElementById('t-titulo').focus(), 60);
 }
@@ -3410,22 +3485,101 @@ async function salvarTarefa() {
     participantes:     time,
     status_individual: document.getElementById('t-individual').checked,
   };
+  const repetir = _tarefaEditId ? 'nao' : document.getElementById('t-repetir').value;
+  if (repetir === 'semanal' && !diasSemanaSelecionados().length) { toast('Escolha ao menos um dia da semana.', 'err'); return; }
   try {
+    let resp;
     if (_tarefaEditId) {
       body.id = _tarefaEditId;
-      await PUT('agenda?recurso=tarefas' + agQS(), body);
+      resp = await PUT('agenda?recurso=tarefas' + agQS(), body);
     } else {
       if (USER.perfil === 'admin') body.usuario_login = document.getElementById('t-user').value;
-      await POST('agenda?recurso=tarefas' + agQS(), body);
+      if (repetir !== 'nao') {
+        body.repetir     = repetir;
+        body.dias_semana = diasSemanaSelecionados();
+        body.dia_mes     = +document.getElementById('t-dia-mes').value || null;
+        body.fim         = document.getElementById('t-fim').value || null;
+      }
+      resp = await POST('agenda?recurso=tarefas' + agQS(), body);
     }
     document.getElementById('modal-tarefa').style.display = 'none';
     const nOutros = time.filter(l => l !== respModal('t')).length;
     toast(_tarefaEditId
       ? 'Tarefa atualizada!'
+      : resp?.recorrente ? `Série criada: ${regraDoModal()}. As ocorrências entram sozinhas na agenda.`
       : nOutros ? `Tarefa criada e compartilhada com ${nOutros} pessoa(s)!` : 'Tarefa criada!');
     document.getElementById('ag-data').value = data;   // segue para o dia da tarefa
     renderAgendaDia();
   } catch(e) { if (!e.sessionExpired) toast('Erro: ' + e.message, 'err'); }
+}
+
+// ── RECORRÊNCIA ──
+function toggleRepetir() {
+  const v = document.getElementById('t-repetir').value;
+  document.getElementById('t-rep-dias').style.display = v === 'semanal' ? 'flex' : 'none';
+  document.getElementById('t-rep-mes').style.display  = v === 'mensal'  ? 'flex' : 'none';
+  document.getElementById('t-rep-fim').style.display  = v !== 'nao'     ? 'flex' : 'none';
+  if (v === 'mensal' && !document.getElementById('t-dia-mes').value) {
+    document.getElementById('t-dia-mes').value = +(document.getElementById('t-data').value || hojeLocal()).slice(8, 10);
+  }
+  document.getElementById('t-rep-dica').textContent = {
+    nao:     '',
+    diaria:  'Uma ocorrência por dia, a partir da data acima. O que não for feito aparece em "Atrasadas".',
+    uteis:   'Segunda a sexta, a partir da data acima.',
+    semanal: 'Só nos dias marcados, a partir da data acima.',
+    mensal:  'Uma vez por mês. Dia 31 num mês de 30 cai no último dia.',
+  }[v] || '';
+}
+
+function diasSemanaSelecionados() {
+  return [...document.querySelectorAll('#t-rep-dias input:checked')].map(i => +i.value);
+}
+
+function regraDoModal() {
+  const v = document.getElementById('t-repetir').value;
+  if (v === 'uteis') return 'dias úteis';
+  return descRegra(v, diasSemanaSelecionados().join(','), document.getElementById('t-dia-mes').value);
+}
+
+async function encerrarSerie(id) {
+  if (!id) return;
+  if (!confirm('Encerrar esta série? As ocorrências futuras ainda não tocadas são removidas; as de hoje e do passado ficam.')) return;
+  try {
+    await DELETE('agenda?recurso=recorrentes' + agQS(), { id, hoje: hojeLocal() });
+    document.getElementById('modal-tarefa').style.display = 'none';
+    toast('Série encerrada.');
+    renderAgendaDia();
+  } catch(e) { if (!e.sessionExpired) toast('Erro: ' + e.message, 'err'); }
+}
+
+// Painel "Séries ativas" abaixo da lista do dia — só aparece quando existe alguma
+async function renderSeries() {
+  const wrap = document.getElementById('ag-series-wrap');
+  try {
+    const rows = await GET('agenda?recurso=recorrentes' + agQS());
+    if (!rows.length) { wrap.style.display = 'none'; return; }
+    const eu = agEu();
+    wrap.style.display = '';
+    document.getElementById('ag-series').innerHTML = rows.map(r => {
+      const souDono = USER.perfil === 'admin' || r.usuario_login === eu || r.criado_por === eu;
+      const grupo   = (r.participantes || []).length > 1;
+      return `<div class="serie-row">
+        <span style="color:var(--muted)">↻</span>
+        <div style="flex:1;min-width:160px">
+          <div style="font:600 13px var(--fb)">${esc(r.titulo)}</div>
+          <div class="tkmeta" style="margin-top:4px">
+            <span class="tag">${esc(r.descricao_regra)}</span>
+            ${r.fim ? `<span class="tag">até ${dataBR(r.fim)}</span>` : ''}
+            ${r.celula ? `<span class="tag">${esc(_CELULA_LABEL[r.celula] || r.celula)}</span>` : ''}
+            ${grupo ? `<span class="tag" style="border-color:var(--blue);color:var(--blue)">👥 ${r.participantes.length} pessoas${r.status_individual ? ' · cada um o seu' : ''}</span>` : ''}
+            ${!souDono ? `<span class="tag" style="border-color:var(--blue);color:var(--blue)">de ${esc(nomeDe(r.usuario_login))}</span>` : ''}
+          </div>
+        </div>
+        <span style="font-size:11px;color:var(--muted);white-space:nowrap" title="Ocorrências feitas por você / geradas até agora">${fmt(r.feitas)} feitas de ${fmt(r.ocorrencias)}</span>
+        ${souDono ? `<button class="btn bd bsm" onclick="encerrarSerie(${r.id})" title="Parar de repetir">■ Encerrar</button>` : ''}
+      </div>`;
+    }).join('');
+  } catch(e) { wrap.style.display = 'none'; }
 }
 
 // ── MODAL: NÃO FEITA ──

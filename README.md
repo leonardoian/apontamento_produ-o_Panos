@@ -73,7 +73,7 @@ Acesse `http://localhost:3000`.
 │   ├── dashboard.mjs        # KPIs e dados consolidados + /api/meses (?recurso=)
 │   ├── operadores.mjs       # Eficiência por operador
 │   ├── estoque.mjs          # Estoque por CD / depósito + histórico
-│   └── agenda.mjs           # Agenda: tarefas, metas e estatísticas (?recurso=tarefas|metas|stats)
+│   └── agenda.mjs           # Agenda: tarefas, metas, stats e séries (?recurso=)
 └── public/
     ├── index.html           # Aplicação principal (SPA)
     ├── style.css            # Estilos (dark theme, responsivo)
@@ -193,6 +193,18 @@ Qualquer usuário pode marcar colegas ao criar uma tarefa ou meta (a lista de no
 > **Crédito:** numa tarefa de trabalho único, o "feita" conta para quem marcou (`tarefas.concluida_por`). Sem essa regra, uma tarefa de 3 pessoas fechada uma vez contaria **3×** no comparativo da equipe e na meta do grupo. Na agenda de quem não marcou ela some das pendências e aparece no gráfico como *fechadas por colegas*, fora do total.
 
 > **Quem pode o quê:** participante age no próprio status, adia e pode **sair** da tarefa (o `DELETE` dele remove só a própria participação). Editar, trocar a equipe ou excluir de vez é do admin, de quem criou ou do responsável. O responsável nunca é removido da própria tarefa.
+
+#### Tarefas recorrentes
+
+No modal de nova tarefa, o campo **Repetir** aceita: *todo dia*, *dias úteis (seg–sex)*, *dias da semana escolhidos* ou *todo mês* (dia N — dia 31 num mês de 30 cai no último dia), com uma data final opcional.
+
+- A regra fica em `tarefas_recorrentes`; **cada ocorrência é uma tarefa comum** com `serie_id`. Status, adiar, participantes, crédito, metas e gráfico funcionam sem saber que ela se repete.
+- As ocorrências são **geradas sob demanda**: ao abrir um dia, um mês ou o gráfico, o sistema gera o que falta até o fim dessa janela (limite de 1 ano à frente). Se ninguém abriu a agenda por uma semana, a próxima abertura gera os dias perdidos — que aparecem em *Atrasadas*, como um checklist que não foi feito.
+- A linha da ocorrência ganha o selo `↻ todo dia`. Ao editar uma ocorrência, a mudança vale **só para aquele dia**; o modal mostra a regra e o botão **Encerrar série**.
+- O painel **↻ Séries ativas**, abaixo da lista do dia, lista cada série com a regra, a equipe e quantas ocorrências você já fez. Encerrar remove as ocorrências futuras ainda não tocadas; as de hoje e do passado ficam como histórico.
+- Uma série compartilhada gera ocorrências já com a equipe e o modo (trabalho único / cada um o seu).
+
+> Não dá para trocar a regra de uma série existente (ex.: de diária para semanal). O caminho é encerrar e criar outra.
 
 **Gráfico** — evolução das atividades no período (7 dias, 30 dias, mês ou intervalo livre):
 - Barras empilhadas por dia (feitas / não feitas / pendentes)
@@ -368,6 +380,24 @@ O estado da tarefa **por pessoa**. Existe sempre uma linha por participante, inc
 | | | `UNIQUE(tarefa_id, usuario_login)` |
 
 > Pendentes com `data` anterior ao dia consultado voltam como **atrasadas** — nada se perde de vista.
+
+### `tarefas_recorrentes`
+
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| `id` | SERIAL PK | |
+| `usuario_login` | VARCHAR | Responsável |
+| `titulo`, `descricao`, `celula`, `prioridade`, `status_individual` | | Modelo copiado para cada ocorrência |
+| `participantes` | TEXT | JSON com os logins da equipe (ex.: `["joao","maria"]`) |
+| `frequencia` | VARCHAR | `diaria`, `semanal` ou `mensal` |
+| `dias_semana` | VARCHAR | Para `semanal`: `"1,2,3,4,5"` (0 = domingo) |
+| `dia_mes` | INT | Para `mensal`: 1–31 |
+| `inicio` | DATE | Primeira ocorrência |
+| `fim` | DATE | Última ocorrência (opcional) |
+| `gerado_ate` | DATE | Até onde as ocorrências já foram geradas |
+| `ativo` | BOOLEAN | `false` = encerrada |
+
+> `tarefas.serie_id` liga a ocorrência à série. O índice único parcial `(serie_id, data_original)` é o que torna a geração idempotente — dois acessos simultâneos não duplicam um dia.
 
 ### `meta_participantes`
 
@@ -548,6 +578,30 @@ Body:  { "id": 1 }
 ```
 
 ```
+# Recorrência: o mesmo POST de tarefa, com a regra
+POST   /api/agenda?recurso=tarefas
+Body:  { "titulo": "Checklist da máquina", "data": "2026-09-15",
+         "repetir": "diaria" }                        # ou "uteis" | "semanal" | "mensal"
+Body:  { ..., "repetir": "semanal", "dias_semana": [1,4] }         # seg e qui
+Body:  { ..., "repetir": "mensal",  "dia_mes": 31, "fim": "2026-12-31" }
+Response: { "ok": true, "serie_id": 7, "recorrente": true }
+
+# As ocorrências vêm no GET de tarefas normal, com serie_id, serie_frequencia,
+# serie_dias, serie_dia_mes e serie_fim.
+
+GET    /api/agenda?recurso=recorrentes[&usuario=joao]     # séries em que participo
+Response: [{ "id", "titulo", "frequencia", "dias_semana", "dia_mes", "inicio", "fim",
+             "participantes": ["joao","maria"], "descricao_regra": "dias úteis",
+             "ocorrencias": 12, "feitas": 9 }]
+PUT    /api/agenda?recurso=recorrentes                    # admin / criador / responsável
+Body:  { "id": 7, "titulo": "...", "prioridade": "media", "fim": "2026-10-31", "hoje": "2026-09-17" }
+# reflete nas ocorrências futuras ainda pendentes; o passado não muda
+DELETE /api/agenda?recurso=recorrentes                    # encerrar
+Body:  { "id": 7, "hoje": "2026-09-17" }
+# para de gerar e remove as futuras intocadas; as de hoje e do passado ficam
+```
+
+```
 # Metas com progresso já calculado
 GET    /api/agenda?recurso=metas&mes=2026-09&hoje=2026-09-17[&usuario=joao]
 # cada meta traz `progresso` (soma) e `por_pessoa`: [{ login, nome, progresso }]
@@ -590,7 +644,7 @@ O plano Hobby permite **12 funções serverless por deploy**. Por isso alguns ha
 |---------|-----------|
 | `usuarios.mjs` | `/api/usuarios` · `?recurso=me` · `?recurso=senha` · `?recurso=colegas` |
 | `dashboard.mjs` | `/api/dashboard` · `?recurso=meses` |
-| `agenda.mjs` | `?recurso=tarefas` · `?recurso=metas` · `?recurso=stats` |
+| `agenda.mjs` | `?recurso=tarefas` · `?recurso=metas` · `?recurso=stats` · `?recurso=recorrentes` |
 
 Os endpoints antigos (`/api/me`, `/api/senha`, `/api/meses`) continuam valendo por **rewrites** no [vercel.json](vercel.json), então o frontend não precisou mudar quando eles foram consolidados. A agenda é nova e chama `?recurso=` direto, sem rewrite.
 

@@ -152,6 +152,28 @@ export async function initDB(sql) {
       usuario_login VARCHAR(50) NOT NULL,
       UNIQUE(meta_id, usuario_login)
     )`,
+    // Regra de repetição. As ocorrências viram tarefas normais (com serie_id),
+    // geradas sob demanda até a data que alguém abriu — ver materializaRecorrentes
+    // em agenda.mjs. gerado_ate marca até onde já foi gerado.
+    sql`CREATE TABLE IF NOT EXISTS tarefas_recorrentes (
+      id SERIAL PRIMARY KEY,
+      usuario_login VARCHAR(50) NOT NULL,
+      titulo VARCHAR(200) NOT NULL,
+      descricao TEXT,
+      celula VARCHAR(30),
+      prioridade VARCHAR(10) DEFAULT 'media',
+      status_individual BOOLEAN DEFAULT false,
+      participantes TEXT,
+      frequencia VARCHAR(10) NOT NULL,
+      dias_semana VARCHAR(20),
+      dia_mes INT,
+      inicio DATE NOT NULL,
+      fim DATE,
+      gerado_ate DATE,
+      criado_por VARCHAR(50),
+      criado_em TIMESTAMP DEFAULT NOW(),
+      ativo BOOLEAN DEFAULT true
+    )`,
     sql`CREATE TABLE IF NOT EXISTS metas_usuario (
       id SERIAL PRIMARY KEY,
       usuario_login VARCHAR(50) NOT NULL,
@@ -209,6 +231,8 @@ export async function initDB(sql) {
     sql`CREATE INDEX IF NOT EXISTS idx_tpart_tarefa    ON tarefa_participantes(tarefa_id)`,
     sql`CREATE INDEX IF NOT EXISTS idx_mpart_user      ON meta_participantes(usuario_login)`,
     sql`CREATE INDEX IF NOT EXISTS idx_mpart_meta      ON meta_participantes(meta_id)`,
+    sql`ALTER TABLE tarefas ADD COLUMN IF NOT EXISTS serie_id INT DEFAULT NULL`,
+    sql`CREATE INDEX IF NOT EXISTS idx_recorr_ativa ON tarefas_recorrentes(ativo, gerado_ate)`,
     // Série de uma referência ao longo do tempo (tela de evolução).
     sql`CREATE INDEX IF NOT EXISTS ix_est_hist_ref ON estoque_historico (ref_cod, importado_em DESC)`,
     // Lista de importações e leitura de um snapshot inteiro.
@@ -216,7 +240,12 @@ export async function initDB(sql) {
   ]);
 
   // Fase 3: normalização de dados legados em paralelo
+  // (também é a primeira fase que roda DEPOIS de todos os ALTER TABLE da fase 2)
   await Promise.all([
+    // Ocorrência de série: uma por (série, dia). O índice parcial é o que torna
+    // a geração idempotente — dois acessos simultâneos não duplicam o dia.
+    // Depende da coluna serie_id criada na fase 2, por isso está aqui.
+    sql`CREATE UNIQUE INDEX IF NOT EXISTS ux_tarefas_serie_data ON tarefas(serie_id, data_original) WHERE serie_id IS NOT NULL`,
     sql`UPDATE referencias SET celula = 'Importacao' WHERE celula IN ('Importação','importação','IMPORTACAO','IMPORTAÇÃO','importacao')`,
     sql`UPDATE referencias SET celula = 'Aluminio'   WHERE celula IN ('Alumínio','ALUMINIO','ALUMÍNIO','aluminio','alumínio')`,
     sql`UPDATE referencias SET celula = 'Panos'      WHERE celula IN ('PANOS','panos')`,

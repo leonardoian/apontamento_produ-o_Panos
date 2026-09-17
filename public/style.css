@@ -227,6 +227,14 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 .pquem.nfeito { background: rgba(239,68,68,.12); border-color: rgba(239,68,68,.35); color: var(--red); }
 .pquem.eu { font-weight: 700; }
 
+/* recorrência */
+.dowchk { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border: 1px solid var(--border); background: var(--surface); font: 700 11px var(--fh); color: var(--muted); cursor: pointer; border-radius: 3px; user-select: none; transition: all .15s; }
+.dowchk input { display: none; }
+.dowchk:has(input:checked) { background: rgba(204,0,0,.15); border-color: var(--accent); color: var(--accent); }
+.dowchk:hover { border-color: var(--accent); }
+.serie-row { display: flex; align-items: center; gap: 12px; padding: 11px 18px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.serie-row:last-child { border-bottom: none; }
+
 /* metas */
 .metacard { background: var(--card); border: 1px solid var(--border); border-left: 3px solid var(--blue); padding: 16px 18px; }
 .metacard.tipo-tarefas { border-left-color: var(--accent); }

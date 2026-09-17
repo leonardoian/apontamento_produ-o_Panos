@@ -1,7 +1,12 @@
 import { setCors, handleOptions, getAuth, getBody, getSQL, initDB } from "./_lib/db.mjs";
 
-// Módulo Agenda — tudo num arquivo só (?recurso=tarefas|metas|stats) para não estourar
-// o limite de funções serverless da Vercel.
+// Módulo Agenda — tudo num arquivo só (?recurso=tarefas|metas|stats|recorrentes)
+// para não estourar o limite de funções serverless da Vercel.
+//
+// Recorrência: a regra fica em tarefas_recorrentes; as ocorrências são tarefas
+// comuns (com serie_id) geradas sob demanda até o fim da janela que alguém
+// abriu — ver materializaRecorrentes. Assim status, adiar, participantes,
+// crédito, metas e gráfico não precisam saber que a tarefa se repete.
 //
 // Tarefas compartilhadas: o estado de cada pessoa vive em tarefa_participantes,
 // sempre uma linha por participante (inclusive o dono). A agenda do dia é uma
@@ -17,6 +22,10 @@ const PRIORIDADES = ["baixa", "media", "alta"];
 const STATUS      = ["pendente", "feita", "nao_feita"];
 const TIPOS       = ["tarefas", "numerica"];
 const PERIODOS    = ["dia", "semana", "mes"];
+const FREQUENCIAS = ["diaria", "semanal", "mensal"];
+// Até onde uma série pode ser gerada para a frente, contado de hoje. Abrir o
+// calendário de um mês distante gera só até aqui.
+const HORIZONTE_DIAS = 366;
 
 export default async function handler(req, res) {
   setCors(res);
@@ -40,7 +49,8 @@ export default async function handler(req, res) {
       case "tarefas": return await tarefas(req, res, sql, u, q, isAdmin, alvo);
       case "metas":   return await metas(req, res, sql, u, q, isAdmin, alvo);
       case "stats":   return await stats(req, res, sql, u, q, isAdmin);
-      default:        return res.status(400).json({ error: "Recurso inválido (use ?recurso=tarefas|metas|stats)" });
+      case "recorrentes": return await recorrentes(req, res, sql, u, q, isAdmin, alvo);
+      default:        return res.status(400).json({ error: "Recurso inválido (use ?recurso=tarefas|metas|stats|recorrentes)" });
     }
   } catch (e) {
     return res.status(500).json({ error: "Erro agenda: " + e.message });
@@ -60,6 +70,8 @@ function listaTarefas(sql, { alvo, data = null, antesDe = null, de = null, ate =
       TO_CHAR(t.data_original,'YYYY-MM-DD') AS data_original,
       t.titulo, t.descricao, t.celula, t.prioridade, t.criado_por,
       t.usuario_login AS responsavel, t.status_individual, t.concluida_por,
+      t.serie_id, r.frequencia AS serie_frequencia, r.dias_semana AS serie_dias,
+      r.dia_mes AS serie_dia_mes, TO_CHAR(r.fim,'YYYY-MM-DD') AS serie_fim,
       p.status, p.obs_status, p.adiamentos, p.concluida_em,
       (SELECT COUNT(*) FROM tarefa_participantes px WHERE px.tarefa_id = t.id)::int AS n_participantes,
       (SELECT COALESCE(json_agg(row_to_json(y) ORDER BY y.nome), '[]'::json) FROM (
@@ -70,6 +82,7 @@ function listaTarefas(sql, { alvo, data = null, antesDe = null, de = null, ate =
        ) y) AS participantes
     FROM tarefa_participantes p
     JOIN tarefas t ON t.id = p.tarefa_id
+    LEFT JOIN tarefas_recorrentes r ON r.id = t.serie_id
     WHERE t.ativo = true AND p.usuario_login = ${alvo}
       AND (${data}::date    IS NULL OR p.data = ${data}::date)
       AND (${antesDe}::date IS NULL OR (p.data < ${antesDe}::date AND p.status = 'pendente'))
@@ -80,6 +93,11 @@ function listaTarefas(sql, { alvo, data = null, antesDe = null, de = null, ate =
 
 async function tarefas(req, res, sql, u, q, isAdmin, alvo) {
   if (req.method === "GET") {
+    // Séries: gera as ocorrências que ainda faltam até o fim da janela pedida.
+    // Barato depois da primeira vez — gerado_ate avança e a consulta vira no-op.
+    const fimJanela = q.mes ? ultimoDiaDoMes(q.mes) : (q.ate || q.data || hojeUTC());
+    await materializaRecorrentes(sql, fimJanela);
+
     // Calendário: resumo por dia do mês, pelo status da própria pessoa
     if (q.mes) {
       const dias = await sql`
@@ -118,6 +136,24 @@ async function tarefas(req, res, sql, u, q, isAdmin, alvo) {
     const dono  = (isAdmin && b.usuario_login) ? b.usuario_login : u.login;
     const prio  = PRIORIDADES.includes(b.prioridade) ? b.prioridade : "media";
     const time  = listaParticipantes(b.participantes, dono);
+
+    // Recorrente: grava a regra e gera as ocorrências até a data pedida.
+    // Cada ocorrência é uma tarefa comum — status, adiar e crédito não mudam.
+    if (b.repetir && b.repetir !== "nao") {
+      const regra = validaRegra(b);
+      if (regra.erro) return res.status(400).json({ error: regra.erro });
+      const serie = await sql`
+        INSERT INTO tarefas_recorrentes
+          (usuario_login, titulo, descricao, celula, prioridade, status_individual, participantes,
+           frequencia, dias_semana, dia_mes, inicio, fim, criado_por)
+        VALUES (${dono}, ${titulo}, ${b.descricao || ""}, ${b.celula || null}, ${prio}, ${!!b.status_individual},
+                ${JSON.stringify(time)}, ${regra.frequencia}, ${regra.dias_semana}, ${regra.dia_mes},
+                ${b.data}, ${regra.fim}, ${u.login})
+        RETURNING id`;
+      await materializaRecorrentes(sql, b.data);
+      return res.status(200).json({ ok: true, serie_id: serie[0].id, participantes: time.length, recorrente: true });
+    }
+
     const row = await sql`
       INSERT INTO tarefas (usuario_login, data, data_original, titulo, descricao, celula,
                            prioridade, criado_por, status_individual)
@@ -383,6 +419,7 @@ async function stats(req, res, sql, u, q, isAdmin) {
   // Admin sem usuário definido (ou 'TODOS') vê a equipe inteira; operador, só a si mesmo.
   const user   = isAdmin ? (q.usuario && q.usuario !== "TODOS" ? q.usuario : null) : u.login;
   const celula = q.celula || null;
+  await materializaRecorrentes(sql, ate);
 
   // `total` soma exatamente feitas + nao_feitas + pendentes, para o % fechar.
   // Uma tarefa compartilhada que um colega fechou não entra em nenhum desses
@@ -452,6 +489,207 @@ async function stats(req, res, sql, u, q, isAdmin) {
     ORDER BY feitas DESC`;
 
   return res.status(200).json({ de, ate, serie, resumo: resumoRows[0], por_celula: porCelula, equipe });
+}
+
+// ═══════════════════════════════════════
+// RECORRENTES (séries)
+// ═══════════════════════════════════════
+async function recorrentes(req, res, sql, u, q, isAdmin, alvo) {
+  if (req.method === "GET") {
+    // Séries em que a pessoa é responsável ou participante. `participantes` é
+    // um JSON de logins em texto; o LIKE com aspas evita casar "ana" em "mariana".
+    const marca = `%"${alvo}"%`;
+    const rows = await sql`
+      SELECT r.id, r.usuario_login, r.titulo, r.descricao, r.celula, r.prioridade,
+        r.status_individual, r.participantes, r.frequencia, r.dias_semana, r.dia_mes,
+        TO_CHAR(r.inicio,'YYYY-MM-DD') AS inicio, TO_CHAR(r.fim,'YYYY-MM-DD') AS fim,
+        TO_CHAR(r.gerado_ate,'YYYY-MM-DD') AS gerado_ate, r.criado_por,
+        (SELECT COUNT(*) FROM tarefas t WHERE t.serie_id = r.id AND t.ativo = true)::int AS ocorrencias,
+        (SELECT COUNT(*) FROM tarefas t
+         JOIN tarefa_participantes p ON p.tarefa_id = t.id AND p.usuario_login = ${alvo}
+         WHERE t.serie_id = r.id AND t.ativo = true AND p.status = 'feita')::int AS feitas
+      FROM tarefas_recorrentes r
+      WHERE r.ativo = true AND (r.usuario_login = ${alvo} OR r.participantes LIKE ${marca})
+      ORDER BY r.criado_em DESC`;
+    return res.status(200).json(rows.map(r => ({
+      ...r,
+      participantes: parseLogins(r.participantes),
+      descricao_regra: descreveRegra(r),
+    })));
+  }
+
+  if (req.method === "PUT") {
+    const b = getBody(req);
+    if (!b.id) return res.status(400).json({ error: "id obrigatório" });
+    const r = await carregaSerie(sql, b.id);
+    if (!r) return res.status(404).json({ error: "Série não encontrada" });
+    if (!podeEditar(u, isAdmin, r)) return res.status(403).json({ error: "Acesso negado" });
+    const titulo = (b.titulo || "").trim();
+    if (!titulo) return res.status(400).json({ error: "Título obrigatório" });
+    const prio = PRIORIDADES.includes(b.prioridade) ? b.prioridade : "media";
+    const fim  = b.fim || null;
+    const hoje = b.hoje || hojeUTC();
+    await sql`
+      UPDATE tarefas_recorrentes SET titulo = ${titulo}, descricao = ${b.descricao || ""},
+        celula = ${b.celula || null}, prioridade = ${prio}, fim = ${fim}
+      WHERE id = ${b.id}`;
+    // Reflete nas ocorrências futuras que ninguém tocou; o passado fica como está.
+    await sql`
+      UPDATE tarefas SET titulo = ${titulo}, descricao = ${b.descricao || ""},
+        celula = ${b.celula || null}, prioridade = ${prio}
+      WHERE serie_id = ${b.id} AND ativo = true AND data_original >= ${hoje}::date
+        AND NOT EXISTS (SELECT 1 FROM tarefa_participantes p
+                        WHERE p.tarefa_id = tarefas.id AND p.status <> 'pendente')`;
+    // Encurtou o fim: apaga o que ficou depois dele e ainda está intocado.
+    if (fim) {
+      await sql`
+        UPDATE tarefas SET ativo = false
+        WHERE serie_id = ${b.id} AND ativo = true AND data_original > ${fim}::date
+          AND NOT EXISTS (SELECT 1 FROM tarefa_participantes p
+                          WHERE p.tarefa_id = tarefas.id AND p.status <> 'pendente')`;
+      await sql`UPDATE tarefas_recorrentes SET gerado_ate = LEAST(gerado_ate, ${fim}::date) WHERE id = ${b.id}`;
+    }
+    return res.status(200).json({ ok: true });
+  }
+
+  if (req.method === "DELETE") {
+    // Encerrar: para de gerar e limpa as ocorrências futuras intocadas.
+    // As de hoje e do passado ficam — são histórico.
+    const b = getBody(req);
+    if (!b.id) return res.status(400).json({ error: "id obrigatório" });
+    const r = await carregaSerie(sql, b.id);
+    if (!r) return res.status(404).json({ error: "Série não encontrada" });
+    if (!podeEditar(u, isAdmin, r)) return res.status(403).json({ error: "Acesso negado" });
+    const hoje = b.hoje || hojeUTC();
+    await Promise.all([
+      sql`UPDATE tarefas_recorrentes SET ativo = false, fim = ${hoje}::date WHERE id = ${b.id}`,
+      sql`UPDATE tarefas SET ativo = false
+          WHERE serie_id = ${b.id} AND ativo = true AND data_original > ${hoje}::date
+            AND NOT EXISTS (SELECT 1 FROM tarefa_participantes p
+                            WHERE p.tarefa_id = tarefas.id AND p.status <> 'pendente')`,
+    ]);
+    return res.status(200).json({ ok: true });
+  }
+
+  return res.status(405).json({ error: "Método não permitido" });
+}
+
+// Gera, para toda série ativa, as ocorrências entre gerado_ate+1 e `ate`
+// (limitado ao horizonte). Uma query por série, com unnest — não cresce com o
+// número de dias. Idempotente: o índice único (serie_id, data_original) segura
+// duplicata se dois acessos coincidirem.
+async function materializaRecorrentes(sql, ate) {
+  const limite = addDiasUTC(hojeUTC(), HORIZONTE_DIAS);
+  if (!ate || ate > limite) ate = limite;
+  const series = await sql`
+    SELECT id, usuario_login, titulo, descricao, celula, prioridade, status_individual,
+      participantes, frequencia, dias_semana, dia_mes, criado_por,
+      TO_CHAR(inicio,'YYYY-MM-DD') AS inicio, TO_CHAR(fim,'YYYY-MM-DD') AS fim,
+      TO_CHAR(gerado_ate,'YYYY-MM-DD') AS gerado_ate
+    FROM tarefas_recorrentes
+    WHERE ativo = true AND inicio <= ${ate}::date
+      AND (gerado_ate IS NULL OR gerado_ate < ${ate}::date)
+      AND (fim IS NULL OR fim >= COALESCE(gerado_ate + 1, inicio))`;
+
+  for (const s of series) {
+    const de   = s.gerado_ate ? addDiasUTC(s.gerado_ate, 1) : s.inicio;
+    const fim  = s.fim && s.fim < ate ? s.fim : ate;
+    if (de > fim) continue;
+    const datas  = datasDaSerie(s, de, fim);
+    const logins = listaParticipantes(parseLogins(s.participantes), s.usuario_login);
+    if (datas.length) {
+      await sql`
+        WITH novas AS (
+          INSERT INTO tarefas (usuario_login, data, data_original, titulo, descricao, celula,
+                               prioridade, criado_por, status_individual, serie_id)
+          SELECT ${s.usuario_login}, d, d, ${s.titulo}, ${s.descricao || ""}, ${s.celula || null},
+                 ${s.prioridade}, ${s.criado_por}, ${!!s.status_individual}, ${s.id}
+          FROM unnest(${datas}::date[]) AS d
+          ON CONFLICT (serie_id, data_original) WHERE serie_id IS NOT NULL DO NOTHING
+          RETURNING id, data
+        )
+        INSERT INTO tarefa_participantes (tarefa_id, usuario_login, data)
+        SELECT n.id, l, n.data FROM novas n CROSS JOIN unnest(${logins}::text[]) AS l
+        ON CONFLICT (tarefa_id, usuario_login) DO NOTHING`;
+    }
+    await sql`UPDATE tarefas_recorrentes SET gerado_ate = ${fim}::date WHERE id = ${s.id}`;
+  }
+}
+
+// Datas em que a regra cai, entre `de` e `ate` (inclusive), tudo em UTC.
+function datasDaSerie(s, de, ate) {
+  const out  = [];
+  const dias = (s.dias_semana || "").split(",").filter(Boolean).map(Number);
+  let d = new Date(de + "T00:00:00Z");
+  const fim = new Date(ate + "T00:00:00Z");
+  for (; d <= fim; d.setUTCDate(d.getUTCDate() + 1)) {
+    const iso = d.toISOString().slice(0, 10);
+    if (s.frequencia === "diaria") { out.push(iso); continue; }
+    if (s.frequencia === "semanal") { if (dias.includes(d.getUTCDay())) out.push(iso); continue; }
+    if (s.frequencia === "mensal") {
+      // Dia 31 num mês de 30 cai no último dia do mês
+      const ultimo = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
+      const alvo   = Math.min(+s.dia_mes || 1, ultimo);
+      if (d.getUTCDate() === alvo) out.push(iso);
+    }
+  }
+  return out;
+}
+
+function validaRegra(b) {
+  const frequencia = b.repetir === "uteis" ? "semanal" : b.repetir;
+  if (!FREQUENCIAS.includes(frequencia)) return { erro: "Repetição inválida" };
+  let dias_semana = null, dia_mes = null;
+  if (frequencia === "semanal") {
+    const dias = b.repetir === "uteis"
+      ? [1, 2, 3, 4, 5]
+      : (Array.isArray(b.dias_semana) ? b.dias_semana : String(b.dias_semana || "").split(","))
+          .map(Number).filter(n => Number.isInteger(n) && n >= 0 && n <= 6);
+    if (!dias.length) return { erro: "Escolha ao menos um dia da semana" };
+    dias_semana = [...new Set(dias)].sort().join(",");
+  }
+  if (frequencia === "mensal") {
+    dia_mes = +b.dia_mes || +String(b.data || "").slice(8, 10) || 1;
+    if (dia_mes < 1 || dia_mes > 31) return { erro: "Dia do mês inválido" };
+  }
+  const fim = b.fim || null;
+  if (fim && b.data && fim < b.data) return { erro: "A data final é anterior ao início" };
+  return { frequencia, dias_semana, dia_mes, fim };
+}
+
+const DOW_PT = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
+function descreveRegra(r) {
+  if (r.frequencia === "diaria") return "todo dia";
+  if (r.frequencia === "semanal") {
+    const d = (r.dias_semana || "").split(",").filter(Boolean).map(Number);
+    if (d.join(",") === "1,2,3,4,5") return "dias úteis";
+    return "toda " + d.map(i => DOW_PT[i]).join(", ");
+  }
+  if (r.frequencia === "mensal") return `todo dia ${r.dia_mes}`;
+  return "";
+}
+
+function parseLogins(txt) {
+  try { const v = JSON.parse(txt || "[]"); return Array.isArray(v) ? v : []; } catch { return []; }
+}
+
+async function carregaSerie(sql, id) {
+  const rows = await sql`SELECT id, usuario_login, criado_por FROM tarefas_recorrentes WHERE id = ${id} AND ativo = true`;
+  return rows.length ? { ...rows[0], responsavel: rows[0].usuario_login } : null;
+}
+
+// Datas do servidor em UTC — só para horizonte e defaults; o dia "de verdade"
+// vem sempre do cliente (q.data / b.hoje).
+const hojeUTC = () => new Date().toISOString().slice(0, 10);
+function addDiasUTC(iso, n) {
+  const d = new Date(iso + "T00:00:00Z");
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+function ultimoDiaDoMes(mes) {
+  const [y, m] = mes.split("-").map(Number);
+  const ultimo = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  return `${mes}-${String(ultimo).padStart(2, "0")}`;
 }
 
 // ═══════════════════════════════════════
