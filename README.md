@@ -166,6 +166,7 @@ Módulo de organização do dia a dia, separado da produção de máquina. Uma a
 **Dia** — a agenda do dia escolhido (setas ‹ › e botão *Hoje* para navegar):
 - Campo de **adição rápida**: digita o título, aperta Enter e a tarefa entra no dia
 - Modal completo para título, descrição, data, prioridade (alta/média/baixa) e célula opcional
+- A lista de células da Agenda é a de produção **mais `PCP`** — área que só existe aqui, sem referência nem programa. Fica em `CELULAS_AGENDA` (`index.html`), separada de `CELULAS_GRAF`, que alimenta a aba *Gráficos por Célula*; acrescentar outra área da agenda é somar um item nessa lista
 - Três ações por tarefa: **✔ Feita**, **✕ Não feita** (com motivo) e **→ Adiar** (amanhã, depois de amanhã, próxima segunda ou data escolhida)
 - Adiar empurra a data e soma em `adiamentos` — o selo *adiada 2×* fica visível e a `data_original` é preservada
 - Faixa **⚠ Atrasadas**: pendentes de dias anteriores, com botão para trazer todas para o dia atual

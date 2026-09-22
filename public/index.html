@@ -3139,8 +3139,15 @@ function agQS() {
   const u = agUser();
   return u ? '&usuario=' + encodeURIComponent(u) : '';
 }
+// Células da Agenda = as de produção + áreas que só existem aqui.
+// PCP não é célula de máquina: não tem referência nem programa, então fica
+// FORA de CELULAS_GRAF — senão viraria uma rosca sempre vazia na aba
+// "Gráficos por Célula", que consulta o dashboard de produção.
+// Para acrescentar outra área da agenda, basta somar aqui.
+const CELULAS_AGENDA = [...CELULAS_GRAF, { value: 'PCP', label: 'PCP' }];
+
 function celulaOpts(placeholder) {
-  return `<option value="">${placeholder}</option>` + CELULAS_GRAF.map(c => `<option value="${c.value}">${c.label}</option>`).join('');
+  return `<option value="">${placeholder}</option>` + CELULAS_AGENDA.map(c => `<option value="${c.value}">${c.label}</option>`).join('');
 }
 function agTarefa(id) {
   return [...(_agDia?.tarefas || []), ...(_agDia?.atrasadas || [])].find(x => x.id === id);
